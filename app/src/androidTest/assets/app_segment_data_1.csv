@@ -1,0 +1,9 @@
+apk,t_unix_ts_segment_start,t_unix_ts_segment_end,duration_segment_ms,id_session,id_segment,apk_prev_1,apk_prev_2,apk_prev_3,apk_prev_4,apk_next_1,id_user
+com.samsung.accessibility,1694402435,1694402435,3,f6609939-1cc6-4f25-9d81-67ea1903f421,bf5a82f6-64ec-40d9-bc2b-acd7b04f4e8d,NA,NA,NA,NA,com.android.chrome,46ed03b7-84fe-4795-bd97-caa9e2cba9ec
+com.android.chrome,1694402438,1694402454,15964,f6609939-1cc6-4f25-9d81-67ea1903f421,1567e1c7-4286-4988-9280-eced8a76467e,com.samsung.accessibility,NA,NA,NA,NA,46ed03b7-84fe-4795-bd97-caa9e2cba9ec
+com.android.chrome,1694402463,1694402463,3,756a53f4-b585-4147-a126-dac5ef2d356a,dfa571b6-805b-4642-951c-230f75d53b04,NA,NA,NA,NA,com.sec.android.app.launcher,46ed03b7-84fe-4795-bd97-caa9e2cba9ec
+com.sec.android.app.launcher,1694402466,1694402466,3,756a53f4-b585-4147-a126-dac5ef2d356a,3689225f-7fd7-4066-8551-f93cad9ce743,com.android.chrome,NA,NA,NA,com.instagram.android,46ed03b7-84fe-4795-bd97-caa9e2cba9ec
+com.instagram.android,1694402469,1694402469,3,756a53f4-b585-4147-a126-dac5ef2d356a,d4e9d319-7812-4760-82b7-ba1cc7596973,com.sec.android.app.launcher,com.android.chrome,NA,NA,com.sec.android.app.launcher,46ed03b7-84fe-4795-bd97-caa9e2cba9ec
+com.sec.android.app.launcher,1694402472,1694402472,3,756a53f4-b585-4147-a126-dac5ef2d356a,e7fe08d5-0ca8-43a8-a0dc-1f51c83b705e,com.instagram.android,com.sec.android.app.launcher,com.android.chrome,NA,com.android.chrome,46ed03b7-84fe-4795-bd97-caa9e2cba9ec
+com.android.chrome,1694402475,1694402520,44920,756a53f4-b585-4147-a126-dac5ef2d356a,9ffd2d37-c927-4285-856c-3002192d757b,com.sec.android.app.launcher,com.instagram.android,com.sec.android.app.launcher,com.android.chrome,NA,46ed03b7-84fe-4795-bd97-caa9e2cba9ec
+com.android.chrome,1694402475,1694402520,44920,756a53f4-b585-4147-a126-dac5ef2d3550,9ffd2d37-c927-4285-856c-3002192d757b,NA,NA,NA,NA,NA,46ed03b7-84fe-4795-bd97-caa9e2cba9ec

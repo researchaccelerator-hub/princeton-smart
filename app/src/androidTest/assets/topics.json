@@ -1,0 +1,17 @@
+[
+  {
+    "id": 1,
+    "word": "social",
+    "synonyms": ["society", "community", "interpersonal"]
+  },
+  {
+    "id": 2,
+    "word": "media",
+    "synonyms": ["communication", "broadcasting", "press"]
+  },
+  {
+    "id": 3,
+    "word": "network",
+    "synonyms": ["connection", "web", "link"]
+  }
+]

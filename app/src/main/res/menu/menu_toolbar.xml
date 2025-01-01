@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <!-- Settings, should always be in the overflow -->
+    <item android:id="@+id/action_settings"
+        android:title="@string/settings"
+        app:showAsAction="never"/>
+
+    <item android:id="@+id/action_restricted_apps"
+        android:title="@string/recorded_apps"
+        app:showAsAction="never"/>
+
+    <item android:id="@+id/logout"
+        android:title="@string/logout"
+        app:showAsAction="never"/>
+</menu>

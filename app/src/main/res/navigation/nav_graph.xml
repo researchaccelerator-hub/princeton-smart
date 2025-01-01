@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/registerOrLoginFragment">
+
+    <action
+        android:id="@+id/action_global_recordingFragment"
+        app:destination="@+id/screenRecordFragment"
+        app:launchSingleTop="true" />
+
+    <action
+        android:id="@+id/closeRegisterWindow"
+        app:destination="@id/registerOrLoginFragment"
+        app:enterAnim="@anim/slide_up"
+        app:exitAnim="@anim/slide_down" />
+
+    <action
+        android:id="@+id/goToUsage"
+        app:destination="@id/usuageAccessSelectFragment"
+        app:enterAnim="@anim/slide_out_left"
+        app:exitAnim="@anim/slide_in_right" />
+
+    <action
+        android:id="@+id/slideInInfo"
+        app:destination="@id/screenlakeInfoFragment"
+        app:enterAnim="@anim/slide_out_left"
+        app:exitAnim="@anim/slide_in_right" />
+
+    <action
+        android:id="@+id/slideEmail"
+        app:destination="@id/registerNameEmailFragment"
+        app:enterAnim="@anim/slide_out_left"
+        app:exitAnim="@anim/slide_in_right" />
+
+    <action
+        android:id="@+id/goToTermsOfService"
+        app:destination="@id/termsOfServiceFragment"
+        app:enterAnim="@anim/slide_up"
+        app:exitAnim="@anim/slide_down" />
+
+    <action
+        android:id="@+id/goToTermsOfServiceClose"
+        app:destination="@id/registerNameEmailFragment"
+        app:exitAnim="@anim/slide_down" />
+
+    <action
+        android:id="@+id/slideDownConfirmPassword"
+        app:destination="@id/loginFragment"
+        app:enterAnim="@anim/slide_up"
+        app:exitAnim="@anim/slide_down" />
+
+    <fragment
+        android:id="@+id/loginFragment"
+        android:name="com.screenlake.ui.fragments.LoginFragment"
+        android:label="fragment_login"
+        tools:layout="@layout/fragment_login" />
+    <fragment
+        android:id="@+id/screenRecordFragment"
+        android:name="com.screenlake.ui.fragments.ScreenRecordFragment"
+        android:label="fragment_screen_record"
+        tools:layout="@layout/fragment_screen_record" />
+    <fragment
+        android:id="@+id/registerConfirmPassword"
+        android:name="com.screenlake.ui.fragments.onboarding.RegisterConfirmPassword"
+        android:label="fragment_register_confirm_password"
+        tools:layout="@layout/fragment_register_confirm_password" />
+    <fragment
+        android:id="@+id/registerNameEmailFragment"
+        android:name="com.screenlake.ui.fragments.onboarding.RegisterNameEmailFragment"
+        android:label="RegisterNameEmailFragment" />
+    <fragment
+        android:id="@+id/registerConfirmEmailFragment"
+        android:name="com.screenlake.ui.fragments.onboarding.RegisterConfirmEmailFragment"
+        android:label="fragment_register_confirm_email"
+        tools:layout="@layout/fragment_register_confirm_email" />
+    <fragment
+        android:id="@+id/registerLoadingFragment"
+        android:name="com.screenlake.ui.fragments.onboarding.RegisterLoadingFragment"
+        android:label="fragment_register_loading"
+        tools:layout="@layout/fragment_register_loading" />
+    <fragment
+        android:id="@+id/screenlakeInfoFragment"
+        android:name="com.screenlake.ui.fragments.onboarding.ScreenlakeInfoFragment"
+        android:label="fragment_screenlake_info"
+        tools:layout="@layout/fragment_screenlake_info" />
+    <fragment
+        android:id="@+id/usuageAccessSelectFragment"
+        android:name="com.screenlake.ui.fragments.onboarding.UsageAccessSelectFragment"
+        android:label="fragment_usuage_access_select"
+        tools:layout="@layout/fragment_usuage_access_select" />
+    <fragment
+        android:id="@+id/termsOfServiceFragment"
+        android:name="com.screenlake.ui.fragments.onboarding.TermsOfServiceFragment"
+        android:label="fragment_terms_of_service"
+        tools:layout="@layout/fragment_terms_of_service" />
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="com.screenlake.ui.fragments.SettingsFragment"
+        android:label="SettingsFragment" />
+    <fragment
+        android:id="@+id/settingsWrapper"
+        android:name="com.screenlake.ui.fragments.SettingsWrapper"
+        android:label="fragment_settings_wrapper"
+        tools:layout="@layout/fragment_settings_wrapper" />
+    <fragment
+        android:id="@+id/rescrictedAppFragment"
+        android:name="com.screenlake.ui.fragments.RestrictedAppFragment"
+        android:label="RescrictedAppFragment" />
+    <fragment
+        android:id="@+id/registerOrLoginFragment"
+        android:name="com.screenlake.ui.fragments.RegisterOrLoginFragment"
+        android:label="RegisterOrLoginFragment" />
+    <fragment
+        android:id="@+id/registerConfirmPasswordResetFragment"
+        android:name="com.screenlake.ui.fragments.onboarding.RegisterConfirmPasswordResetFragment"
+        android:label="RegisterConfirmPasswordResetFragment" />
+    <fragment
+        android:id="@+id/resetPasswordForEmailFragment"
+        android:name="com.screenlake.ui.fragments.onboarding.ResetPasswordForEmailFragment"
+        android:label="ResetPasswordForEmailFragment" />
+    <fragment
+        android:id="@+id/accessibilityAccessSelectFragment"
+        android:name="com.screenlake.ui.fragments.onboarding.AccessibilityAccessSelectFragment"
+        android:label="AccessibilityAccessSelectFragment" />
+    <!--    <fragment-->
+    <!--        android:id="@+id/splashScreenFragment"-->
+    <!--        android:name="com.screenlake.recorder.fragments.SplashScreenFragment"-->
+    <!--        android:label="fragment_splash_screen"-->
+    <!--        tools:layout="@layout/fragment_splash_screen" />-->
+</navigation>

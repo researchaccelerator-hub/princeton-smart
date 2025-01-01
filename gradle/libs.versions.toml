@@ -1,0 +1,118 @@
+[versions]
+amplify = "1.37.5"
+amplifyCoreKotlin = "0.21.3"
+android = "8.3.0-rc01"
+androidxAnnotation = "1.9.1"
+androidxPreference = "1.2.1"
+androidxSecurityCrypto = "1.0.0"
+androidxTestCoreKtx = "1.6.1"
+androidxTestExtJunitKtx = "1.2.1"
+androidxWork = "2.10.0"
+appcompat = "1.7.0"
+awsStorageS3 = "1.36.1"
+commonsCsv = "1.8"
+constraintlayout = "2.2.0"
+datastore = "1.0.0"
+devtoolsKsp = "2.0.21-1.0.28"
+easyPermissions = "3.0.0"
+espressoCore = "3.6.1"
+firebaseBom = "33.6.0"
+firebaseCrashlytics = "3.0.2"
+googlePlayServicesAuth = "21.2.0"
+googleServices = "4.4.2"
+gson = "2.11.0"
+hilt = "2.52"
+androidxHilt = "1.2.0"
+junit = "4.13.2"
+junitJupiter = "5.9.3"
+junitVersion = "1.2.1"
+kotlin = "2.0.21"
+kotlinxCoroutinesAndroid = "1.8.1"
+kotlinxCoroutinesTest = "1.8.1"
+legacySupportV4 = "1.0.0"
+lifecycle = "2.8.7"
+lottie = "3.4.0"
+material = "1.12.0"
+mockitoCore = "3.12.4"
+mockk = "1.13.13"
+mockkAndroid = "1.13.13"
+navigationFragmentKtx = "2.8.4"
+navigationUiKtx = "2.8.4"
+okHttpBom = "4.12.0"
+retrofit = "2.9.0"
+robolectric = "4.4"
+room = "2.6.1"
+secrets = "2.0.1"
+supportAnnotations = "28.0.0"
+tesseract4Android = "4.4.0"
+timber = "4.7.1"
+truth = "1.0.1"
+
+[libraries]
+adaptech-tesseract4Android = { group = "cz.adaptech.tesseract4android", name = "tesseract4android", version.ref = "tesseract4Android" }
+airbnb-lottie = { group = "com.airbnb.android", name = "lottie", version.ref = "lottie" }
+amplify-aws-api = { group = "com.amplifyframework", name = "aws-api", version.ref = "amplify" }
+amplify-aws-auth-cognito = { group = "com.amplifyframework", name = "aws-auth-cognito", version.ref = "amplify" }
+amplify-aws-storage-s3 = { group = "com.amplifyframework", name = "aws-storage-s3", version.ref = "awsStorageS3" }
+amplify-core-kotlin = { group = "com.amplifyframework", name = "core-kotlin", version.ref = "amplifyCoreKotlin" }
+android-support-annotations = { group = "com.android.support", name = "support-annotations", version.ref = "supportAnnotations" }
+androidx-annotation = { group = "androidx.annotation", name = "annotation", version.ref = "androidxAnnotation" }
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
+androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+androidx-hilt-compiler = { group = "androidx.hilt", name = "hilt-compiler", version.ref = "androidxHilt" }
+androidx-hilt-work = { group = "androidx.hilt", name = "hilt-work", version.ref = "androidxHilt" }
+androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
+androidx-legacy-support-v4 = { group = "androidx.legacy", name = "legacy-support-v4", version.ref = "legacySupportV4" }
+androidx-lifecycle-livedata-ktx = { group = "androidx.lifecycle", name = "lifecycle-livedata-ktx", version.ref = "lifecycle" }
+androidx-lifecycle-service = { group = "androidx.lifecycle", name = "lifecycle-service", version.ref = "lifecycle" }
+androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecycle" }
+androidx-navigation-fragment-ktx = { group = "androidx.navigation", name = "navigation-fragment-ktx", version.ref = "navigationFragmentKtx" }
+androidx-navigation-ui-ktx = { group = "androidx.navigation", name = "navigation-ui-ktx", version.ref = "navigationUiKtx" }
+androidx-preference = { group = "androidx.preference", name = "preference", version.ref = "androidxPreference" }
+androidx-preference-ktx = { group = "androidx.preference", name = "preference-ktx", version.ref = "androidxPreference" }
+androidx-room-common = { group = "androidx.room", name = "room-common", version.ref = "room" }
+androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "androidxSecurityCrypto" }
+androidx-test-core-ktx = { group = "androidx.test", name = "core-ktx", version.ref = "androidxTestCoreKtx" }
+androidx-test-ext-junit-ktx = { group = "androidx.test.ext", name = "junit-ktx", version.ref = "androidxTestExtJunitKtx" }
+androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "androidxWork" }
+androidx-work-testing = { group = "androidx.work", name = "work-testing", version.ref = "androidxWork" }
+apache-commons-csv = { group = "org.apache.commons", name = "commons-csv", version.ref = "commonsCsv" }
+devrel-easy-permissions = { group = "pub.devrel", name = "easypermissions", version.ref = "easyPermissions" }
+devtools-ksp = { group = "com.google.devtools.ksp", name = "symbol-processing-api", version.ref = "devtoolsKsp" }
+firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics" }
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
+firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics" }
+google-gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
+google-hilt = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
+google-hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hilt" }
+google-material = { group = "com.google.android.material", name = "material", version.ref = "material" }
+google-play-services-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "googlePlayServicesAuth" }
+google-truth = { group = "com.google.truth", name = "truth", version.ref = "truth" }
+jakewharton-timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+junit-jupiter-api = { group = "org.junit.jupiter", name = "unit-jupiter-api", version.ref = "junitJupiter" }
+junit-jupiter-engine = { group = "org.junit.jupiter", name = "junit-jupiter-engine", version.ref = "junitJupiter" }
+jetbrains-kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinxCoroutinesAndroid" }
+jetbrains-kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinxCoroutinesTest" }
+mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mockitoCore" }
+mockk = { group = "io.mockk", name = "mockk",  version.ref = "mockk" }
+mockk-android = { group = "io.mockk", name = "mockk-android", version.ref = "mockkAndroid" }
+robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
+squareup-okhttp3 = { group = "com.squareup.okhttp3", name = "okhttp" }
+squareup-okhttp3-bom = { group = "com.squareup.okhttp3", name = "okhttp-bom", version.ref = "okHttpBom" }
+squareup-okhttp3-logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-interceptor" }
+squareup-retrofit2 = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
+squareup-retrofit2-converter-gson = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "retrofit" }
+datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "android" }
+devtools-ksp = { id = "com.google.devtools.ksp", version.ref = "devtoolsKsp" }
+firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "firebaseCrashlytics" }
+google-secrets = { id = "com.google.android.libraries.mapsplatform.secrets-gradle-plugin", version.ref = "secrets" }
+google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
+hilt-android = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }

@@ -1,0 +1,2 @@
+app,t_unix_ts_segment_start,t_unix_ts_segmentend,duration_segment,id_session,id_segment,apk_prev_1,apk_prev_2,apk_prev_3,apk_prev_4,apk_next_1,id_user
+com.sec.android.daemonapp,1692219157,1692219157,3,bd72b591-fc94-410a-b6a4-19d26ca263e8,78378a7a-6f5b-40d8-8b85-6c95a5976af6,NA,NA,NA,NA,NA,d7d1927d-b5fe-467d-97c7-d3850f3dd8b7

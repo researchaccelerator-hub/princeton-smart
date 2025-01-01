@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- res/drawable/image.xml -->
+<!-- define LayerList -->
+<layer-list
+    xmlns:android="http://schemas.android.com/apk/res/android" >
+    <!-- set image to be shown on circular ImageView -->
+    <item android:drawable="@drawable/screenlake_logo_one"/>
+    <item android:drawable="@drawable/ic_onboarding_app_icon"/>
+</layer-list>

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+
+
+
+        <!--in below line we are creating a list preference
+            and we are adding default selected value in list for 3 rd index-->
+        <!--dialog title is to set title for our dialog box
+            entries is used to add list of data which we
+            are adding from our strings file
+            entry values is to add values to our entries.
+            key is use to add key to our list preferences
+            summary is use to add description to our option
+            title is use to add title to our list preferences.-->
+        <!--this list preference is for remind me option-->
+        <ListPreference
+            android:defaultValue="3"
+            android:dialogTitle="Frames Per Second"
+            android:entries="@array/frames_per_second_list"
+            android:entryValues="@array/frames_per_second_list"
+            android:key="fps"
+            app:isPreferenceVisible="false"
+            android:summary="Set the Frames Per Second."
+            android:title="Frames Per Second" />
+
+
+
+        <!--below switch preference is
+            use for mobile data usage-->
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="@string/limit_data_usage"
+            android:summary="@string/stream_video"
+            android:title="@string/limit_mobile_usage"
+            app:isPreferenceVisible="false" />
+
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="@string/limit_power_usage"
+            app:isPreferenceVisible="false"
+            android:summary="Only Upload when Plugged In."
+            android:title="Limit Power Usage" />
+
+        <EditTextPreference
+            android:key="@string/payment_handle_type"
+            android:title="Click to change payment type"
+            android:persistent="true"
+            android:dialogTitle="Enter Payment Type"
+            app:isPreferenceVisible="false"/>
+
+        <EditTextPreference
+            android:key="@string/payment_handle"
+            android:title="Click to edit payment "
+            android:persistent="true"
+            app:isPreferenceVisible="false"
+            android:dialogTitle="Enter Username" />
+
+        <Preference
+            android:title="Apps being Recorded"
+            android:key="apps_being_recorded"
+            app:isPreferenceVisible="true"
+            android:summary="Restrict and UnRestrict Apps."
+            />
+
+        <Preference
+            android:title="Logout of Screenlake"
+            android:key="@string/logout"
+            />
+</PreferenceScreen>

@@ -1,0 +1,315 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <data>
+        <variable
+            name="fragment"
+            type="com.screenlake.ui.fragments.ScreenRecordFragment" />
+    </data>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        tools:context=".ui.fragments.ScreenRecordFragment">
+
+        <LinearLayout
+            android:id="@+id/topBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            tools:ignore="MissingConstraints">
+
+            <LinearLayout
+                android:id="@+id/statusBar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:background="@color/cardview_dark_background"
+                android:gravity="center">
+
+                <TextView
+                    android:id="@+id/onlineStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_margin="5dp"
+                    android:textColor="@color/black"
+                    android:fontFamily="@font/inter_semibold"
+                    android:textStyle="bold"
+                    android:typeface="sans"
+                    android:text="offline"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/upload_group"
+                android:visibility="gone"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:textColor="@color/screenlake_main"
+                    android:fontFamily="@font/inter_semibold"
+                    android:textStyle="bold"
+                    android:text="Uploading..."/>
+
+                <ProgressBar
+                    android:id="@+id/determinateBar"
+                    style="@android:style/Widget.ProgressBar.Horizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:id="@+id/boxOne"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/textTopBoxOne"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/inter_light"
+                        android:gravity="center"
+                        android:text="Uploaded"
+                        android:textColor="@color/screenlake_light_gray"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:typeface="sans" />
+
+                    <TextView
+                        android:id="@+id/textBoxOne"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/inter_semibold"
+                        android:gravity="center"
+                        android:paddingBottom="5dp"
+                        android:text="$0"
+                        android:textColor="#000000"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:typeface="sans" />
+                </LinearLayout>
+
+                <ImageView
+                    android:id="@+id/boxOneBar"
+                    android:layout_width="2dp"
+                    android:layout_height="match_parent"
+                    android:background="@color/screenlake_lighter_gray" />
+
+                <LinearLayout
+                    android:id="@+id/boxTwo"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/textTopBoxTwo"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/inter_light"
+                        android:gravity="center"
+                        android:text="Not Uploaded"
+                        android:textColor="@color/screenlake_light_gray"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:typeface="sans" />
+
+                    <TextView
+                        android:id="@+id/textBoxTwo"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/inter_semibold"
+                        android:gravity="center"
+                        android:paddingBottom="5dp"
+                        android:text="$0"
+                        android:textColor="#000000"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:typeface="sans" />
+                </LinearLayout>
+
+                <ImageView
+                    android:id="@+id/boxTwoBar"
+                    android:layout_width="2dp"
+                    android:layout_height="match_parent"
+                    android:background="@color/screenlake_lighter_gray" />
+
+                <LinearLayout
+                    android:id="@+id/boxThree"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/textTopBoxThree"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/inter_light"
+                        android:gravity="center"
+                        android:text="This week"
+                        android:textColor="@color/screenlake_light_gray"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:typeface="sans" />
+
+                    <TextView
+                        android:id="@+id/textBoxThree"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/inter_semibold"
+                        android:gravity="center"
+                        android:paddingBottom="5dp"
+                        android:text="$0"
+                        android:textColor="#000000"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:typeface="sans" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/screenlake_lighter_gray" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/loginFragmentRecordBack"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/change_background_color_animation"
+            android:orientation="vertical"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/topBar"
+            app:layout_constraintVertical_bias="0.000">
+
+            <TextView
+                android:id="@+id/button_explainer_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/inter_extrabold"
+                android:gravity="center"
+                android:textColor="#B9B8B8"
+                android:text="@string/not_recording"
+                android:textSize="20sp" />
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/animationLayout"
+                android:layout_width="match_parent"
+                android:layout_height="100dp"
+                android:layout_marginTop="5dp">
+
+                <ImageView
+                    android:id="@+id/screenRecordFragmentPause"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_margin="10dp"
+                    android:layout_marginTop="15dp"
+                    android:layout_marginBottom="16dp"
+                    android:background="@drawable/ic_pause_48px"
+                    android:tag="pause_main"
+                    android:visibility="visible"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toStartOf="@+id/inner_image"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+                <ImageButton
+                    android:id="@+id/inner_image"
+                    android:layout_width="75dp"
+                    android:layout_height="75dp"
+                    android:layout_margin="5dp"
+                    android:background="@drawable/record_main"
+                    android:contentDescription="null"
+                    android:tag="record_main"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+                <ImageView
+                    android:id="@+id/uploadImage"
+                    android:layout_width="75dp"
+                    android:layout_height="75dp"
+                    android:background="@drawable/ic_upload_file"
+                    android:tag="upload_main"
+                    android:visibility="gone"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toEndOf="@+id/inner_image"
+                    app:layout_constraintTop_toTopOf="parent" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+            <TextView
+                android:id="@+id/explainer_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/inter_extrabold"
+                android:gravity="center"
+                android:text="@string/not_recording"
+                android:textSize="20sp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="10dp"
+                android:background="@color/white">
+
+                <TextView
+                    android:id="@+id/explainer_text_post_api"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/inter_extrabold"
+                    android:gravity="center"
+                    android:text="This app requests that you grant the &quot;Accessibility API permission&quot;. This permission enables the app to capture three specific pieces of information, improving its function as an academic research tool: (1) URLs you visit, (2) buttons you tap on, and (3) text you've seen on-screen. In line with the research participation plan made with the relevant university, and the consent form provided to you, this data is used strictly for scientific analysis. This app never captures any audio data nor camera data from your device."
+                    android:textSize="14sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvUpdates"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="76dp"
+            android:text=""
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent" />
+
+        <Button
+            android:id="@+id/button2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Test Upload"
+            android:visibility="visible"
+            app:layout_constraintBottom_toTopOf="@+id/tvUpdates"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/loginFragmentRecordBack" />
+
+        <TextView
+            android:id="@+id/tvUpdatesUpload"
+            android:layout_width="match_parent"
+            android:layout_height="61dp"
+            android:textSize="16sp"
+            app:layout_constraintBottom_toTopOf="@+id/tvUpdates"
+            app:layout_constraintTop_toBottomOf="@+id/button2"
+            tools:layout_editor_absoluteX="0dp" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</layout>

@@ -1,0 +1,313 @@
+<resources>
+    <string name="action_settings">Settings</string>
+    <!-- Strings used for fragments for navigation -->
+<!--    <string name="first_fragment_label">First Fragment</string>-->
+<!--    <string name="second_fragment_label">Second Fragment</string>-->
+<!--    <string name="next">Next</string>-->
+<!--    <string name="previous">Previous</string>-->
+
+    <string name="lorem_ipsum">
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam in scelerisque sem. Mauris
+        volutpat, dolor id interdum ullamcorper, risus dolor egestas lectus, sit amet mattis purus
+        dui nec risus. Maecenas non sodales nisi, vel dictum dolor. Class aptent taciti sociosqu ad
+        litora torquent per conubia nostra, per inceptos himenaeos. Suspendisse blandit eleifend
+        diam, vel rutrum tellus vulputate quis. Aliquam eget libero aliquet, imperdiet nisl a,
+        ornare ex. Sed rhoncus est ut libero porta lobortis. Fusce in dictum tellus.\n\n
+        Suspendisse interdum ornare ante. Aliquam nec cursus lorem. Morbi id magna felis. Vivamus
+        egestas, est a condimentum egestas, turpis nisl iaculis ipsum, in dictum tellus dolor sed
+        neque. Morbi tellus erat, dapibus ut sem a, iaculis tincidunt dui. Interdum et malesuada
+        fames ac ante ipsum primis in faucibus. Curabitur et eros porttitor, ultricies urna vitae,
+        molestie nibh. Phasellus at commodo eros, non aliquet metus. Sed maximus nisl nec dolor
+        bibendum, vel congue leo egestas.\n\n
+        Sed interdum tortor nibh, in sagittis risus mollis quis. Curabitur mi odio, condimentum sit
+        amet auctor at, mollis non turpis. Nullam pretium libero vestibulum, finibus orci vel,
+        molestie quam. Fusce blandit tincidunt nulla, quis sollicitudin libero facilisis et. Integer
+        interdum nunc ligula, et fermentum metus hendrerit id. Vestibulum lectus felis, dictum at
+        lacinia sit amet, tristique id quam. Cras eu consequat dui. Suspendisse sodales nunc ligula,
+        in lobortis sem porta sed. Integer id ultrices magna, in luctus elit. Sed a pellentesque
+        est.\n\n
+        Aenean nunc velit, lacinia sed dolor sed, ultrices viverra nulla. Etiam a venenatis nibh.
+        Morbi laoreet, tortor sed facilisis varius, nibh orci rhoncus nulla, id elementum leo dui
+        non lorem. Nam mollis ipsum quis auctor varius. Quisque elementum eu libero sed commodo. In
+        eros nisl, imperdiet vel imperdiet et, scelerisque a mauris. Pellentesque varius ex nunc,
+        quis imperdiet eros placerat ac. Duis finibus orci et est auctor tincidunt. Sed non viverra
+        ipsum. Nunc quis augue egestas, cursus lorem at, molestie sem. Morbi a consectetur ipsum, a
+        placerat diam. Etiam vulputate dignissim convallis. Integer faucibus mauris sit amet finibus
+        convallis.\n\n
+        Phasellus in aliquet mi. Pellentesque habitant morbi tristique senectus et netus et
+        malesuada fames ac turpis egestas. In volutpat arcu ut felis sagittis, in finibus massa
+        gravida. Pellentesque id tellus orci. Integer dictum, lorem sed efficitur ullamcorper,
+        libero justo consectetur ipsum, in mollis nisl ex sed nisl. Donec maximus ullamcorper
+        sodales. Praesent bibendum rhoncus tellus nec feugiat. In a ornare nulla. Donec rhoncus
+        libero vel nunc consequat, quis tincidunt nisl eleifend. Cras bibendum enim a justo luctus
+        vestibulum. Fusce dictum libero quis erat maximus, vitae volutpat diam dignissim.
+    </string>
+    <string name="app_name">Screenlake</string>
+    <string name="logout">Logout</string>
+    <string name="recorded_apps">Recorded Apps</string>
+    <string name="settings">settings</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="online">Online</string>
+    <string name="pause_recording">Pause Recording</string>
+    <string name="cancel">cancel</string>
+    <string name="confirm">confirm</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="accessibility_service_description" />
+    <string name="text_view">android.widget.TextView</string>
+    <string name="url">https://eqjfomhbw5.execute-api.us-west-1.amazonaws.com/prod/does-user-exist</string>
+
+    <string name="remind_to_take_a_break">Remind me to take a break</string>
+    <string name="key_upload_quality">key_upload_quality</string>
+    <string name="remind_me">Remind me to take a break</string>
+    <string name="remind_me_for_bed_time">remind_me_for_bed_time</string>
+    <string name="remind_for_bed_time">Remind me for bed time</string>
+    <string name="limit_data_usage">prefs_limit_data_usage</string>
+    <string name="fps">fps</string>
+    <string name="limit_power_usage">prefs_limit_power_usage</string>
+    <string name="payment_handle">payments_handle</string>
+    <string name="is_signed_out">is_signed_out</string>
+    <string name="payment_handle_type">payments_handle_type</string>
+    <string name="stream_video">Only upload photos over wifi</string>
+    <string name="limit_mobile_usage">Limit Photo Upload</string>
+    <string name="double_tap_to_seek">Double-tap to seek</string>
+    <string name="pref_seek_val">pref_seek_val</string>
+    <string name="seconds">seconds</string>
+    <string name="uploads">Uploads</string>
+    <string name="pref_uploads">pref_uploads</string>
+    <string name="specify_network_prefs">Specify network preferences for uploads</string>
+    <string name="prefs_restricted_mode">prefs_restricted_mode</string>
+    <string name="restricted_mode">Restricted Mode can help to hide videos with potentially mature content. No filter is 100%% accurate, but it should help you to avoid most of this type of content.</string>
+    <string name="restricted_mode_description">Restricted Mode</string>
+    <string name="prefs_enable_stats">prefs_enable_stats</string>
+    <string name="enable_stats">Enable stats for nerds</string>
+
+    <string-array name="pref_upload_quality_entries">
+        <item>360p</item>
+        <item>480p</item>
+        <item>720p</item>
+        <item>1080p</item>
+        <item>Original</item>
+    </string-array>
+
+    <string-array name="pref_seek_values">
+        <item>5</item>
+        <item>10</item>
+        <item>15</item>
+        <item>20</item>
+        <item>30</item>
+    </string-array>
+
+    <string-array name="frames_per_second_list">
+        <item>0.2</item>
+        // 5000L
+        <item>0.3</item>
+        // 3333L
+        <item>0.4</item>
+        // 2500L
+        <item>0.5</item>
+        // 2000L
+        <item>1</item>
+        // 1000L
+        <item>2</item>
+        // 500L
+        <item>3</item>
+        // 333L
+        <item>4</item>
+        // 250L
+        <item>5</item>
+        // 200L
+        <item>10</item>
+        // 100L
+        <item>20</item>
+        // 50L
+        <item>30</item>
+        // 33L
+    </string-array>
+
+    <string-array name="pref_uploads">
+        <item>Only when on Wi-Fi</item>
+        <item>On any network</item>
+    </string-array>
+    <!-- Preference Titles -->
+    <string name="messages_header">Messages</string>
+    <string name="sync_header">Sync</string>
+
+    <!-- Messages Preferences -->
+    <string name="signature_title">Your signature</string>
+    <string name="reply_title">Default reply action</string>
+
+    <!-- Sync Preferences -->
+    <string name="sync_title">Sync email periodically</string>
+    <string name="attachment_title">Download incoming attachments</string>
+    <string name="attachment_summary_on">Automatically download attachments for incoming emails
+    </string>
+    <string name="attachment_summary_off">Only download attachments when manually requested</string>
+    <string name="restricted_apps">App Controls</string>
+    <!-- Strings related to login -->
+    <string name="prompt_email">Email</string>
+    <string name="prompt_password">Password</string>
+    <string name="action_sign_in">Sign in or register</string>
+    <string name="action_sign_in_short">Sign in</string>
+    <string name="welcome">"Welcome!"</string>
+    <string name="invalid_username">Not a valid username</string>
+    <string name="invalid_password">Password must be >5 characters</string>
+    <string name="login_failed">"Login failed"</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="large_text">
+        "Material is the metaphor.\n\n"
+
+        "A material metaphor is the unifying theory of a rationalized space and a system of motion."
+        "The material is grounded in tactile reality, inspired by the study of paper and ink, yet "
+        "technologically advanced and open to imagination and magic.\n"
+        "Surfaces and edges of the material provide visual cues that are grounded in reality. The "
+        "use of familiar tactile attributes helps users quickly understand affordances. Yet the "
+        "flexibility of the material creates new affordances that supercede those in the physical "
+        "world, without breaking the rules of physics.\n"
+        "The fundamentals of light, surface, and movement are key to conveying how objects move, "
+        "interact, and exist in space and in relation to each other. Realistic lighting shows "
+        "seams, divides space, and indicates moving parts.\n\n"
+
+        "Bold, graphic, intentional.\n\n"
+
+        "The foundational elements of print based design typography, grids, space, scale, color, "
+        "and use of imagery guide visual treatments. These elements do far more than please the "
+        "eye. They create hierarchy, meaning, and focus. Deliberate color choices, edge to edge "
+        "imagery, large scale typography, and intentional white space create a bold and graphic "
+        "interface that immerse the user in the experience.\n"
+        "An emphasis on user actions makes core functionality immediately apparent and provides "
+        "waypoints for the user.\n\n"
+
+        "Motion provides meaning.\n\n"
+
+        "Motion respects and reinforces the user as the prime mover. Primary user actions are "
+        "inflection points that initiate motion, transforming the whole design.\n"
+        "All action takes place in a single environment. Objects are presented to the user without "
+        "breaking the continuity of experience even as they transform and reorganize.\n"
+        "Motion is meaningful and appropriate, serving to focus attention and maintain continuity. "
+        "Feedback is subtle yet clear. Transitions are efﬁcient yet coherent.\n\n"
+
+        "3D world.\n\n"
+
+        "The material environment is a 3D space, which means all objects have x, y, and z "
+        "dimensions. The z-axis is perpendicularly aligned to the plane of the display, with the "
+        "positive z-axis extending towards the viewer. Every sheet of material occupies a single "
+        "position along the z-axis and has a standard 1dp thickness.\n"
+        "On the web, the z-axis is used for layering and not for perspective. The 3D world is "
+        "emulated by manipulating the y-axis.\n\n"
+
+        "Light and shadow.\n\n"
+
+        "Within the material environment, virtual lights illuminate the scene. Key lights create "
+        "directional shadows, while ambient light creates soft shadows from all angles.\n"
+        "Shadows in the material environment are cast by these two light sources. In Android "
+        "development, shadows occur when light sources are blocked by sheets of material at "
+        "various positions along the z-axis. On the web, shadows are depicted by manipulating the "
+        "y-axis only. The following example shows the card with a height of 6dp.\n\n"
+
+        "Resting elevation.\n\n"
+
+        "All material objects, regardless of size, have a resting elevation, or default elevation "
+        "that does not change. If an object changes elevation, it should return to its resting "
+        "elevation as soon as possible.\n\n"
+
+        "Component elevations.\n\n"
+
+        "The resting elevation for a component type is consistent across apps (e.g., FAB elevation "
+        "does not vary from 6dp in one app to 16dp in another app).\n"
+        "Components may have different resting elevations across platforms, depending on the depth "
+        "of the environment (e.g., TV has a greater depth than mobile or desktop).\n\n"
+
+        "Responsive elevation and dynamic elevation offsets.\n\n"
+
+        "Some component types have responsive elevation, meaning they change elevation in response "
+        "to user input (e.g., normal, focused, and pressed) or system events. These elevation "
+        "changes are consistently implemented using dynamic elevation offsets.\n"
+        "Dynamic elevation offsets are the goal elevation that a component moves towards, relative "
+        "to the component’s resting state. They ensure that elevation changes are consistent "
+        "across actions and component types. For example, all components that lift on press have "
+        "the same elevation change relative to their resting elevation.\n"
+        "Once the input event is completed or cancelled, the component will return to its resting "
+        "elevation.\n\n"
+
+        "Avoiding elevation interference.\n\n"
+
+        "Components with responsive elevations may encounter other components as they move between "
+        "their resting elevations and dynamic elevation offsets. Because material cannot pass "
+        "through other material, components avoid interfering with one another any number of ways, "
+        "whether on a per component basis or using the entire app layout.\n"
+        "On a component level, components can move or be removed before they cause interference. "
+        "For example, a floating action button (FAB) can disappear or move off screen before a "
+        "user picks up a card, or it can move if a snackbar appears.\n"
+        "On the layout level, design your app layout to minimize opportunities for interference. "
+        "For example, position the FAB to one side of stream of a cards so the FAB won’t interfere "
+        "when a user tries to pick up one of cards.\n\n"
+    </string>
+    <string name="what_is_screenlake">Screen recordings can be analyzed by computers and nerds for business intelligence and scientific analysis.</string>
+    <string name="payment_model">We pay you directly because we are your customer. The way data should be.</string>
+    <string name="recording">recording</string>
+    <string name="not_recording">not recording</string>
+    <string name="title_activity_splash">SplashActivity</string>
+    <!-- Strings used for fragments for navigation -->
+    <string name="first_fragment_label">First Fragment</string>
+    <string name="second_fragment_label">Second Fragment</string>
+    <string name="next">Next</string>
+    <string name="hold_to_record">Hold to record</string>
+    <string name="previous">Previous</string>
+    <!--    <string name="post_api">This app is for demonstration. Spend a minute switching using any other app(s), and then check your device&apos;s &quot;files folder&quot; to see all the screenshots and log data collected from this device so far. You can work with Screenlake to facilitate this sort of data collection from participants. All data is sent directly to your institution&apos;s cloud server.</string>-->
+    <string name="hello_first_fragment">Hello first fragment</string>
+    <string name="hello_second_fragment">Hello second fragment. Arg: %1$s</string>
+    <string name="payment">We send money each week via PayPal toy our email address, and we\'ll keep it up as long as we have research to do. (We\'ll notify you if it\'s time to stop recording). Simple as that</string>
+    <string name="screenlake_work">Screenlake runs in the background, capturing and analyzing your screen behavior. Once it\'s running, you don\'t even have to keep the app open.</string>
+    <string name="privacy">You can pause, restrict, stop, and delete data you upload to us. We stay straightforward. Block Screenlake from recording apps that you don\'t want recorded. Contact us anytime.</string>
+
+    <string name="notification_permission_granted">Notification permission granted</string>
+    <string name="notification_permission_denied">Notification permission denied</string>
+    <string name="notification_permission_not_available">"Notification permission is not available on your device."d</string>
+    <string name="disclaimer">"This app requests that you grant \"Accessibility API permission\". This permission generally enables apps to capture information about the content you see on-screen. This app in particular uses it to capture three specific pieces of information, improving its functionality as a research tool and thus your experience as a research participant. (1) URLs you visit, (2) buttons you tap on, and (3) text you've seen on-screen. In line with the research participation plan you've made with the University of Texas Austin, and the research consent form they provide you with, your data is used strictly for scientific analysis. The data is not shared with anyone outside of the designated research team."</string>
+    <string name="offline">offline</string>
+    <string name="if_your_account_is_not_confirmed_log_in_normally_with_your_email_and_password_and_your_confirmation_code_will_be_re_sent">. If your account is not confirmed, log in normally with your email and password and your confirmation code will be re-sent.</string>
+    <string name="exists">exists</string>
+    <string name="must_not_be_empty">Must not be empty.</string>
+    <string name="passwords_must_match">Passwords must match</string>
+    <string name="loading">Loading...</string>
+    <string name="connect_to_wifi">Connect to Wifi</string>
+    <string name="ok">Ok</string>
+    <string name="password_must_include_a_lower_case">Password must include a lower case</string>
+    <string name="password_must_include_a_upper_case">Password must include a upper case</string>
+    <string name="password_must_include_a_number">Password must include a number</string>
+    <string name="password_must_include_a_special_character">Password must include a special character</string>
+    <string name="password_must_be_8_characters_long">Password must be 8 characters long</string>
+    <string name="for_screenlake_to_work_properly_we_need_you_to_accept_accessibility_settings">For Screenlake to work properly, we need you to accept Accessibility Settings.</string>
+    <string name="screenlake">Screenlake</string>
+    <string name="agree">Agree</string>
+    <string name="are_you_sure_you_want_to_log_out_of_screenlake_this_will_delete_all_user_data_from_the_phone">Are you sure you want to log out of Screenlake? This will delete all user data from the phone.</string>
+    <string name="email_cannot_be_empty">Email cannot be empty</string>
+    <string name="password_cannot_be_empty">Password cannot be empty</string>
+    <string name="login">Login</string>
+    <string name="your_login_was_incorrect">Your login was incorrect.</string>
+    <string name="logging_in">Logging in...</string>
+    <string name="for_screenlake_to_work_properly_you_must_manually_permit_usage_access_this_is_so_we_can_stop_recording_data_sensitive_apps_for_privacy_reasons">For Screenlake to work properly, you must manually permit Usage Access. \n This is so we can stop recording data sensitive apps for privacy reasons.,</string>
+    <string name="privacy_url">https://screenlake.com/privacy-policy</string>
+    <string name="sending">Sending...</string>
+    <string name="invalid_code_please_enter_a_4_digit_code_between_0000_and_9999">Invalid code. Please enter a 4-digit code between 0000 and 9999.</string>
+    <string name="confirmation_code_cannot_be_empty">Confirmation code cannot be empty.</string>
+    <string name="code_invalid">Code invalid.</string>
+    <string name="accept_terms_above">Accept terms above.</string>
+    <string name="email_taken">Email Taken.</string>
+    <string name="confirm_failed_badly_formatted_code">Confirm failed, badly formatted code.</string>
+    <string name="screen_recording_permission_was_denied_cannot_start_screen_recording">Screen recording permission was denied. Cannot start screen recording.</string>
+    <string name="recording_stopped">Recording stopped</string>
+    <string name="not_now">Not now</string>
+    <string name="you_must_accept_all_permissions_for_the_app_to_work">You must accept all permissions for the app to work</string>
+    <string name="done">Done</string>
+    <string name="success">Success!</string>
+    <string name="confirm_cap">Confirm</string>
+    <string name="confirmed">Confirmed!</string>
+    <string name="confirming">Confirming...</string>
+    <string name="confirmation_failed_badly_formatted_code">Confirmation failed, badly formatted code.</string>
+    <string name="grant_access">Grant Access?</string>
+    <string name="please_re_enable_screen_recording">Please re-enable screen recording.</string>
+    <string name="screenlake_is_using_the_accessibility_service_to_record_your_screen_in_the_background">Screenlake is using the accessibility service to record your screen in the background</string>
+    <string name="_00_00_00">00:00:00</string>
+</resources>

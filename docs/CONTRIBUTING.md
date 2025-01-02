@@ -39,7 +39,7 @@ By contributing to this project, you agree to adhere to our [Code of Conduct](CO
 - Help us improve our documentation by clarifying instructions, adding examples, or fixing errors.
 
 ### **5. Share Use Cases**
-- If you've used the project in your research or work, share your experience in the [Discussions](https://github.com/example/repo/discussions) or contribute to our [Showcase](SHOWCASE.md).
+- If you've used the project in your research or work, share your experience in the [Discussions](https://github.com/example/repo/discussions).
 
 ---
 

@@ -1,42 +1,60 @@
-screenlake.md
 # Screenlake Research Kit
-## Android Screen Capture & OCR App
+
+## Explanatory Document for Researchers
+- [Screenlake Research Kit: A Practical Guide](https://docs.google.com/document/d/1TMU9V169so5C-JHJscVokS_iKi2IjCiabze07KnQ41E/edit?usp=sharing)
 
 ## Table of Contents
 1. [Overview of App Technical Capacities](#overview-of-app-technical-capacities)
 2. [How to Configure the App for Your Own Cloud (AWS Only)](#how-to-configure-the-app-for-your-own-cloud-aws-only)
-3. [Run Tests After Any Change](#how-to-run-tests)
+3. [Run Tests After Any Change](#run-test-after-any-change)
 4. [How to Distribute the App](#how-to-distribute-the-app)
+5. [How to Cite the Screenlake Research Kit](#how-to-cite-the-screenlake-research-kit)
 
 ## More information
 1. [Contributing](docs/CONTRIBUTING.md)
 2. [Code of Conduct](docs/CODE_OF_CONDUCT.md)
 
-## Overview of App Technical Capacities
-This Android application is designed to take screenshots of the device screen every 3 seconds and perform Optical Character Recognition (OCR) to extract text from the captured images. Additionally, the app collects a variety of data related to the device and the apps running on it:
+## Terminology
+- **Researcher**: The person most likely reading this right now / the team using this repo to compile and distribute a data-collection app for research purposes.
+- **Participant**: The person who will be installing the resulting Android app on their device, so as to participate in Researcher's research. May also be stated as app 'user' as in 'AWS userpool'
 
-- **Screenshots & OCR Processing:** Captures screen content every 3 seconds and uses OCR to extract text from the screenshots.
+## Necessary Resources
+- [AWS](https://aws.amazon.com/)
+- [Android Studio](https://developer.android.com/studio)
+- [Firebase](https://firebase.google.com/)
+- A sentiment dictionary/Lexicon file. We recommend the NRC Word-Emotion Association Lexicon created by Dr. Saif M. Mohammad and Dr. Peter Turney at the National Research Council Canada ([download link](https://www.saifmohammad.com/WebPages/NRC-Emotion-Lexicon.htm))
+
+## Overview of App Technical Capacities
+The contents of this repository enable you (a researcher) to create an Android application. The Android application is designed to efficiently, continuously, & passively take screenshots of the smartphone device it is installed on, every 3 seconds until manually interrupted, and also perform Optical Character Recognition (OCR) to extract text from the captured images. Additionally, the app collects a variety of data related to the smartphone device and the apps running on it (listed below):
+
+- **Screenshots & OCR Processing:** Captures a full-screen screenshot every 3 seconds, and uses OCR to extract text from the screenshots.
 - **App Log Data:** Records metadata such as app names and timestamps at the time of each screenshot.
 - **App Usage Data:** Collects detailed usage data from the device, including which apps are running and how long they’ve been used.
 - **App Segment Data:** Tracks and logs data showing the last five apps that were on the screen before the current one.
-- **Phone Session Data:** Monitors phone session data, recording everything from the time the phone is unlocked to when it’s locked.
-- **Accessibility Root View Data:** Captures accessibility data from the root view of the app to enhance data collection.
-- **Cloud Upload & Configuration:** All collected data is uploaded to the cloud, and the app is configurable to work with your own cloud infrastructure, specifically AWS.
+- **Smartphone Session Data:** Monitors smartphone session data, logging the time that the phone is unlocked to when it’s locked.
+- **Accessibility Root View Data:** Captures so-named accessibility data from the root view of the app to enhance data collection. Essentially, all XML and actions.
+- **Cloud Upload & Configuration:** All collected data is uploaded to the cloud. The app is configurable to work with your own cloud infrastructure, specifically AWS. The repository also includes scripts that can be used to unpack and organize data uploaded to the cloud.
+
+### Technical Constraints for Participants' Data Privacy
+
+In its orignal form, this repository does not include a default/hard-coded cloud destination for data sent off of participants' smartphones. You, the researcher, must configure and designate a data destination for the system to work, i.e., the cloud infrastructure of the researcher's home instution. Collected data only goes where you configure the app to send that data.
+
+In its orignal form, this app is not capable of accessing the microphone, camera, speakers, or location services of the smartphone.
 
 ### Authentication
-This app uses autheticated user pools within AWS to provision accounts for users. Users will need to provide an email and a group code to use the app.
+This app uses authenticated user pools within AWS to provision accounts for participants. Participants will need to provide the app with an email and a panel confirmation code (aka group code) to use the app. The researcher determines the panel confirmation code.
 
 ![alt text](<images/sign_up.png>)
 
 The following fields are configurable.
 #### panelConfirmationCode
-This code identifies your users. This is important because emails will not be associated with user data, only the code entered here. The code must be a 4 digit number.
+This code identifies your participants. This is important because participants' emails will not be associated with participant data, only the code entered here. The code must be a 4 digit number.
 
 #### termsOfService
-This field is a URL pointing to your Terms of Service.
+This field is a URL pointing to your (the researcher's) app Terms of Service.
 
 ### Explainer
-The below is configurable and lets users know during on boarding what the app is used for.
+The user interface below (really, the text within it) is configurable and lets participants know during onboarding what the app is used for.
 
 ![alt text](<images/onboarding_explainer.png>)
 
@@ -44,17 +62,17 @@ The below is configurable and lets users know during on boarding what the app is
 ### How to Configure the App for Your Own Cloud (AWS Only)
 
 #### Create Cognito User Pool
-In order to authenticate users, you need to create a userpool in AWS. Follow the [user-pool-creation-aws.md](docs/USER-POOL-CREATION-AWS.md) tutorial.
+In order to authenticate participants, you need to create a userpool in AWS. Follow the [user-pool-creation-aws.md](docs/USER-POOL-CREATION-AWS.md) tutorial.
 
 #### Create Cognito Identity
-In order allow users access to aws resources, you need to create a cognito identity in AWS. Follow the [identity-creation-aws.md](docs/IDENTITY-CREATION-AWS.md) tutorial.
+In order allow paticipants access to AWS resources, you need to create a cognito identity in AWS. Follow the [identity-creation-aws.md](docs/IDENTITY-CREATION-AWS.md) tutorial.
 
 #### Create S3 Bucket for Storage
 In order to store screenshots and data sets, you need to create an S3 in bucket in AWS. Follow the [s3-bucket-creation-aws.md](docs/S3-BUCKET-CREATION.md) tutorial.
 
 #### Configure App for AWS
 You will need to configure the app to work with your AWS resources. To do this, you need to update the local.properties file with the following fields:
-    
+
 ```
 AMAZON_REGION_NAME=
 AMAZON_BUCKET_NAME=
@@ -63,22 +81,23 @@ COGNITO_POOL_ID=
 COGNITO_APP_CLIENT_ID=
 ```
 
-##### AMAZON_REGION_NAME: 
+##### AMAZON_REGION_NAME:
 The AWS region where your Cognito User Pool, Identity Pool, and S3 bucket are hosted (e.g., us-west-1).
-##### AMAZON_BUCKET_NAME: 
+
+##### AMAZON_BUCKET_NAME:
 The name of your Amazon S3 bucket used for storing files or data (e.g., my-app-bucket).
 
-##### COGNITO_IDENTITY_POOL_ID: 
+##### COGNITO_IDENTITY_POOL_ID:
 The unique ID for your Cognito Identity Pool, enabling federated identity and temporary AWS credentials (e.g., us-west-1:12345678-90ab-cdef-1234-567890abcdef).
 
-##### COGNITO_POOL_ID: 
-The unique identifier for your Cognito User Pool used to manage and authenticate users (e.g., us-west-1_ABCdEfghI).
+##### COGNITO_POOL_ID:
+The unique identifier for your Cognito User Pool used to manage and authenticate participants (e.g., us-west-1_ABCdEfghI).
 
-##### COGNITO_APP_CLIENT_ID: 
+##### COGNITO_APP_CLIENT_ID:
 The ID assigned to your application for integrating with the Cognito User Pool (e.g., 12345abcdef67890).
 
 ##### WARNING
-Do not check-in local.properties to any non-private versionsing system, this information should remain private. 
+Do not check-in local.properties to any non-private versioning system, this information should remain private.
 
 
 ## Configurable Resources
@@ -123,7 +142,7 @@ Do not check-in local.properties to any non-private versionsing system, this inf
 1. **Check Across Devices**: Test the logo on different devices and screen resolutions to ensure it looks good everywhere.
 
 
-### Changing In App Text in the `res/strings` Resource Folder
+### Changing In-App Text in the `res/strings` Resource Folder
 
 1. **Locate the `strings.xml` File:**
     - The `strings.xml` file is located in the `res/values/` directory of our Android project. This file stores all the text used in the app as string resources.
@@ -142,6 +161,7 @@ Do not check-in local.properties to any non-private versionsing system, this inf
       ```
 
 ### Changing Languages
+The app's user interface can be automatically translated into different languages based on the default language settings of the device it's installed on. You just have to provide the translations of each string.
 
 1. **Create String Resources for Different Languages:**
     - For each language, create a new `strings.xml` file in a separate folder within `res/`. These folders are named using language and region codes, like `res/values-fr/` for French or `res/values-es/` for Spanish.
@@ -260,6 +280,9 @@ Regularly running and reviewing your tests ensures that your app remains reliabl
 
 - You can manage your releases and tester groups from the [Firebase console](https://firebase.google.com/docs/app-distribution). Here, you can see who has installed your app, resend invites, and view feedback from testers.
 
+### Sentiment Dictionary
+- We suggest using a CSV version of the file "NRC-Emotion-Lexicon-Wordlevel-v0.92.txt" found within the zip that's downloadable from https://www.saifmohammad.com/WebPages/NRC-Emotion-Lexicon.htm. It's part of the the NRC Word-Emotion Association Lexicon created by Dr. Saif M. Mohammad and Dr. Peter Turney at the National Research Council Canada. For questions contact the sentiment dictionary's author at saif.mohammad@nrc-cnrc.gc.ca (no affiliation with this repo).
+
 ### Collect Feedback
 
 - **Receive Feedback:**
@@ -267,3 +290,8 @@ Regularly running and reviewing your tests ensures that your app remains reliabl
 
 - **Review Crash Reports:**
     - If your app crashes during testing, Firebase Crashlytics will automatically collect and report the crash data, allowing you to debug and improve your app’s stability.
+
+
+## How to Cite the Screenlake Research Kit
+
+Cornelius, Justin & Muise, Daniel (2025). Screenlake Research Kit, maintained by the Accelerator at Princeton University \[Software\]. GitHub. |add link to repo|

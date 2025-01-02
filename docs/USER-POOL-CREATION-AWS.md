@@ -1,6 +1,6 @@
 # Tutorial: Creating a Cognito User Pool with Email Required and an App Client with Specific Authentication Flows
 
-In this tutorial, we'll walk through the steps to create an AWS Cognito User Pool with email as a required attribute, and configure an App Client that supports specific authentication flows including custom authentication, refresh tokens, user password authentication, and SRP authentication.
+In this tutorial, we'll walk through the steps to create an AWS Cognito User Pool with email as a required attribute, and configure an App Client that supports specific authentication flows including custom authentication, refresh tokens, user password authentication, and SRP authentication. Throughout, 'user' refers to a research participants, i.e. a user of the compiled Android application. Once setup up properly, you'll have a system that allows participants to securely link up to storage buckets in your AWS backend just by entering credentials through the app on their smartphones.
 
 ## Prerequisites
 - An AWS account with access to the AWS Management Console.
@@ -44,40 +44,40 @@ In this tutorial, we'll walk through the steps to create an AWS Cognito User Poo
 
 3. **Set Authentication Flows**:
    - In the **Authentication flow configuration** section, select the following:
-     - **ALLOW_CUSTOM_AUTH**: Allows custom authentication challenges.
-     - **ALLOW_REFRESH_TOKEN_AUTH**: Allows users to refresh tokens.
-     - **ALLOW_USER_PASSWORD_AUTH**: Allows users to authenticate using a username and password.
-     - **ALLOW_USER_SRP_AUTH**: Allows Secure Remote Password (SRP) authentication.
+      - **ALLOW_CUSTOM_AUTH**: Allows custom authentication challenges.
+      - **ALLOW_REFRESH_TOKEN_AUTH**: Allows users to refresh tokens.
+      - **ALLOW_USER_PASSWORD_AUTH**: Allows users to authenticate using a username and password.
+      - **ALLOW_USER_SRP_AUTH**: Allows Secure Remote Password (SRP) authentication.
 
 4. **Create the App Client**:
    - Scroll down and click **"Create app client"**.
    - Your app client will now appear in the list of app clients.
 
-## Step 3: Setup App to Use Your New User Pool 
- **Find the `awsconfiguration.json` file** in the app, this file is located in the res/raw folder.
+## Step 3: Setup App to Use Your New User Pool
+**Find the `awsconfiguration.json` file** in the app, this file is located in the res/raw folder.
 
-   The file typically looks like this:
+The file typically looks like this:
 
    ```json
    {
-        "UserAgent": "aws-amplify-cli/0.1.0",
-        "Version": "0.1.0",
-        "auth" {
-            "plugins" {
-                    "CognitoUserPool": {
-                        "Default": {
-                            "PoolId": "us-east-1_example",
-                            "AppClientId": "xxxxxxxx",
-                            "Region": "us-east-1"
-                        }
-                }
-            }
-        }
+   "UserAgent": "aws-amplify-cli/0.1.0",
+   "Version": "0.1.0",
+   "auth" {
+   "plugins" {
+   "CognitoUserPool": {
+      "Default": {
+         "PoolId": "us-east-1_example",
+         "AppClientId": "xxxxxxxx",
+         "Region": "us-east-1"
+      }
    }
+}
+}
+}
    ```
 
 
-   **Edit the CognitoUserPool configuration**
+**Edit the CognitoUserPool configuration**
 
 Locate the "CognitoUserPool" section in the awsconfiguration.json file and repalce PoolId, AppClientId, and Region with the values from the newly created User Pool.
 

@@ -296,7 +296,7 @@ class LoginFragment : Fragment() {
         }
     }
 
-    private fun signIn(email: String, password: String) = lifecycleScope.launch {
+    private suspend fun signIn(email: String, password: String) {
         amplifyRepository.email = email
         amplifyRepository.password = password
 
@@ -314,33 +314,38 @@ class LoginFragment : Fragment() {
     }
 
     private fun handleSignInStep(nextStep: AuthNextSignInStep) {
-        when (nextStep.signInStep) {
-            AuthSignInStep.CONFIRM_SIGN_IN_WITH_SMS_MFA_CODE -> {
-                Timber.tag("AuthQuickstart").d("SMS code sent to ${nextStep.codeDeliveryDetails?.destination}")
-                Timber.tag("AuthQuickstart").d("Additional Info: ${nextStep.additionalInfo}")
-                // Prompt the user to enter the SMS MFA code and confirm sign-in
+        try {
+            when (nextStep.signInStep) {
+                AuthSignInStep.CONFIRM_SIGN_IN_WITH_SMS_MFA_CODE -> {
+                    Timber.tag("AuthQuickstart").d("SMS code sent to ${nextStep.codeDeliveryDetails?.destination}")
+                    Timber.tag("AuthQuickstart").d("Additional Info: ${nextStep.additionalInfo}")
+                    // Prompt the user to enter the SMS MFA code and confirm sign-in
+                }
+                AuthSignInStep.CONFIRM_SIGN_IN_WITH_CUSTOM_CHALLENGE -> {
+                    Timber.tag("AuthQuickstart").d("Custom challenge, additional info: ${nextStep.additionalInfo}")
+                    // Handle custom challenge response
+                }
+                AuthSignInStep.CONFIRM_SIGN_IN_WITH_NEW_PASSWORD -> {
+                    Timber.tag("AuthQuickstart").d("Sign in with new password, additional info: ${nextStep.additionalInfo}")
+                    // Prompt the user for a new password
+                }
+                AuthSignInStep.RESET_PASSWORD -> {
+                    Timber.tag("AuthQuickstart").d("Reset password, additional info: ${nextStep.additionalInfo}")
+                    // Start the reset password flow
+                }
+                AuthSignInStep.CONFIRM_SIGN_UP -> {
+                    Timber.tag("AuthQuickstart").d("Confirm signup, additional info: ${nextStep.additionalInfo}")
+                    // Handle user confirmation
+                }
+                AuthSignInStep.DONE -> {
+                    Timber.tag("AuthQuickstart").d("SignIn complete")
+                    MainActivity.isLoggedIn.value = true
+                    MainActivity.isLoggedOut.value = false
+                }
             }
-            AuthSignInStep.CONFIRM_SIGN_IN_WITH_CUSTOM_CHALLENGE -> {
-                Timber.tag("AuthQuickstart").d("Custom challenge, additional info: ${nextStep.additionalInfo}")
-                // Handle custom challenge response
-            }
-            AuthSignInStep.CONFIRM_SIGN_IN_WITH_NEW_PASSWORD -> {
-                Timber.tag("AuthQuickstart").d("Sign in with new password, additional info: ${nextStep.additionalInfo}")
-                // Prompt the user for a new password
-            }
-            AuthSignInStep.RESET_PASSWORD -> {
-                Timber.tag("AuthQuickstart").d("Reset password, additional info: ${nextStep.additionalInfo}")
-                // Start the reset password flow
-            }
-            AuthSignInStep.CONFIRM_SIGN_UP -> {
-                Timber.tag("AuthQuickstart").d("Confirm signup, additional info: ${nextStep.additionalInfo}")
-                // Handle user confirmation
-            }
-            AuthSignInStep.DONE -> {
-                Timber.tag("AuthQuickstart").d("SignIn complete")
-                MainActivity.isLoggedIn.postValue(true)
-                MainActivity.isLoggedOut.postValue(false)
-            }
+        } catch (e: Exception) {
+            Timber.tag("AuthQuickstart").e("Error handling sign-in step: $e")
+            // Handle the exception as needed
         }
     }
 

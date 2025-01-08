@@ -33,6 +33,7 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Observer
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
+import androidx.room.Database
 import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -49,8 +50,10 @@ import com.screenlake.recorder.constants.ConstantSettings.ACTION_START_OR_RESUME
 import com.screenlake.recorder.constants.ConstantSettings.PERMISSIONS_REQUEST_CODE
 import com.screenlake.recorder.constants.ConstantSettings.RECORD_TRIGGERED
 import com.screenlake.data.database.entity.LogEventEntity
+import com.screenlake.data.database.entity.ScreenshotZipEntity
 import com.screenlake.data.enums.Action
 import com.screenlake.data.repository.AmplifyRepository
+import com.screenlake.di.DatabaseModule
 import com.screenlake.recorder.constants.ConstantSettings.ACTION_START_MANUAL_UPLOAD
 import com.screenlake.recorder.constants.ConstantSettings.ACTION_STOP_SERVICE
 import com.screenlake.recorder.screenshot.ScreenCollector
@@ -58,7 +61,9 @@ import com.screenlake.recorder.services.ScreenRecordService
 import com.screenlake.recorder.services.TouchAccessibilityService
 import com.screenlake.recorder.services.UploadWorker
 import com.screenlake.recorder.services.ZipFileWorker
+import com.screenlake.recorder.utilities.AssetUtils
 import com.screenlake.recorder.utilities.HardwareChecks
+import com.screenlake.recorder.utilities.TimeUtility
 import com.screenlake.recorder.viewmodels.MainViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
@@ -674,13 +679,40 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
         lifecycleScope.launch { saveLog(RECORD_TRIGGERED, "false") }
     }
 
-    private fun uploadCommand() {
-        val workRequest = OneTimeWorkRequest.Builder(ZipFileWorker::class.java).build()
-        // Enqueue the WorkRequest
-        WorkManager.getInstance(this@ScreenRecordFragment.requireContext()).enqueue(workRequest)
-        val workManager = WorkManager.getInstance(this@ScreenRecordFragment.requireContext())
-        workManager.enqueue(OneTimeWorkRequest.Builder(UploadWorker::class.java).build())
+    private fun uploadCommand() = CoroutineScope(Dispatchers.IO).launch {
+        try {
+            val savedFile = AssetUtils.copyAssetToLocalStorage(this@ScreenRecordFragment.requireContext(), "image_zip_178ecc88-1df2-4661-bde3-2c79349f0d4f_51.zip", "test.zip")
+
+            if (savedFile != null && savedFile.exists()) {
+                println("File saved at: ${savedFile.absolutePath}")
+
+                val zipObj = ScreenshotZipEntity().apply {
+                    this.file = savedFile.path
+                    this.localTimeStamp = TimeUtility.getCurrentTimestampDefaultTimezoneString()
+                    this.timestamp = TimeUtility.getCurrentTimestampString()
+                    this.user = "test@me.com"
+                    this.toDelete = false
+                    this.panelId = "1234"
+                    this.panelName = "1234"
+                }
+
+                val db = DatabaseModule.provideDatabase(this@ScreenRecordFragment.requireContext())
+                val zipDao = db.getScreenshotZipDao()
+                zipDao.insertZipObj(zipObj)
+            } else {
+                Timber.d("Failed to save file.")
+            }
+
+            val workRequest = OneTimeWorkRequest.Builder(ZipFileWorker::class.java).build()
+            WorkManager.getInstance(this@ScreenRecordFragment.requireContext()).enqueue(workRequest)
+            val workManager = WorkManager.getInstance(this@ScreenRecordFragment.requireContext())
+            workManager.enqueue(OneTimeWorkRequest.Builder(UploadWorker::class.java).build())
+
+        } catch (e: Exception) {
+            Timber.e("Error in uploadCommand: $e")
+        }
     }
+
 
     private suspend fun saveLog(event: String, msg: String) {
         logEventDao.saveException(

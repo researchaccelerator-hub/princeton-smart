@@ -29,8 +29,8 @@ import dagger.hilt.android.AndroidEntryPoint
 class AccessibilityAccessSelectFragment : Fragment() {
 
     private lateinit var binding: FragmentAccessibilityAccessSelectBinding
-    private val grantAccessText = getString(R.string.grant_access)
-    private val nextText = getText(R.string.next)
+    private lateinit var grantAccessText: String
+    private lateinit var nextText: CharSequence
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -42,6 +42,9 @@ class AccessibilityAccessSelectFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        grantAccessText = getString(R.string.grant_access)
+        nextText = getText(R.string.next)
+
         binding.accessibilityAccessSelectFragmentNext.text = grantAccessText
 
         val isEnabled = isAccessibilityServiceEnabled(this.requireContext(), TouchAccessibilityService::class.java)

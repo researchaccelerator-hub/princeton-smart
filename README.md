@@ -62,13 +62,13 @@ The user interface below (really, the text within it) is configurable and lets p
 ### How to Configure the App for Your Own Cloud (AWS Only)
 
 #### Create Cognito User Pool
-In order to authenticate participants, you need to create a userpool in AWS. Follow the [user-pool-creation-aws.md](docs/USER-POOL-CREATION-AWS.md) tutorial.
+In order to authenticate participants, you need to create a userpool in AWS. Follow the [user-pool-creation-aws.md](docs/USER_POOL_CREATION_AWS.md) tutorial.
 
 #### Create Cognito Identity
-In order allow paticipants access to AWS resources, you need to create a cognito identity in AWS. Follow the [identity-creation-aws.md](docs/IDENTITY-CREATION-AWS.md) tutorial.
+In order allow paticipants access to AWS resources, you need to create a cognito identity in AWS. Follow the [identity-creation-aws.md](docs/IDENTITY_CREATION_AWS.md) tutorial.
 
 #### Create S3 Bucket for Storage
-In order to store screenshots and data sets, you need to create an S3 in bucket in AWS. Follow the [s3-bucket-creation-aws.md](docs/S3-BUCKET-CREATION.md) tutorial.
+In order to store screenshots and data sets, you need to create an S3 in bucket in AWS. Follow the [s3-bucket-creation-aws.md](docs/S3_BUCKET_CREATION.md) tutorial.
 
 #### Configure App for AWS
 You will need to configure the app to work with your AWS resources. To do this, you need to update the local.properties file with the following fields:

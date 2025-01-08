@@ -53,35 +53,7 @@ In this tutorial, we'll walk through the steps to create an AWS Cognito User Poo
    - Scroll down and click **"Create app client"**.
    - Your app client will now appear in the list of app clients.
 
-## Step 3: Setup App to Use Your New User Pool
-**Find the `awsconfiguration.json` file** in the app, this file is located in the res/raw folder.
-
-The file typically looks like this:
-
-   ```json
-   {
-   "UserAgent": "aws-amplify-cli/0.1.0",
-   "Version": "0.1.0",
-   "auth" {
-   "plugins" {
-   "CognitoUserPool": {
-      "Default": {
-         "PoolId": "us-east-1_example",
-         "AppClientId": "xxxxxxxx",
-         "Region": "us-east-1"
-      }
-   }
-}
-}
-}
-   ```
-
-
-**Edit the CognitoUserPool configuration**
-
-Locate the "CognitoUserPool" section in the awsconfiguration.json file and repalce PoolId, AppClientId, and Region with the values from the newly created User Pool.
-
-## Step 4: Finalize Configuration
+## Step 3: Finalize Configuration
 
 1. **Review App Client Settings**:
    - Go back to the **App clients** section under **App integration** and select your newly created app client.

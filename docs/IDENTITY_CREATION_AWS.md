@@ -62,6 +62,7 @@ During the setup, Cognito creates two default IAM roles:
   ]
 }
 ```
+/PATH/TO/UPLOAD is the location of user files in the S3 bucket.
 
 6. Review and save the policy.
 

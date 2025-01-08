@@ -35,40 +35,18 @@ The contents of this repository enable you (a researcher) to create an Android a
 - **Accessibility Root View Data:** Captures so-named accessibility data from the root view of the app to enhance data collection. Essentially, all XML and actions.
 - **Cloud Upload & Configuration:** All collected data is uploaded to the cloud. The app is configurable to work with your own cloud infrastructure, specifically AWS. The repository also includes scripts that can be used to unpack and organize data uploaded to the cloud.
 
-### Technical Constraints for Participants' Data Privacy
+### Setting Up the Application
 
-In its orignal form, this repository does not include a default/hard-coded cloud destination for data sent off of participants' smartphones. You, the researcher, must configure and designate a data destination for the system to work, i.e., the cloud infrastructure of the researcher's home instution. Collected data only goes where you configure the app to send that data.
-
-In its orignal form, this app is not capable of accessing the microphone, camera, speakers, or location services of the smartphone.
-
-### Authentication
-This app uses authenticated user pools within AWS to provision accounts for participants. Participants will need to provide the app with an email and a panel confirmation code (aka group code) to use the app. The researcher determines the panel confirmation code.
-
-![alt text](<images/sign_up.png>)
-
-The following fields are configurable.
-#### panelConfirmationCode
-This code identifies your participants. This is important because participants' emails will not be associated with participant data, only the code entered here. The code must be a 4 digit number.
-
-#### termsOfService
-This field is a URL pointing to your (the researcher's) app Terms of Service.
-
-### Explainer
-The user interface below (really, the text within it) is configurable and lets participants know during onboarding what the app is used for.
-
-![alt text](<images/onboarding_explainer.png>)
-
-
-### How to Configure the App for Your Own Cloud (AWS Only)
+### Step 1 -> Configure the App for Your Own Cloud (AWS Only)
 
 #### Create Cognito User Pool
 In order to authenticate participants, you need to create a userpool in AWS. Follow the [user-pool-creation-aws.md](docs/USER_POOL_CREATION_AWS.md) tutorial.
 
-#### Create Cognito Identity
-In order allow paticipants access to AWS resources, you need to create a cognito identity in AWS. Follow the [identity-creation-aws.md](docs/IDENTITY_CREATION_AWS.md) tutorial.
-
 #### Create S3 Bucket for Storage
 In order to store screenshots and data sets, you need to create an S3 in bucket in AWS. Follow the [s3-bucket-creation-aws.md](docs/S3_BUCKET_CREATION.md) tutorial.
+
+#### Create Cognito Identity
+In order allow paticipants access to AWS resources, you need to create a cognito identity in AWS. Follow the [identity-creation-aws.md](docs/IDENTITY_CREATION_AWS.md) tutorial.
 
 #### Configure App for AWS
 You will need to configure the app to work with your AWS resources. To do this, you need to update the local.properties file with the following fields:
@@ -98,6 +76,49 @@ The ID assigned to your application for integrating with the Cognito User Pool (
 
 ##### WARNING
 Do not check-in local.properties to any non-private versioning system, this information should remain private.
+
+### Step 2 -> Download the `google-services.json` File**
+You will need to create a Firebase project and download the `google-services.json` file to configure the app for Firebase services.
+1. Create a Firebase project and then go to the [Firebase Console](https://console.firebase.google.com/) and select your project.
+2. Navigate to **Project Settings** by clicking the gear icon in the sidebar.
+3. In the **Your Apps** section, select your Android app (or add one if not already registered).
+4. Download the `google-services.json` file provided during the app registration process.
+
+---
+
+## **2. Place the File in Your Project**
+1. Copy the `google-services.json` file.
+2. Paste it into the `app/` directory of your Android project:
+   ```
+   <project-root>/
+   ├── app/
+   │   ├── google-services.json
+   ```
+
+### Step 3 -> Build the App and Test Cloud Connections.
+
+### Technical Constraints for Participants' Data Privacy
+
+In its orignal form, this repository does not include a default/hard-coded cloud destination for data sent off of participants' smartphones. You, the researcher, must configure and designate a data destination for the system to work, i.e., the cloud infrastructure of the researcher's home instution. Collected data only goes where you configure the app to send that data.
+
+In its orignal form, this app is not capable of accessing the microphone, camera, speakers, or location services of the smartphone.
+
+### Authentication
+This app uses authenticated user pools within AWS to provision accounts for participants. Participants will need to provide the app with an email and a panel confirmation code (aka group code) to use the app. The researcher determines the panel confirmation code.
+
+![alt text](<images/sign_up.png>)
+
+The following fields are configurable.
+#### panelConfirmationCode
+This code identifies your participants. This is important because participants' emails will not be associated with participant data, only the code entered here. The code must be a 4 digit number.
+
+#### termsOfService
+This field is a URL pointing to your (the researcher's) app Terms of Service.
+
+### Explainer
+The user interface below (really, the text within it) is configurable and lets participants know during onboarding what the app is used for.
+
+![alt text](<images/onboarding_explainer.png>)
 
 
 ## Configurable Resources

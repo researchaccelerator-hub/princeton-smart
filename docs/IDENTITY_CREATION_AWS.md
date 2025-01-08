@@ -20,11 +20,14 @@ This guide explains how to configure an **Amazon Cognito Identity Pool** for **a
 
 2. **Create a New Identity Pool**:
     - Click **Create New Identity Pool**.
-    - Name the pool (e.g., `MyAppAuthIdentityPool`).
-    - Under **Authentication Providers**, select **Cognito**:
-        - Enter your **User Pool ID** and **App Client ID**:
+    - Under **User access** select **Authenticated access**.
+    - Under **Authenticated identity sources**, select **Amazon Cognito user pool**:
+    - Name your **IAM role name** and click **next**.
+        - Find your **User Pool ID** and **App Client ID** you just made in the dropdown:
             - **User Pool ID**: Found in the Cognito User Pool dashboard.
             - **App Client ID**: Found under the User Pool > App clients.
+    - Click **next**.
+    - Name your and then click **next** and then **create identity pool**.
 
 3. **Click Create Pool**.
 
@@ -35,17 +38,14 @@ During the setup, Cognito creates two default IAM roles:
 - **Authenticated Role**: Used for authenticated users (connected to the User Pool).
 - **Unauthenticated Role**: Used for guest users (not used in this setup).
 
-1. On the **IAM Roles** screen, note the **Authenticated Role** name (e.g., `Cognito_MyAppAuth_Role`).
-2. Select **Allow** to complete the creation of the Identity Pool.
+1. On the **User Access** tab, Select the **Authenticated Role** name (e.g., `Cognito_MyAppAuth_Role`).
+2. This will take you to the role, from here, you will configure a policy to allow users to take certain actions.
 
 ---
 
 ### 3. **Attach a Custom S3 Policy to the Authenticated Role**
-1. Go to **IAM** > **Roles**.
-2. Locate the **Authenticated Role** created by Cognito (e.g., `Cognito_MyAppAuth_Role`).
-3. Click on the role to open its details.
-4. Select **Add permissions** > **Attach policies** > **Create inline policy**.
-5. Choose the **JSON** editor and paste the following policy:
+1. Select **Add permissions** >  **Create inline policy** > **Edit**.
+2. Choose the **JSON** editor and paste the following policy:
 
 ```json
 {
@@ -64,7 +64,7 @@ During the setup, Cognito creates two default IAM roles:
 ```
 /PATH/TO/UPLOAD is the location of user files in the S3 bucket.
 
-6. Review and save the policy.
+3. Review and save the policy.
 
 ---
 

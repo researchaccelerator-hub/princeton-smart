@@ -12,35 +12,27 @@ In this tutorial, we'll walk through the steps to create an AWS Cognito User Poo
    - Go to the [Cognito Console](https://console.aws.amazon.com/cognito/).
 
 2. **Create a User Pool**:
-   - Click on **"Manage User Pools"**.
    - Click **"Create a user pool"**.
 
-3. **Configure Pool Name**:
-   - Enter a name for your user pool (e.g., `MyUserPool`).
-   - Click **"Review defaults"** to skip to the settings.
+3. **Define your application**:
+   - Enter a name for your application (e.g., `My app - ID`).
+   - For **Application Type**, click **Mobile App**.
 
-4. **Configure Sign-in Options**:
-   - Under **How do you want your end users to sign in?**, select **"Email"** as a required sign-in option.
-   - This ensures users will sign in using their email addresses.
+4. **Configure Options**:
+   - Under **Options for sign-in identifiers**, select **"Email"** as a required sign-in option.
 
-5. **Configure Attributes**:
-   - By default, email is a required attribute.
-   - Ensure **email** is checked as a required attribute.
+5. **Finish User Pool Creation**:
+   - Click **Go to Overview** to go the dashboard where you will see your new User Pool.
 
-6. **Review and Create User Pool**:
-   - Scroll down and click **"Create pool"**.
-   - After creation, you will be directed to the user pool details page.
 
 ## Step 2: Create an App Client with Specific Authentication Flows
 
 1. **Add an App Client**:
    - In the left navigation pane, under **App integration**, click **"App client"**.
-   - Click **"Add an app client"**.
+   - There should be an app client already created, select that app client and **click** the **edit** button in the top right hand corner and if you do not see an app client **click** **"Add an app client"**.
 
-2. **App Client Settings**:
+2. **Edit App Client Settings**:
    - Enter an **App client name** (e.g., `MyAppClient`).
-   - **Uncheck** the box that says **"Generate client secret"** since we want an app client with no secret.
-   - Ensure that **"Enable sign-in API for server-based authentication (ADMIN_NO_SRP_AUTH)"** is checked.
 
 3. **Set Authentication Flows**:
    - In the **Authentication flow configuration** section, select the following:
@@ -48,19 +40,8 @@ In this tutorial, we'll walk through the steps to create an AWS Cognito User Poo
       - **ALLOW_REFRESH_TOKEN_AUTH**: Allows users to refresh tokens.
       - **ALLOW_USER_PASSWORD_AUTH**: Allows users to authenticate using a username and password.
       - **ALLOW_USER_SRP_AUTH**: Allows Secure Remote Password (SRP) authentication.
+     
+![alt text](<images/user_pool_final_configs.png>)
 
-4. **Create the App Client**:
-   - Scroll down and click **"Create app client"**.
-   - Your app client will now appear in the list of app clients.
-
-## Step 3: Finalize Configuration
-
-1. **Review App Client Settings**:
-   - Go back to the **App clients** section under **App integration** and select your newly created app client.
-   - Verify that the authentication flows you selected are enabled.
-
-2. **Review User Pool Settings**:
-   - Check the settings under **Attributes** and **Policies** to ensure email is required, and other configurations are as expected.
-
-3. **Save Changes**:
-   - If you made any changes, be sure to save them.
+4. **Finish the App Client Settings**:
+   - Scroll down and click **"Save Changes"**.

@@ -13,7 +13,6 @@ This tutorial will guide you through the steps to create an Amazon S3 bucket wit
 2. **Create a New Bucket**:
     - Click on **"Create bucket"**.
     - Enter a unique **Bucket name** (e.g., `my-secure-bucket`).
-    - Choose the **AWS Region** where you want the bucket to reside.
 
 3. **Block Public Access Settings for this Bucket**:
     - Ensure that the **Block all public access** setting is enabled. This should be checked by default.
@@ -27,15 +26,7 @@ This tutorial will guide you through the steps to create an Amazon S3 bucket wit
 4. **Enable Bucket Versioning (Optional)**:
     - If you want to keep multiple versions of objects in the bucket, you can enable versioning. This is optional but recommended for additional data protection.
 
-5. **Enable Default Encryption**:
-    - Scroll down to the **Default encryption** section.
-    - Select **"Enable"** under "Bucket encryption".
-    - Choose the encryption type:
-        - **SSE-S3**: Server-side encryption with S3 managed keys.
-        - **SSE-KMS**: Server-side encryption with AWS KMS keys (recommended for more control).
-    - If you choose **SSE-KMS**, select or create a KMS key for encryption.
-
-6. **Review and Create Bucket**:
+5. **Review and Create Bucket**:
     - Review all the settings.
     - Click on **"Create bucket"**.
 
@@ -44,9 +35,6 @@ This tutorial will guide you through the steps to create an Amazon S3 bucket wit
 1. **Verify Public Access Settings**:
     - Navigate to your new bucket and click on the **"Permissions"** tab.
     - Under **"Block public access (bucket settings)"**, verify that all public access is blocked.
-
-2. **Verify Encryption Settings**:
-    - In the **"Properties"** tab, scroll down to **"Default encryption"** and confirm that encryption is enabled with your selected method (SSE-S3 or SSE-KMS).
 
 ## Conclusion
 

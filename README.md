@@ -5,10 +5,11 @@
 
 ## Table of Contents
 1. [Overview of App Technical Capacities](#overview-of-app-technical-capacities)
-2. [How to Configure the App for Your Own Cloud (AWS Only)](#how-to-configure-the-app-for-your-own-cloud-aws-only)
-3. [Run Tests After Any Change](#run-test-after-any-change)
-4. [How to Distribute the App](#how-to-distribute-the-app)
-5. [How to Cite the Screenlake Research Kit](#how-to-cite-the-screenlake-research-kit)
+2. [Getting Started: Configure the Application for your Own Cloud (AWS)](#configuring-the-application-for-your-own-cloud)
+3. [Configurable Resources & Customization](#configurable-resources)
+4. [Run Tests After Any Change](#run-tests-after-any-change)
+5. [How to Build and Distribute the App](#how-to-build-and-distribute-the-app)
+6. [How to Cite the Screenlake Research Kit](#how-to-cite-the-screenlake-research-kit)
 
 ## More information
 1. [Contributing](docs/CONTRIBUTING.md)
@@ -34,6 +35,12 @@ The contents of this repository enable you (a researcher) to create an Android a
 - **Smartphone Session Data:** Monitors smartphone session data, logging the time that the phone is unlocked to when it’s locked.
 - **Accessibility Root View Data:** Captures so-named accessibility data from the root view of the app to enhance data collection. Essentially, all XML and actions.
 - **Cloud Upload & Configuration:** All collected data is uploaded to the cloud. The app is configurable to work with your own cloud infrastructure, specifically AWS. The repository also includes scripts that can be used to unpack and organize data uploaded to the cloud.
+
+### Technical Constraints for Participants' Data Privacy
+
+In its orignal form, this repository does not include a default/hard-coded cloud destination for data sent off of participants' smartphones. You, the researcher, must configure and designate a data destination for the system to work, i.e., the cloud infrastructure of the researcher's home instution. Collected data only goes where you configure the app to send that data.
+
+In its orignal form, this app is not capable of accessing the microphone, camera, speakers, or location services of the smartphone.
 
 ### Setting Up the Application
 
@@ -86,7 +93,7 @@ You will need to create a Firebase project and download the `google-services.jso
 
 ---
 
-## **2. Place the File in Your Project**
+#### Place the File in Your Project**
 1. Copy the `google-services.json` file.
 2. Paste it into the `app/` directory of your Android project:
    ```
@@ -121,11 +128,36 @@ The user interface below (really, the text within it) is configurable and lets p
 ![alt text](<images/onboarding_explainer.png>)
 
 
+
 ## Configurable Resources
+
+
+Before using Screenlake Research Kit for your research, you'll want (need) to configure resources to reflect your particular research project. That means adding your app's privacy policy link, your app's terms of service link, editing the text on screen, filling-in the right logo and university name, authentication, a sentiment dictionary to enable on-device sentiment analysis, etc.
+
+If you just want to try getting the app set up first using default settings for testing or practice purposes, then you can skip ahead to [How to Build and Distribute the App](#how-to-build-and-distribute-the-app).
+
+
+### Authentication
+This app uses authenticated user pools within AWS to provision accounts for participants. Participants will need to provide the app with an email and a panel confirmation code (aka group code) to use the app. The researcher determines the panel confirmation code. See screenshot of the participant-facing Android application's UI:
+
+![alt text](<images/sign_up.png>)
+
+The following fields are configurable.
+#### panelConfirmationCode
+This code identifies your participants. This is important because participants' emails will not be associated with participant data, only the code entered here. The code must be a 4 digit number.
+
+### Privacy Policy and Terms of Service
+The field **agreement_text** in the string.xml contains two URLs pointing to your (the researcher's) app's Privacy Policy and Terms of Service. If you plan to distribute via the Google Play Store, see their Privacy Policy and Terms of Service requirements. Stay in line with laws and regulations as well.
+
+### Explainer / In-app explainer text
+The user interface below (really, the text within it) is configurable and lets participants know during onboarding what the app is used for.
+
+![alt text](<images/onboarding_explainer.png>)
+
 
 ### How to Change the App Logo in an Android App
 
-### Step 1: Prepare Your Logo
+#### Step 1: Prepare Your Logo
 1. **Design Your Logo**: Create or choose a logo image that represents your app. Ensure it is in PNG format with a transparent background for best results.
 2. **Resize the Logo**: Prepare different sizes of your logo to accommodate various screen resolutions. Common sizes include:
     - **48x48 px** for low-density screens (ldpi)
@@ -135,31 +167,31 @@ The user interface below (really, the text within it) is configurable and lets p
     - **192x192 px** for xx-high-density screens (xxhdpi)
     - **512x512 px** for the Google Play Store icon
 
-### Step 2: Locate the Drawable Folder
+#### Step 2: Locate the Drawable Folder
 1. **Open Android Studio**: Launch the app in Android Studio.
 2. **Navigate to `res/drawable`**: In the project explorer, go to `app > src > main > res > drawable`. This is where you’ll store your logo files.
 
-### Step 3: Replace the Existing Logo
+#### Step 3: Replace the Existing Logo
 1. **Copy Your Logo Files**: Copy your resized logo files into the respective drawable folders (`drawable-ldpi`, `drawable-mdpi`, `drawable-hdpi`, etc.). If these folders don't exist, you can create them under the `res` directory.
 2. **Rename the Files**: Ensure your logo files are named consistently across all drawable folders. The common name used is `ic_launcher.png`.
     - Example: `ic_launcher.png` for all resolutions.
 
-### Step 4: Update the AndroidManifest.xml
+#### Step 4: Update the AndroidManifest.xml
 1. **Open `AndroidManifest.xml`**: In the project explorer, navigate to `app > src > main > AndroidManifest.xml`.
 2. **Locate the `<application>` Tag**: Inside the `<application>` tag, find the `android:icon` attribute.
 3. **Set the New Icon**: Change the value of `android:icon` to the name of your new logo (without the file extension).
     - Example: `android:icon="@drawable/ic_launcher"`
 
-### Step 5: Update the Adaptive Icons (Optional)
+#### Step 5: Update the Adaptive Icons (Optional)
 1. **Adaptive Icons**: For Android 8.0 (API level 26) and above, you should also update the adaptive icons. These consist of a foreground and background layer.
 2. **Navigate to `res/mipmap-anydpi-v26`**: This folder contains the adaptive icon XML files.
 3. **Edit the XML Files**: Modify `ic_launcher.xml` and `ic_launcher_round.xml` to point to your new foreground and background images.
 
-### Step 6: Rebuild the Project
+#### Step 6: Rebuild the Project
 1. **Rebuild the Project**: Go to `Build > Rebuild Project` to apply the changes.
 2. **Run Your App**: Deploy the app to an emulator or a device to see the new logo in action.
 
-### Step 7: Test Your Logo
+#### Step 7: Test Your Logo
 1. **Check Across Devices**: Test the logo on different devices and screen resolutions to ensure it looks good everywhere.
 
 
@@ -180,6 +212,19 @@ The user interface below (really, the text within it) is configurable and lets p
       ```xml
       <string name="action_sign_in">Sign in or register now</string>
       ```
+
+### Add a Sentiment Dictionary
+This repo does not have a sentiment dictionary built-in. We suggest using the txt file "NRC-Emotion-Lexicon-Wordlevel-v0.92.txt" found within the zip that's downloadable from https://www.saifmohammad.com/WebPages/NRC-Emotion-Lexicon.htm. It's part of the the NRC Word-Emotion Association Lexicon created by Dr. Saif M. Mohammad and Dr. Peter Turney at the National Research Council Canada. For questions contact the sentiment dictionary's author at saif.mohammad@nrc-cnrc.gc.ca (no affiliation with this repo).
+
+Assuming you're using that file's format, then you should be able to place the file into:
+```
+<project-root>/
+├── app/
+│   ├── src
+│       ├── main
+│           ├── assets
+```
+
 
 ### Changing Languages
 The app's user interface can be automatically translated into different languages based on the default language settings of the device it's installed on. You just have to provide the translations of each string.
@@ -216,13 +261,12 @@ The app's user interface can be automatically translated into different language
         - Add a new language or drag a preferred language to the top of the list.
     - The app should automatically load the appropriate `strings.xml` file based on the device's language setting.
 
-   ### Running Tests
 
 ## Run Tests After Any Change
 
 ### Why Run Tests?
 
-Running tests after making any changes to the codebase is crucial for maintaining the integrity and stability of the Android app. Here’s why:
+Once you've made changes to configurable resources or more, you should run tests. Running tests after making any changes to the codebase is crucial for maintaining the integrity and stability of the Android app. Here’s why:
 
 - **Catch Bugs Early:** Automated tests help identify issues immediately after changes are made, preventing bugs from creeping into production.
 - **Ensure Functionality:** Tests verify that both new and existing features work as expected, ensuring that new code doesn't break anything.
@@ -262,9 +306,10 @@ To run tests, follow these steps:
 
 Regularly running and reviewing your tests ensures that your app remains reliable and performant as you continue to develop and refine it.
 
-## How to Distribute the App
+## How to Build and Distribute the App
+
 ### Build the App
-- Build your APK or AAB (Android App Bundle) using Android Studio or the command line.
+Build your APK or AAB (Android App Bundle) using Android Studio or the command line. In the Android Studio command line:
 - To generate an APK:
   ```bash
   ./gradlew assembleRelease
@@ -286,7 +331,7 @@ Regularly running and reviewing your tests ensures that your app remains reliabl
 - Replace `<path_to_your_service_credentials_file>.json` with the path to your Firebase service account credentials file.
 - The `groups` field should be the name of the tester group you’ve set up in Firebase.
 
-### [Distribute Your App Through Firebase Distribution](https://firebase.google.com/docs/app-distribution)
+### Distribute Your App Through Firebase Distribution[ (learn about Firebase)](https://firebase.google.com/docs/app-distribution)
 
 ### Upload the Build to Firebase
 - Use the following command to upload your APK or AAB to Firebase App Distribution:
@@ -301,8 +346,6 @@ Regularly running and reviewing your tests ensures that your app remains reliabl
 
 - You can manage your releases and tester groups from the [Firebase console](https://firebase.google.com/docs/app-distribution). Here, you can see who has installed your app, resend invites, and view feedback from testers.
 
-### Sentiment Dictionary
-- We suggest using the file "NRC-Emotion-Lexicon-Wordlevel-v0.92.txt" found within the zip that's downloadable from https://www.saifmohammad.com/WebPages/NRC-Emotion-Lexicon.htm. It's part of the the NRC Word-Emotion Association Lexicon created by Dr. Saif M. Mohammad and Dr. Peter Turney at the National Research Council Canada. For questions contact the sentiment dictionary's author at saif.mohammad@nrc-cnrc.gc.ca (no affiliation with this repo).
 
 ### Collect Feedback
 

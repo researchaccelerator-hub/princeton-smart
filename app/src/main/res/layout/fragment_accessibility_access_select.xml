@@ -136,7 +136,7 @@
                     android:layout_marginTop="16dp"
                     android:fontFamily="@font/inter_light"
                     android:gravity="center"
-                    android:text="Screenlake Accessibility Reader"
+                    android:text="SRK Accessibility Reader"
                     android:textColor="@color/screenlake_light_gray"
                     android:textSize="14sp"
                     android:textStyle="bold"

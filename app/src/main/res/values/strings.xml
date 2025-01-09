@@ -254,17 +254,17 @@
     <string name="next">Next</string>
     <string name="hold_to_record">Hold to record</string>
     <string name="previous">Previous</string>
-    <!--    <string name="post_api">This app is for demonstration. Spend a minute switching using any other app(s), and then check your device&apos;s &quot;files folder&quot; to see all the screenshots and log data collected from this device so far. You can work with Screenlake to facilitate this sort of data collection from participants. All data is sent directly to your institution&apos;s cloud server.</string>-->
+    <!--    <string name="post_api">This app is for demonstration. Spend a minute switching using any other app(s), and then check your device&apos;s &quot;files folder&quot; to see all the screenshots and log data collected from this device so far. You can work with SRK to facilitate this sort of data collection from participants. All data is sent directly to your institution&apos;s cloud server.</string>-->
     <string name="hello_first_fragment">Hello first fragment</string>
     <string name="hello_second_fragment">Hello second fragment. Arg: %1$s</string>
     <string name="payment">We send money each week via PayPal toy our email address, and we\'ll keep it up as long as we have research to do. (We\'ll notify you if it\'s time to stop recording). Simple as that</string>
-    <string name="screenlake_work">Screenlake runs in the background, capturing and analyzing your screen behavior. Once it\'s running, you don\'t even have to keep the app open.</string>
-    <string name="privacy">You can pause, restrict, stop, and delete data you upload to us. We stay straightforward. Block Screenlake from recording apps that you don\'t want recorded. Contact us anytime.</string>
+    <string name="screenlake_work">SRK runs in the background, capturing and analyzing your screen behavior. Once it\'s running, you don\'t even have to keep the app open.</string>
+    <string name="privacy">You can pause, restrict, stop, and delete data you upload to us. We stay straightforward. Block SRK from recording apps that you don\'t want recorded. Contact us anytime.</string>
 
     <string name="notification_permission_granted">Notification permission granted</string>
     <string name="notification_permission_denied">Notification permission denied</string>
     <string name="notification_permission_not_available">"Notification permission is not available on your device."d</string>
-    <string name="disclaimer">"This app requests that you grant \"Accessibility API permission\". This permission generally enables apps to capture information about the content you see on-screen. This app in particular uses it to capture three specific pieces of information, improving its functionality as a research tool and thus your experience as a research participant. (1) URLs you visit, (2) buttons you tap on, and (3) text you've seen on-screen. In line with the research participation plan you've made with the University of Texas Austin, and the research consent form they provide you with, your data is used strictly for scientific analysis. The data is not shared with anyone outside of the designated research team."</string>
+    <string name="disclaimer">"This app requests that you grant \"Accessibility API permission\". This permission generally enables apps to capture information about the content you see on-screen. This app in particular uses it to capture three specific pieces of information, improving its functionality as a research tool and thus your experience as a research participant. (1) URLs you visit, (2) buttons you tap on, and (3) text you've seen on-screen. In line with the research participation plan you've made with the :ENTER YOUR UNIVERSITY HERE:, and the research consent form they provide you with, your data is used strictly for scientific analysis. The data is not shared with anyone outside of the designated research team."</string>
     <string name="offline">offline</string>
     <string name="if_your_account_is_not_confirmed_log_in_normally_with_your_email_and_password_and_your_confirmation_code_will_be_re_sent">. If your account is not confirmed, log in normally with your email and password and your confirmation code will be re-sent.</string>
     <string name="exists">exists</string>
@@ -278,7 +278,7 @@
     <string name="password_must_include_a_number">Password must include a number</string>
     <string name="password_must_include_a_special_character">Password must include a special character</string>
     <string name="password_must_be_8_characters_long">Password must be 8 characters long</string>
-    <string name="for_screenlake_to_work_properly_we_need_you_to_accept_accessibility_settings">For Screenlake to work properly, we need you to accept Accessibility Settings.</string>
+    <string name="for_screenlake_to_work_properly_we_need_you_to_accept_accessibility_settings">For SRK to work properly, we need you to accept Accessibility Settings.</string>
     <string name="screenlake">Screenlake</string>
     <string name="agree">Agree</string>
     <string name="are_you_sure_you_want_to_log_out_of_screenlake_this_will_delete_all_user_data_from_the_phone">Are you sure you want to log out of Screenlake? This will delete all user data from the phone.</string>
@@ -287,7 +287,7 @@
     <string name="login">Login</string>
     <string name="your_login_was_incorrect">Your login was incorrect.</string>
     <string name="logging_in">Logging in...</string>
-    <string name="for_screenlake_to_work_properly_you_must_manually_permit_usage_access_this_is_so_we_can_stop_recording_data_sensitive_apps_for_privacy_reasons">For Screenlake to work properly, you must manually permit Usage Access. \n This is so we can stop recording data sensitive apps for privacy reasons.,</string>
+    <string name="for_screenlake_to_work_properly_you_must_manually_permit_usage_access_this_is_so_we_can_stop_recording_data_sensitive_apps_for_privacy_reasons">For SRK to work properly, you must manually permit Usage Access. \n This is so we can stop recording data sensitive apps for privacy reasons.,</string>
     <string name="privacy_url">https://screenlake.com/privacy-policy</string>
     <string name="sending">Sending...</string>
     <string name="invalid_code_please_enter_a_4_digit_code_between_0000_and_9999">Invalid code. Please enter a 4-digit code between 0000 and 9999.</string>
@@ -298,6 +298,15 @@
     <string name="confirm_failed_badly_formatted_code">Confirm failed, badly formatted code.</string>
     <string name="screen_recording_permission_was_denied_cannot_start_screen_recording">Screen recording permission was denied. Cannot start screen recording.</string>
     <string name="recording_stopped">Recording stopped</string>
+    <string name="agreement_text" translatable="true">
+
+    <![CDATA[
+    By using this app, you agree to our
+    <a href="https://example.com/terms" style="color:#005cff;">Terms of Service</a>
+    and <a href="https://example.com/privacy" style="color:#005cff;">Privacy Policy</a>.
+    ]]>
+
+    </string>
     <string name="not_now">Not now</string>
     <string name="you_must_accept_all_permissions_for_the_app_to_work">You must accept all permissions for the app to work</string>
     <string name="done">Done</string>
@@ -308,6 +317,6 @@
     <string name="confirmation_failed_badly_formatted_code">Confirmation failed, badly formatted code.</string>
     <string name="grant_access">Grant Access?</string>
     <string name="please_re_enable_screen_recording">Please re-enable screen recording.</string>
-    <string name="screenlake_is_using_the_accessibility_service_to_record_your_screen_in_the_background">Screenlake is using the accessibility service to record your screen in the background</string>
+    <string name="screenlake_is_using_the_accessibility_service_to_record_your_screen_in_the_background">SRK is using the accessibility service to record your screen in the background</string>
     <string name="_00_00_00">00:00:00</string>
 </resources>

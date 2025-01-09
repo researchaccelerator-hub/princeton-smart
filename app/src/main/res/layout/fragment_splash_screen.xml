@@ -10,7 +10,7 @@
     <ImageView
         android:layout_width="125dp"
         android:layout_height="125dp"
-        android:background="@drawable/screenlake_logo_one"
+        android:background="@drawable/logo_just_square_small"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"

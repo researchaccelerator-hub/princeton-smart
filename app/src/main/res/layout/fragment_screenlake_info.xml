@@ -65,7 +65,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="10dp"
                     android:layout_marginEnd="20dp"
-                    android:text="How does Screenlake Work?"
+                    android:text="How does SRK Work?"
                     android:textSize="18sp"
                     android:textColor="@color/black"
                     android:fontFamily="@font/inter_semibold"/>

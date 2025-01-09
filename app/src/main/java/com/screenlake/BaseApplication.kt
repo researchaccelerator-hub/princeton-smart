@@ -30,10 +30,10 @@ class BaseApplication : Application(), Configuration.Provider {
         try {
             plantTimber()
 
-            Timber.tag("BaseApplication").d("Initialized Screenlake Application")
+            Timber.tag("BaseApplication").d("Initialized SRK Application")
         } catch (e: AmplifyException) {
             FirebaseCrashlytics.getInstance().recordException(e)
-            Timber.tag("BaseApplication").e("Could not initialize Screenlake Application: $e")
+            Timber.tag("BaseApplication").e("Could not initialize SRK Application: $e")
         }
     }
 

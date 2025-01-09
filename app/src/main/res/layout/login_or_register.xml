@@ -19,10 +19,10 @@
         app:layout_constraintStart_toStartOf="parent">
 
         <ImageView
-            android:layout_width="100dp"
+            android:layout_width="80dp"
             android:layout_height="80dp"
             android:layout_marginStart="20dp"
-            android:background="@drawable/screenlake_logo_one"
+            android:background="@drawable/logo_just_square_small"
             app:layout_constraintBottom_toTopOf="@+id/textView6"
             app:layout_constraintStart_toStartOf="parent">
 
@@ -58,7 +58,7 @@
             android:gravity="start"
             android:paddingTop="10dp"
             android:paddingBottom="10dp"
-            android:text="This app is a research tool for individuals participating in a research study affiliated with the University of Texas at Austin. It captures and transmits data about your smartphone activity."
+            android:text="This app is a research tool for individuals participating in a research study affiliated with the :ENTER YOUR UNIVERSITY HERE:. It captures and transmits data about your smartphone activity."
             android:textColor="#000000"
             android:textSize="16sp"
             android:textStyle="bold"

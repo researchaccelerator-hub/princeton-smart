@@ -4,7 +4,9 @@ import android.app.Activity
 import android.content.Context
 import android.os.Bundle
 import android.text.Editable
+import android.text.Html
 import android.text.TextWatcher
+import android.text.method.LinkMovementMethod
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -67,9 +69,13 @@ class RegisterNameEmailFragment : Fragment() {
             findNavController().navigate(R.id.closeRegisterWindow)
         }
 
-        binding.registerNameEmailFragmentTerms.setOnClickListener {
-            findNavController().navigate(R.id.goToTermsOfService)
-        }
+        val htmlText = getString(R.string.agreement_text)
+        binding.termsAndPrivacy.text = Html.fromHtml(htmlText , Html.FROM_HTML_MODE_COMPACT)
+        binding.termsAndPrivacy.movementMethod = LinkMovementMethod.getInstance()
+
+//        binding.registerNameEmailFragmentTerms.setOnClickListener {
+//            findNavController().navigate(R.id.goToTermsOfService)
+//        }
 
         binding.loginPanelConfirmationlFragmentEmail.addTextChangedListener(object :
             TextWatcher {

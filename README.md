@@ -302,7 +302,7 @@ Regularly running and reviewing your tests ensures that your app remains reliabl
 - You can manage your releases and tester groups from the [Firebase console](https://firebase.google.com/docs/app-distribution). Here, you can see who has installed your app, resend invites, and view feedback from testers.
 
 ### Sentiment Dictionary
-- We suggest using a CSV version of the file "NRC-Emotion-Lexicon-Wordlevel-v0.92.txt" found within the zip that's downloadable from https://www.saifmohammad.com/WebPages/NRC-Emotion-Lexicon.htm. It's part of the the NRC Word-Emotion Association Lexicon created by Dr. Saif M. Mohammad and Dr. Peter Turney at the National Research Council Canada. For questions contact the sentiment dictionary's author at saif.mohammad@nrc-cnrc.gc.ca (no affiliation with this repo).
+- We suggest using the file "NRC-Emotion-Lexicon-Wordlevel-v0.92.txt" found within the zip that's downloadable from https://www.saifmohammad.com/WebPages/NRC-Emotion-Lexicon.htm. It's part of the the NRC Word-Emotion Association Lexicon created by Dr. Saif M. Mohammad and Dr. Peter Turney at the National Research Council Canada. For questions contact the sentiment dictionary's author at saif.mohammad@nrc-cnrc.gc.ca (no affiliation with this repo).
 
 ### Collect Feedback
 

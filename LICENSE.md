@@ -1,0 +1,6 @@
+Copyright 2024 Screenlake Inc
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to use the Software for academic, research, or personal purposes only, subject to the following conditions:
+1. Commercial use of this Software or any derivative work is prohibited unless expressly authorized in writing by Screenlake, Inc. You assign us all rights, title and interest in and to any derivative works of the Software that you may author or create.
+2. Any derivative work created using this Software may only be used for academic, research, or personal purposes and must include this license in its entirety.
+3. Screenlake, Inc retains exclusive rights to use this Software and any derivative work commercially.
+4. The Software is provided "as is," without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, and non-infringement. In no event shall the authors or copyright holders be liable for any claim, damages, or other liability, whether in an action of contract, tort, or otherwise, arising from, out of, or in connection with the Software or the use or other dealings in the Software.

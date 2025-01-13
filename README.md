@@ -23,7 +23,7 @@
 - [AWS](https://aws.amazon.com/)
 - [Android Studio](https://developer.android.com/studio)
 - [Firebase](https://firebase.google.com/)
-- A sentiment dictionary/Lexicon file. We recommend the NRC Word-Emotion Association Lexicon created by Dr. Saif M. Mohammad and Dr. Peter Turney at the National Research Council Canada ([download link](https://www.saifmohammad.com/WebPages/NRC-Emotion-Lexicon.htm))
+- A sentiment dictionary/Lexicon file. We recommend using the 'valence' variable of the NRC Valence, Arousal, and Dominance Lexicon created by Dr. Saif M. Mohammad and Dr. Peter Turney at the National Research Council Canada ([download link](https://saifmohammad.com/WebDocs/Lexicons/NRC-VAD-Lexicon.zip))
 
 ## Overview of App Technical Capacities
 The contents of this repository enable you (a researcher) to create an Android application. The Android application is designed to efficiently, continuously, & passively take screenshots of the smartphone device it is installed on, every 3 seconds until manually interrupted, and also perform Optical Character Recognition (OCR) to extract text from the captured images. Additionally, the app collects a variety of data related to the smartphone device and the apps running on it (listed below):
@@ -160,12 +160,12 @@ The user interface below (really, the text within it) is configurable and lets p
 #### Step 1: Prepare Your Logo
 1. **Design Your Logo**: Create or choose a logo image that represents your app. Ensure it is in PNG format with a transparent background for best results.
 2. **Resize the Logo**: Prepare different sizes of your logo to accommodate various screen resolutions. Common sizes include:
-    - **48x48 px** for low-density screens (ldpi)
-    - **72x72 px** for medium-density screens (mdpi)
-    - **96x96 px** for high-density screens (hdpi)
-    - **144x144 px** for extra-high-density screens (xhdpi)
-    - **192x192 px** for xx-high-density screens (xxhdpi)
-    - **512x512 px** for the Google Play Store icon
+   - **48x48 px** for low-density screens (ldpi)
+   - **72x72 px** for medium-density screens (mdpi)
+   - **96x96 px** for high-density screens (hdpi)
+   - **144x144 px** for extra-high-density screens (xhdpi)
+   - **192x192 px** for xx-high-density screens (xxhdpi)
+   - **512x512 px** for the Google Play Store icon
 
 #### Step 2: Locate the Drawable Folder
 1. **Open Android Studio**: Launch the app in Android Studio.
@@ -174,13 +174,13 @@ The user interface below (really, the text within it) is configurable and lets p
 #### Step 3: Replace the Existing Logo
 1. **Copy Your Logo Files**: Copy your resized logo files into the respective drawable folders (`drawable-ldpi`, `drawable-mdpi`, `drawable-hdpi`, etc.). If these folders don't exist, you can create them under the `res` directory.
 2. **Rename the Files**: Ensure your logo files are named consistently across all drawable folders. The common name used is `ic_launcher.png`.
-    - Example: `ic_launcher.png` for all resolutions.
+   - Example: `ic_launcher.png` for all resolutions.
 
 #### Step 4: Update the AndroidManifest.xml
 1. **Open `AndroidManifest.xml`**: In the project explorer, navigate to `app > src > main > AndroidManifest.xml`.
 2. **Locate the `<application>` Tag**: Inside the `<application>` tag, find the `android:icon` attribute.
 3. **Set the New Icon**: Change the value of `android:icon` to the name of your new logo (without the file extension).
-    - Example: `android:icon="@drawable/ic_launcher"`
+   - Example: `android:icon="@drawable/ic_launcher"`
 
 #### Step 5: Update the Adaptive Icons (Optional)
 1. **Adaptive Icons**: For Android 8.0 (API level 26) and above, you should also update the adaptive icons. These consist of a foreground and background layer.
@@ -198,23 +198,23 @@ The user interface below (really, the text within it) is configurable and lets p
 ### Changing In-App Text in the `res/strings` Resource Folder
 
 1. **Locate the `strings.xml` File:**
-    - The `strings.xml` file is located in the `res/values/` directory of our Android project. This file stores all the text used in the app as string resources.
+   - The `strings.xml` file is located in the `res/values/` directory of our Android project. This file stores all the text used in the app as string resources.
 
 2. **Open `strings.xml`:**
-    - In Android Studio, navigate to the `res/values/strings.xml` file and open it.
+   - In Android Studio, navigate to the `res/values/strings.xml` file and open it.
 
 3. **Modify or Add New String Resources:**
-    - To change existing text, find the corresponding `<string>` element by its name and edit the text between the tags. For example:
-      ```xml
-      <string name="action_sign_in">Sign in or register</string>
-      ```
-    - To add a new string, create a new `<string>` element:
-      ```xml
-      <string name="action_sign_in">Sign in or register now</string>
-      ```
+   - To change existing text, find the corresponding `<string>` element by its name and edit the text between the tags. For example:
+     ```xml
+     <string name="action_sign_in">Sign in or register</string>
+     ```
+   - To add a new string, create a new `<string>` element:
+     ```xml
+     <string name="action_sign_in">Sign in or register now</string>
+     ```
 
 ### Add a Sentiment Dictionary
-This repo does not have a sentiment dictionary built-in. We suggest using the txt file "NRC-Emotion-Lexicon-Wordlevel-v0.92.txt" found within the zip that's downloadable from https://www.saifmohammad.com/WebPages/NRC-Emotion-Lexicon.htm. It's part of the the NRC Word-Emotion Association Lexicon created by Dr. Saif M. Mohammad and Dr. Peter Turney at the National Research Council Canada. For questions contact the sentiment dictionary's author at saif.mohammad@nrc-cnrc.gc.ca (no affiliation with this repo).
+This repo does not have a sentiment dictionary built-in. We suggest using the valence variable within the txt file "NRC-VAD-Lexicon.txt" found within the zip that's downloadable from https://saifmohammad.com/WebDocs/Lexicons/NRC-VAD-Lexicon.zip. It's created by Dr. Saif M. Mohammad and Dr. Peter Turney at the National Research Council Canada. For questions contact the sentiment dictionary's author at saif.mohammad@nrc-cnrc.gc.ca (no affiliation with this repo).
 
 Assuming you're using that file's format, then you should be able to place the file into:
 ```
@@ -230,36 +230,36 @@ Assuming you're using that file's format, then you should be able to place the f
 The app's user interface can be automatically translated into different languages based on the default language settings of the device it's installed on. You just have to provide the translations of each string.
 
 1. **Create String Resources for Different Languages:**
-    - For each language, create a new `strings.xml` file in a separate folder within `res/`. These folders are named using language and region codes, like `res/values-fr/` for French or `res/values-es/` for Spanish.
-    - Example folder structure:
-      ```
-      res/
-      ├── values/
-      │   └── strings.xml
-      ├── values-fr/
-      │   └── strings.xml
-      ├── values-es/
-      │   └── strings.xml
-      ```
+   - For each language, create a new `strings.xml` file in a separate folder within `res/`. These folders are named using language and region codes, like `res/values-fr/` for French or `res/values-es/` for Spanish.
+   - Example folder structure:
+     ```
+     res/
+     ├── values/
+     │   └── strings.xml
+     ├── values-fr/
+     │   └── strings.xml
+     ├── values-es/
+     │   └── strings.xml
+     ```
 
 2. **Add Translations:**
-    - In each `strings.xml` file, provide the translation for each string. Ensure that the `name` attribute remains the same across all translations.
-      ```xml
-      <!-- English (default) -->
-      <string name="welcome_message">Welcome to My Awesome App!</string>
- 
-      <!-- French -->
-      <string name="welcome_message">Bienvenue dans mon application géniale!</string>
- 
-      <!-- Spanish -->
-      <string name="welcome_message">¡Bienvenido a mi aplicación increíble!</string>
-      ```
+   - In each `strings.xml` file, provide the translation for each string. Ensure that the `name` attribute remains the same across all translations.
+     ```xml
+     <!-- English (default) -->
+     <string name="welcome_message">Welcome to My Awesome App!</string>
+
+     <!-- French -->
+     <string name="welcome_message">Bienvenue dans mon application géniale!</string>
+
+     <!-- Spanish -->
+     <string name="welcome_message">¡Bienvenido a mi aplicación increíble!</string>
+     ```
 
 3. **Testing Language Change:**
-    - To test your app in different languages, you can change the language setting on your Android device:
-        - Go to **Settings** > **System** > **Languages & input** > **Languages**.
-        - Add a new language or drag a preferred language to the top of the list.
-    - The app should automatically load the appropriate `strings.xml` file based on the device's language setting.
+   - To test your app in different languages, you can change the language setting on your Android device:
+      - Go to **Settings** > **System** > **Languages & input** > **Languages**.
+      - Add a new language or drag a preferred language to the top of the list.
+   - The app should automatically load the appropriate `strings.xml` file based on the device's language setting.
 
 
 ## Run Tests After Any Change
@@ -278,31 +278,31 @@ Once you've made changes to configurable resources or more, you should run tests
 To run tests, follow these steps:
 
 1. **Using Android Studio:**
-    - **Unit Tests:**
-        - Go to the **Project** view and expand the `src/test/java` directory.
-        - Right-click on the test class or method you want to run.
-        - Select **Run 'testName()'** or **Run 'All Tests'** to execute all tests.
-    - **Instrumented Tests:**
-        - Expand the `src/androidTest/java` directory for UI and instrumented tests.
-        - Right-click on the test class or method.
-        - Select **Run 'testName()'** or **Run 'All Tests'**.
+   - **Unit Tests:**
+      - Go to the **Project** view and expand the `src/test/java` directory.
+      - Right-click on the test class or method you want to run.
+      - Select **Run 'testName()'** or **Run 'All Tests'** to execute all tests.
+   - **Instrumented Tests:**
+      - Expand the `src/androidTest/java` directory for UI and instrumented tests.
+      - Right-click on the test class or method.
+      - Select **Run 'testName()'** or **Run 'All Tests'**.
 
 2. **Using the Command Line:**
-    - **Unit Tests:**
-        - Navigate to your project’s root directory.
-        - Run the following command to execute all unit tests:
-          ```bash
-          ./gradlew test
-          ```
-    - **Instrumented Tests:**
-        - To run all instrumented tests on a connected device or emulator, use:
-          ```bash
-          ./gradlew connectedAndroidTest
-          ```
+   - **Unit Tests:**
+      - Navigate to your project’s root directory.
+      - Run the following command to execute all unit tests:
+        ```bash
+        ./gradlew test
+        ```
+   - **Instrumented Tests:**
+      - To run all instrumented tests on a connected device or emulator, use:
+        ```bash
+        ./gradlew connectedAndroidTest
+        ```
 
 3. **Review Test Results:**
-    - After the tests complete, review the results in the **Run** or **Test** tab in Android Studio.
-    - If using the command line, results will be displayed in the terminal, and detailed reports can be found in the `build/reports/` directory.
+   - After the tests complete, review the results in the **Run** or **Test** tab in Android Studio.
+   - If using the command line, results will be displayed in the terminal, and detailed reports can be found in the `build/reports/` directory.
 
 Regularly running and reviewing your tests ensures that your app remains reliable and performant as you continue to develop and refine it.
 
@@ -350,10 +350,10 @@ Build your APK or AAB (Android App Bundle) using Android Studio or the command l
 ### Collect Feedback
 
 - **Receive Feedback:**
-    - Testers can provide feedback directly through the app, which is sent to the Firebase console. This feedback helps you identify and fix issues before your app is publicly released.
+   - Testers can provide feedback directly through the app, which is sent to the Firebase console. This feedback helps you identify and fix issues before your app is publicly released.
 
 - **Review Crash Reports:**
-    - If your app crashes during testing, Firebase Crashlytics will automatically collect and report the crash data, allowing you to debug and improve your app’s stability.
+   - If your app crashes during testing, Firebase Crashlytics will automatically collect and report the crash data, allowing you to debug and improve your app’s stability.
 
 
 ## How to Cite the Screenlake Research Kit

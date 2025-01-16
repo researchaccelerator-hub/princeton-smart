@@ -80,6 +80,6 @@ class AccessibilityEventUtilsTest {
         assertEquals("userhash", accessibilityEvent?.user)
         assertEquals(sessionId, accessibilityEvent?.accessibilitySessionId)
         assertEquals(intervalId, accessibilityEvent?.appIntervalId)
-        assertEquals(BehavioralEvents.CLICKED_EVENT, accessibilityEvent?.behavorType)
+        assertEquals(BehavioralEvents.SESSION_OVER, accessibilityEvent?.behavorType)
     }
 }

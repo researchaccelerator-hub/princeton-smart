@@ -26,16 +26,20 @@ class TestUploadHandler(
         test: Boolean,
         testContext: Context?
     ) {
-        // Simulate a successful upload
-        Timber.tag(TAG).d("Simulating upload of file ${file.name}")
+        if (isNetworkConnected) {
+            // Simulate a successful upload
+            Timber.tag(TAG).d("Simulating upload of file ${file.name}")
 
-        // Simulate upload delay
-        delay(1000)
+            // Simulate upload delay
+            delay(1000)
 
-        file.delete()
-        entryId?.let { generalOperationsRepository.deleteZip(it) }
-        UploadWorker.uploadFeedback.postValue("Upload succeeded -> Simulated path")
-        Timber.tag(TAG).d("Upload simulated as successful")
+            file.delete()
+            entryId?.let { generalOperationsRepository.deleteZip(it) }
+            UploadWorker.uploadFeedback.postValue("Upload succeeded -> Simulated path")
+            Timber.tag(TAG).d("Upload simulated as successful")
+        }else{
+
+        }
     }
 
     override suspend fun isNetworkConnected(): Boolean {

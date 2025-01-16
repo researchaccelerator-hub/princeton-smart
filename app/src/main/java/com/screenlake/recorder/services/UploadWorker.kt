@@ -54,6 +54,11 @@ class UploadWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         Timber.tag(TAG).d("Upload Worker has started.")
         return try {
+
+            if (!uploadHandler.isNetworkConnected()) {
+                Timber.tag(TAG).d("No network connection. Upload Worker has finished.")
+                return Result.failure()
+            }
             // Log the start of the upload service
             generalOperationsRepository.saveLog("UPLOAD_SERVICE_RUN", "")
 

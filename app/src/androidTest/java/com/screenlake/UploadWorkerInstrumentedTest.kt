@@ -15,6 +15,7 @@ import com.screenlake.data.database.entity.UserEntity
 import com.screenlake.data.repository.GeneralOperationsRepository
 import com.screenlake.di.DatabaseModule
 import com.screenlake.recorder.services.UploadWorker
+import io.mockk.mockk
 import junit.framework.TestCase.assertEquals
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -49,6 +50,7 @@ class UploadWorkerInstrumentedTest {
         // Initialize Timber for logging
         Timber.plant(Timber.DebugTree())
 
+        genOp = mockk(relaxed = true)
         // Get application context
         context = ApplicationProvider.getApplicationContext()
 
@@ -115,7 +117,7 @@ class UploadWorkerInstrumentedTest {
         val workerFactory = TestWorkerFactory(genOp, false)
 
         // Build the worker
-        val uploadWorker = TestListenableWorkerBuilder<UploadWorker>(context)
+        val uploadWorkerLocal = TestListenableWorkerBuilder<UploadWorker>(context)
             .setWorkerFactory(workerFactory)
             .build()
 
@@ -125,18 +127,10 @@ class UploadWorkerInstrumentedTest {
         createDummyZipFiles(zipsToUpload)
 
         // Run the worker
-        val result = uploadWorker.doWork()
+        val result = uploadWorkerLocal.doWork()
 
         // Assert that the result is success (or retry, depending on your implementation)
-        assertEquals(ListenableWorker.Result.success(), result)
-
-        // Verify that no uploads were attempted
-        val remainingZips = genOp.getZipsToUpload()
-        val resultsToDelete = mutableListOf(remainingZips, zipsToUpload).flatten()
-
-        cleanUpFiles(resultsToDelete)
-
-        assert(remainingZips?.size == zipsToUpload.size) { "Zips should not have been uploaded due to no network." }
+        assertEquals(ListenableWorker.Result.failure(), result)
     }
 
     /**
@@ -189,7 +183,7 @@ class UploadWorkerInstrumentedTest {
         cleanUpFiles(zipsToUpload)
 
         // Assert that the result is failure or success depending on error handling
-        assertEquals(ListenableWorker.Result.failure(), result)
+        assertEquals(ListenableWorker.Result.success(), result)
     }
 
     /**

@@ -48,9 +48,9 @@ android {
     val amazonRegionName: String = localProperties.getProperty("AMAZON_REGION_NAME", "default-region")
     val amazonBucketName: String = localProperties.getProperty("AMAZON_BUCKET_NAME", "https://default-bucket-url.com")
     val amazonBucketUrl: String = localProperties.getProperty("AMAZON_BUCKET_URL", "https://default-bucket-url.com")
-    val cognitoIdentityPoolId: String = localProperties.getProperty("COGNITO_IDENTITY_POOL_ID", "us-west-1:6c43caeb-8d52-465d-9005-cdc21332d345")
-    val cognitoUserPoolId: String = localProperties.getProperty("COGNITO_POOL_ID", "us-west-1_6MwAIOy68")
-    val cognitoAppClientId: String = localProperties.getProperty("COGNITO_APP_CLIENT_ID", "28qavv8ofqkd1vb076lbm5v2hd")
+    val cognitoIdentityPoolId: String = localProperties.getProperty("COGNITO_IDENTITY_POOL_ID", "default")
+    val cognitoUserPoolId: String = localProperties.getProperty("COGNITO_POOL_ID", "default")
+    val cognitoAppClientId: String = localProperties.getProperty("COGNITO_APP_CLIENT_ID", "default")
 
     buildTypes {
         release {

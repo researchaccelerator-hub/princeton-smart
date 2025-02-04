@@ -3,7 +3,10 @@ package com.screenlake.recorder.services
 import android.content.Context
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequest
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import java.util.concurrent.TimeUnit
@@ -34,6 +37,29 @@ class WorkerStarter @Inject constructor(
         initUploadWorker()
         initZipFileWorker()
         initOCRWorker()
+        //scheduleUniqueWork()
+
+    }
+
+    // Test one off work
+    fun scheduleUniqueWork() {
+        // 1) Create constraints if needed (e.g. only run on Wi-Fi, device charging, etc.)
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.NOT_REQUIRED)
+            .build()
+
+        // 2) Build the work request (could be OneTimeWorkRequest or PeriodicWorkRequest)
+        val myWorkRequest = OneTimeWorkRequestBuilder<UploadWorker>()
+            .setConstraints(constraints)
+            .build()
+
+        // 3) Enqueue unique work with REPLACE policy
+        workManager
+            .enqueueUniqueWork(
+                "upload",          // unique name for this job
+                ExistingWorkPolicy.REPLACE,    // cancels and replaces any existing work
+                myWorkRequest
+            )
     }
 
     private fun initUploadWorker() {

@@ -29,7 +29,6 @@ class RestrictedAppRepository @Inject constructor(
     }
 
     suspend fun insertRestrictedApps() {
-        Assets.extractAssets(WeakReference(context))
         val appsInstalled = BaseUtility.getInstalledApps(context)
         val pm = context.packageManager
         val packages = appsInstalled.map { packageInfo ->

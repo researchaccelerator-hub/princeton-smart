@@ -81,15 +81,6 @@ class LoginFragment : Fragment() {
         setupListeners()
         observeLoginState()
 
-        MainActivity.isWifiConnected.observe(viewLifecycleOwner) {
-            if (it && isSubmitted) {
-                lifecycleScope.launch { loginUser() }
-            } else if (isSubmitted) {
-                isSubmitted = false
-                binding.loginUser.text = getString(R.string.connect_to_wifi)
-            }
-        }
-
         onSelectRegister()
 
         observerLoginState()

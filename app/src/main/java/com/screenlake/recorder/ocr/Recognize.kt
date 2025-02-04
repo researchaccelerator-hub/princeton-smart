@@ -68,7 +68,7 @@ class Recognize @Inject constructor(
 
             screenshot.text = regexCleanup2
             screenshot.isOcrComplete = true
-            if (userDao.getUser().uploadImages) {
+            if (!userDao.getUser().uploadImages) {
                 screenshot.filePath?.let { File(it).delete() }
             }
 

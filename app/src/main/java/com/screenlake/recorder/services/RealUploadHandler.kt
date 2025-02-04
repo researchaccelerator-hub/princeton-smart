@@ -211,8 +211,8 @@ class RealUploadHandler @Inject constructor(
         if (result?.isSuccessful == true) {
             // Log successful upload
             generalOperationsRepository.saveLog("LAST_UPLOAD", result.message())
-            // file.delete()
-            // entryId?.let { generalOperationsRepository.deleteZip(it) }
+            file.delete()
+            entryId?.let { generalOperationsRepository.deleteZip(it) }
             if (test) UploadWorker.uploadFeedback.postValue("Upload succeeded -> $uploadPath")
             Timber.tag(TAG).d("Upload succeeded")
         } else {

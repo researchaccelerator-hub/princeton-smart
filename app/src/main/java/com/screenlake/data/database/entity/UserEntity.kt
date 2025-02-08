@@ -13,17 +13,17 @@ data class UserEntity(
     @ColumnInfo(name = "email_hash")
     var emailHash: String? = null,
     @ColumnInfo(name = "tenant_id")
-    var tenantId: String? = "ut_austin_tenant_1",
+    var tenantId: String? = "general_tenant_1",
     @ColumnInfo(name = "tenant_name")
-    var tenantName: String? = "ut_austin_tenant",
+    var tenantName: String? = "general_tenant",
     var updatedAt: String? = null,
     var username: String? = null,
     @ColumnInfo(name = "created_timestamp")
     var createdTimestamp: String? = null,
     @ColumnInfo(name = "panel_id")
-    var panelId: String? = "ut_austin_1",
+    var panelId: String? = "general_1",
     @ColumnInfo(name = "panel_name")
-    var panelName: String? = "ut_austin_panel",
+    var panelName: String? = "general_panel",
     var _lastChangedAt: String? = null,
     var _version: String? = null,
     var __typename: String? = null,
@@ -40,8 +40,8 @@ data class UserEntity(
     var id: Int? = null
 
     companion object {
-        const val TENANT_ID = "ut_austin_tenant_1"
-        const val PANEL_ID = "ut_austin_1"
+        const val TENANT_ID = "general_1"
+        const val PANEL_ID = "general_1"
     }
 }
 

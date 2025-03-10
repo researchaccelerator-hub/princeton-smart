@@ -19,41 +19,34 @@ import java.lang.Exception
 class BootReceiver  : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
 
-        val builder = NotificationCompat.Builder(context, NOTIFICATION_CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_screenlake_logo)
-            .setContentTitle("Screenlake")
-            .setContentText("Please re-enable screen recording.")
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .setAutoCancel(true)
-
-
-        // TODO: Test these flags.
-        val pendingIntent = PendingIntent.getActivity(
-            context,
-            0,
-            Intent(context, MainActivity::class.java).also {
-                it.action = ConstantSettings.ACTION_SHOW_RECORDING_FRAGMENT
-            },
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-
-        builder.setContentIntent(pendingIntent)
-        if (ActivityCompat.checkSelfPermission(
-                context,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            return
-        }
-        NotificationManagerCompat.from(context).notify(13213, builder.build());
-        FirebaseCrashlytics.getInstance().recordException(Exception("BOOT_ON_RECEIVE"))
+//        val builder = NotificationCompat.Builder(context, NOTIFICATION_CHANNEL_ID)
+//            .setSmallIcon(R.mipmap.ic_screenlake_logo)
+//            .setContentTitle("Screenlake")
+//            .setContentText("Please re-enable screen recording.")
+//            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+//            .setAutoCancel(true)
+//
+//
+//        // TODO: Test these flags.
+//        val pendingIntent = NotificationHelper(context).getMainActivityPendingIntent()
+//
+//
+//        builder.setContentIntent(pendingIntent)
+//        if (ActivityCompat.checkSelfPermission(
+//                context,
+//                Manifest.permission.POST_NOTIFICATIONS
+//            ) != PackageManager.PERMISSION_GRANTED
+//        ) {
+//            // TODO: Consider calling
+//            //    ActivityCompat#requestPermissions
+//            // here to request the missing permissions, and then overriding
+//            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+//            //                                          int[] grantResults)
+//            // to handle the case where the user grants the permission. See the documentation
+//            // for ActivityCompat#requestPermissions for more details.
+//            return
+//        }
+//        NotificationManagerCompat.from(context).notify(13213, builder.build());
+//        FirebaseCrashlytics.getInstance().recordException(Exception("BOOT_ON_RECEIVE"))
     }
 }

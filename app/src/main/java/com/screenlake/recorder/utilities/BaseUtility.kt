@@ -26,6 +26,10 @@ import java.io.ByteArrayOutputStream
 import java.util.*
 
 object BaseUtility {
+    fun isAndroidFifteen() : Boolean {
+        return Build.VERSION.SDK_INT > Build.VERSION_CODES.UPSIDE_DOWN_CAKE
+    }
+
     fun getInstalledApps(context: Context): List<ApplicationInfo> {
         val pm: PackageManager = context.packageManager
         return pm.getInstalledApplications(0)

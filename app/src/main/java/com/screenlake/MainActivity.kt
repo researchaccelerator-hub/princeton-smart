@@ -1,9 +1,12 @@
 package com.screenlake
 
 import android.Manifest
+import android.app.Activity
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.Bundle
 import android.view.MenuItem
@@ -13,12 +16,14 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.MutableLiveData
 import androidx.navigation.findNavController
 import androidx.preference.PreferenceManager
 import com.amplifyframework.core.Amplify
 import com.screenlake.databinding.ActivityMainBinding
 import com.screenlake.recorder.constants.ConstantSettings
+import com.screenlake.recorder.services.ScreenRecordService
 import com.screenlake.recorder.utilities.PermissionHelper
 import com.screenlake.recorder.viewmodels.MainViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -29,6 +34,16 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding // ViewBinding instance
     private val mainViewModel: MainViewModel by viewModels()
+    private lateinit var manager: MediaProjectionManager
+    private val MEDIA_PROJECTION_REQUEST_CODE = 1002
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == MEDIA_PROJECTION_REQUEST_CODE && resultCode == Activity.RESULT_OK && data != null) {
+            ScreenRecordService.isProjectionValid.postValue(true)
+            startScreenRecordService(data)
+        }
+    }
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -57,6 +72,12 @@ class MainActivity : AppCompatActivity() {
         handleAppUpdate()
         setObservers()
 
+        if (intent.action == "ACTION_REQUEST_MEDIA_PROJECTION") {
+            manager =
+                this.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+            requestMediaProjection()
+        }
+
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
         supportActionBar?.hide()
 
@@ -65,6 +86,20 @@ class MainActivity : AppCompatActivity() {
         }
 
         requestNotificationPermission()
+    }
+
+    private fun requestMediaProjection() {
+        val permissionIntent = manager.createScreenCaptureIntent()
+        startActivityForResult(permissionIntent, MEDIA_PROJECTION_REQUEST_CODE)
+    }
+
+    private fun startScreenRecordService(projectionData: Intent?) {
+        Intent(this, ScreenRecordService::class.java).apply {
+            this.action = action
+            putExtra("media_projection_data", projectionData)
+            addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
+            ContextCompat.startForegroundService(this@MainActivity, this)
+        }
     }
 
     private fun initializeUI() {

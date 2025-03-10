@@ -24,6 +24,8 @@ import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
@@ -57,8 +59,10 @@ import com.screenlake.data.model.AppInfo
 import com.screenlake.data.repository.GeneralOperationsRepository
 import com.screenlake.recorder.screenshot.ScreenCollector
 import com.screenlake.recorder.screenshot.ScreenCollectorSvc
+import com.screenlake.recorder.services.AccessibilityServiceDependencies.context
 import com.screenlake.recorder.services.util.ScreenshotData
 import com.screenlake.recorder.services.util.SharedPreferencesUtil
+import com.screenlake.recorder.utilities.BaseUtility
 import com.screenlake.recorder.utilities.BaseUtility.getForegroundTaskPackageName
 import com.screenlake.recorder.utilities.HardwareChecks
 import com.screenlake.recorder.utilities.TimeUtility
@@ -76,12 +80,13 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class ScreenRecordService : LifecycleService() {
+    private var lifecycleRegistry: LifecycleRegistry? = null
     private var mReceiver: BroadcastReceiver? = null
     private var isFirstRun = true
     private var serviceKilled = false
     private var serviceContext: Context = this
     private var imagesProduced = 0
-    private lateinit var mHandler: Handler
+    var mHandler: Handler? = null
     private lateinit var notificationBuilder: NotificationCompat.Builder
     private lateinit var notificationManager: NotificationManager
     private var tag = "RECORD_SERVICE"
@@ -97,6 +102,10 @@ class ScreenRecordService : LifecycleService() {
     private val semaphore = Semaphore(1)
     private var virtualDisplay: VirtualDisplay? = null
     private var mImageReader: ImageReader? = null
+    private val MEDIA_PROJECTION_REQUEST_CODE = 1001
+    private var captureThread: Thread? = null
+    private var threadLooper: Looper? = null
+
 
     @Inject
     lateinit var amplifyRepository: AmplifyRepository
@@ -157,6 +166,8 @@ class ScreenRecordService : LifecycleService() {
 
         var user = UserEntity()
 
+        var isMediaProjectionValid = false
+
         //set initial values for MutableLiveData objects
         fun postInitialValues(){
             // Disabled, user should not set this value.
@@ -207,24 +218,54 @@ class ScreenRecordService : LifecycleService() {
         filter.addAction(Intent.ACTION_POWER_DISCONNECTED)
         filter.addAction(Intent.ACTION_POWER_CONNECTED)
 
-        mReceiver = SystemScreenRecordEventReceiver()
-        registerReceiver(mReceiver, filter)
+         mReceiver = SystemScreenRecordEventReceiver()
+         registerReceiver(mReceiver, filter)
         serviceSetUp()
     }
 
-    private fun serviceSetUp(){
-        postInitialValues()
+    private var isThreadRunning = false
 
+    private fun serviceSetUp() {
+        postInitialValues()
         subscribeListeners()
 
-        // start capture handling thread for imageAvailableListener
-        object : Thread() {
-            override fun run() {
-                Looper.prepare()
-                mHandler = Handler(Looper.getMainLooper())
-                Looper.loop()
+        // Only start if not already running
+        if (captureThread == null || !captureThread!!.isAlive) {
+            // Start capture handling thread for imageAvailableListener
+            captureThread = object : Thread() {
+                override fun run() {
+                    Looper.prepare()
+                    threadLooper = Looper.myLooper() // Store reference to this thread's looper
+                    mHandler = Handler(threadLooper!!) // Use this thread's looper, not main looper
+                    Looper.loop()
+                }
             }
-        }.start()
+            captureThread!!.start()
+        }
+    }
+
+    // Call this when you need to cancel the thread
+    fun cancelCaptureThread() {
+        // First quit the looper to stop the thread cleanly
+        threadLooper?.quit()
+
+        // Optional: Wait for thread to finish with timeout
+        captureThread?.let { thread ->
+            try {
+                thread.join(1000) // Wait up to 1 second
+                if (thread.isAlive) {
+                    // If thread is still alive after timeout, interrupt it
+                    thread.interrupt()
+                }
+            } catch (e: InterruptedException) {
+                Timber.e("Error waiting for thread to finish $e")
+            }
+        }
+
+        // Clear references
+        threadLooper = null
+        mHandler = null
+        captureThread = null
     }
 
     @SuppressLint("WrongConstant")
@@ -248,10 +289,10 @@ class ScreenRecordService : LifecycleService() {
 
             val zipCount = generalOperationsRepository.getZipCount()
 
-            if (zipCount >= 3) {
-                Toast.makeText(this@ScreenRecordService, "Please check your Download folder for Screenshots and app logs.", Toast.LENGTH_LONG).show()
-                return@supervisorScope
-            }
+//            if (zipCount >= 3) {
+//                Toast.makeText(this@ScreenRecordService, "Please check your Download folder for Screenshots and app logs.", Toast.LENGTH_LONG).show()
+//                return@supervisorScope
+//            }
 
             restrictedApps.postValue(restricted)
             var moveForward = true
@@ -260,9 +301,17 @@ class ScreenRecordService : LifecycleService() {
                 //.d("*** screenshot coroutine in service class ***")
                 delay(3000)
 
+                if(isProjectionValid.value == false){
+                    Timber.d("Projection is invalid")
+                    semaphore.release()
+                    stopSelf()
+                    return@supervisorScope
+                }
+
                 if((isScreenOn.value == false) || isPaused.value == true){
                     //screen is off, do nothing this iteration
                     semaphore.release()
+                    cancelCaptureThread()
                     this.cancel()
                     return@supervisorScope
                 }
@@ -563,6 +612,15 @@ class ScreenRecordService : LifecycleService() {
             stopForeground(true)
         }
 
+//        projection?.registerCallback(object : MediaProjection.Callback() {
+//            override fun onStop() {
+//                super.onStop()
+//                Timber.d("MediaProjection stopped, cleaning up resources.")
+//                isMediaProjectionValid = false
+//                // stopSelf()
+//            }
+//        }, null)
+
         // Stop the service itself
         stopSelf()
     }
@@ -576,6 +634,8 @@ class ScreenRecordService : LifecycleService() {
         lifecycleScope.launch {
             generalOperationsRepository.saveLog("SCREEN_RECORD_SERVICE_ON_DESTROY", "")
         }
+
+        ScreenRecordService.isRecording.postValue(false)
 
         unregisterReceiver(mReceiver)
     }
@@ -632,17 +692,40 @@ class ScreenRecordService : LifecycleService() {
         startForeground(1, notification)
     }
 
+    class ProjectionCallback : MediaProjection.Callback() {
+        override fun onStop() {
+            super.onStop()
+            Timber.d("Media projection stopped")
+            // Handle the stopped state (e.g., permission revoked)
+        }
+    }
+
     private fun initializeMediaProjection(mediaProjectionData: Intent) {
         val mediaProjectionManager = getSystemService(MediaProjectionManager::class.java)
         projection = mediaProjectionManager.getMediaProjection(Activity.RESULT_OK, mediaProjectionData)
 
-        projection?.registerCallback(object : MediaProjection.Callback() {
-            override fun onStop() {
-                super.onStop()
-                Timber.d("MediaProjection stopped, cleaning up resources.")
-                stopSelf()
+
+        // Verify the registration with logging
+        try {
+            projection?.registerCallback(object : MediaProjection.Callback() {
+                override fun onStop() {
+                    super.onStop()
+                    Timber.d("MediaProjection stopped, cleaning up resources.")
+//                    isMediaProjectionValid = false
+//                    showNotification("Screenlake", "Please re-enable screen recording.", notificationID)
+//                    stopSelf()
+                }
+            }, null)
+
+            if (BaseUtility.isAndroidFifteen() && ScreenRecordService.isRecording.value == false) {
+                serviceSetUp()
             }
-        }, null)
+
+            ScreenRecordService.isRecording.postValue(true)
+            Timber.d("Callback registered successfully")
+        } catch (e: Exception) {
+            Timber.d("Failed to register callback ${e.message}")
+        }
     }
 
     private fun setImageListener(path: String, virtualDisplay: VirtualDisplay, mImageReader: ImageReader) {
@@ -691,13 +774,20 @@ class ScreenRecordService : LifecycleService() {
         }, null)
     }
 
-    private fun getMainActivityPendingIntent() = PendingIntent.getActivity(
-        this,
-        0,
-        Intent(this, MainActivity::class.java).also {
-            it.action = ACTION_SHOW_RECORDING_FRAGMENT },
-        FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-    )
+    private fun getMainActivityPendingIntent() : PendingIntent {
+
+        val intent = Intent(this, MainActivity::class.java).apply {
+            action = "ACTION_REQUEST_MEDIA_PROJECTION"
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+
+        return PendingIntent.getActivity(
+            this,
+            MEDIA_PROJECTION_REQUEST_CODE,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
 
     private fun createNotificationChannel(notificationManager: NotificationManager){
         val channel = NotificationChannel(

@@ -56,7 +56,7 @@ object ConstantSettings {
 
     // TODO: Rethink these intervals
     // Do not change!
-    private const val BATCH_SIZE = 100
+    private const val BATCH_SIZE = 10
     private const val METRIC_INTERVAL = 360000L
     private const val CHECK_CREDENTIAL = 10800000
     private const val PERCENT_USED_LIMIT = 95.0

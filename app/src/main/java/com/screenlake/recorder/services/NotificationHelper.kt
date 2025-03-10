@@ -40,12 +40,18 @@ class NotificationHelper(private val context: Context) {
         NotificationManagerCompat.from(context).notify(notificationId, builder.build())
     }
 
-    fun getMainActivityPendingIntent() = PendingIntent.getActivity(
-        context,
-        0,
-        Intent(context, MainActivity::class.java).also {
-            it.action = ConstantSettings.ACTION_SHOW_RECORDING_FRAGMENT
-        },
-        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-    )
+    fun getMainActivityPendingIntent() : PendingIntent {
+
+        val intent = Intent(context, MainActivity::class.java).apply {
+            action = "ACTION_REQUEST_MEDIA_PROJECTION"
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+
+        return PendingIntent.getActivity(
+            context,
+            1001,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
 }

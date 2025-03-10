@@ -107,9 +107,11 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == MEDIA_PROJECTION_REQUEST_CODE && resultCode == Activity.RESULT_OK && data != null) {
+            ScreenRecordService.isProjectionValid.postValue(true)
             startScreenRecordService(data)
         } else {
             // Permission denied
+            ScreenRecordService.isProjectionValid.postValue(false)
             showPermissionDeniedMessage()
         }
     }
@@ -615,12 +617,11 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
 
     private fun startRecording() {
         if (hasAllPermissionsAccepted()) {
-            sendCommandToRecordService(ACTION_START_OR_RESUME_SERVICE)
+            //sendCommandToRecordService(ACTION_START_OR_RESUME_SERVICE)
             //user must allow casting'
             // requestScreenCastPermissions()
             requestMediaProjectionPermission()
 //            //blocking dialog to wait for user to accept cast permissions
-            ScreenRecordService.isRecording.value = true
         }
     }
 

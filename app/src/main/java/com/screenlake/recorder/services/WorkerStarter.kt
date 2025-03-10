@@ -37,7 +37,7 @@ class WorkerStarter @Inject constructor(
         initUploadWorker()
         initZipFileWorker()
         initOCRWorker()
-        //scheduleUniqueWork()
+        scheduleUniqueWork()
 
     }
 
@@ -49,7 +49,7 @@ class WorkerStarter @Inject constructor(
             .build()
 
         // 2) Build the work request (could be OneTimeWorkRequest or PeriodicWorkRequest)
-        val myWorkRequest = OneTimeWorkRequestBuilder<UploadWorker>()
+        val myWorkRequest = OneTimeWorkRequestBuilder<ZipFileWorker>()
             .setConstraints(constraints)
             .build()
 
@@ -66,7 +66,7 @@ class WorkerStarter @Inject constructor(
         workManager.enqueueUniquePeriodicWork(
             uniqueWorkName = WORK_MANAGER_UPLOAD_WORKER,
             existingPeriodicWorkPolicy = ExistingPeriodicWorkPolicy.KEEP,
-            request = PeriodicWorkRequestBuilder<UploadWorker>(3, TimeUnit.HOURS)
+            request = PeriodicWorkRequestBuilder<UploadWorker>(1, TimeUnit.HOURS)
                 .setConstraints(
                     Constraints.Builder()
                         .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -81,7 +81,7 @@ class WorkerStarter @Inject constructor(
         workManager.enqueueUniquePeriodicWork(
             uniqueWorkName = WORK_MANAGER_ZIP_FILE_WORKER,
             existingPeriodicWorkPolicy = ExistingPeriodicWorkPolicy.KEEP,
-            request = PeriodicWorkRequestBuilder<ZipFileWorker>(3, TimeUnit.HOURS)
+            request = PeriodicWorkRequestBuilder<ZipFileWorker>(30, TimeUnit.MINUTES)
                 .setConstraints(
                     Constraints.Builder()
                         .setRequiredNetworkType(NetworkType.NOT_REQUIRED)
@@ -96,7 +96,7 @@ class WorkerStarter @Inject constructor(
         workManager.enqueueUniquePeriodicWork(
             uniqueWorkName = WORK_MANAGER_OCR_WORKER,
             existingPeriodicWorkPolicy = ExistingPeriodicWorkPolicy.KEEP,
-            request = PeriodicWorkRequestBuilder<OcrWorker>(3, TimeUnit.HOURS)
+            request = PeriodicWorkRequestBuilder<OcrWorker>(30, TimeUnit.MINUTES)
                 .setConstraints(
                     Constraints.Builder()
                         .setRequiredNetworkType(NetworkType.NOT_REQUIRED)

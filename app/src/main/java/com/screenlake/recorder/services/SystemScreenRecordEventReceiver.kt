@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import com.screenlake.data.database.entity.SessionTempEntity
 import com.screenlake.data.repository.GeneralOperationsRepository
+import com.screenlake.recorder.utilities.BaseUtility
 import com.screenlake.recorder.utilities.TimeUtility
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -19,10 +20,12 @@ class SystemScreenRecordEventReceiver : BroadcastReceiver() {
     @Inject
     lateinit var generalOperationsRepository: GeneralOperationsRepository
     private var screenOff = false
+    private var notificationID = 1
 
     override fun onReceive(context: Context, intent: Intent) {
+        Timber.d("()())()()()()()(")
         when (intent.action) {
-            Intent.ACTION_SCREEN_OFF -> handleScreenOff()
+            Intent.ACTION_SCREEN_OFF -> handleScreenOff(context)
             Intent.ACTION_SCREEN_ON -> handleScreenOn()
             Intent.ACTION_USER_PRESENT -> handleUserPresent()
             Intent.ACTION_BATTERY_LOW -> ScreenRecordService.isBatteryLow.postValue(true)
@@ -36,9 +39,15 @@ class SystemScreenRecordEventReceiver : BroadcastReceiver() {
      * Handles the screen off event, ensuring the session segments are saved only once
      * when the screen turns off.
      */
-    private fun handleScreenOff() {
+    private fun handleScreenOff(context: Context) {
         if (!screenOff) {
             ScreenRecordService.isScreenOn.postValue(false)
+
+            if (BaseUtility.isAndroidFifteen()) {
+                ScreenRecordService.isProjectionValid.postValue(false)
+                NotificationHelper(context).showNotification("Screenlake", "Please re-enable screen recording.", notificationID)
+            }
+
             saveSessionSegmentsInBackground()
             screenOff = true
         }

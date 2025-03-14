@@ -83,12 +83,6 @@ class AllTextHandler @Inject constructor(
         packageName: String,
         currentTime: Long
     ) {
-        if (result.isNotEmpty()) {
-            CoroutineScope(Dispatchers.IO).launch {
-                save(result)
-            }
-        }
-
         val joinedText = resultText.joinToString()
 
         if (resultText.isNotEmpty() && resultText.joinToString() != previousKey) {

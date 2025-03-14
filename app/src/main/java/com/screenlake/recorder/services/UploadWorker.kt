@@ -8,6 +8,7 @@ import androidx.work.WorkerParameters
 import com.screenlake.data.database.entity.ScreenshotZipEntity
 import com.screenlake.data.database.entity.UserEntity
 import com.screenlake.data.repository.GeneralOperationsRepository
+import com.screenlake.recorder.viewmodels.WorkerProgressManager
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Dispatchers
@@ -65,6 +66,7 @@ class UploadWorker @AssistedInject constructor(
             uploadZipFilesAsync()
 
             Timber.tag(TAG).d("Upload Worker has finished.")
+            WorkerProgressManager.updateProgress("Upload Worker has finished.")
             Result.success()
         } catch (ex: Exception) {
             // Log the failure of the upload service

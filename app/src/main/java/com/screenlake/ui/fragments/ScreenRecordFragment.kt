@@ -23,19 +23,22 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.accessibility.AccessibilityManager
+import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.Observer
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
-import androidx.room.Database
 import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkManager
+import com.screenlake.recorder.services.ScreenshotService
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.screenlake.MainActivity
 import com.screenlake.R
@@ -43,18 +46,14 @@ import com.screenlake.data.database.dao.LogEventDao
 import com.screenlake.data.database.dao.UserDao
 import com.screenlake.databinding.FragmentScreenRecordBinding
 import com.screenlake.recorder.authentication.CloudAuthentication
-import com.screenlake.recorder.constants.ConstantSettings
 import com.screenlake.recorder.constants.ConstantSettings.ACTION_PAUSE_SERVICE
 import com.screenlake.recorder.constants.ConstantSettings.ACTION_SHOW_RECORDING_FRAGMENT_IMM_RECORD
-import com.screenlake.recorder.constants.ConstantSettings.ACTION_START_OR_RESUME_SERVICE
 import com.screenlake.recorder.constants.ConstantSettings.PERMISSIONS_REQUEST_CODE
 import com.screenlake.recorder.constants.ConstantSettings.RECORD_TRIGGERED
 import com.screenlake.data.database.entity.LogEventEntity
 import com.screenlake.data.database.entity.ScreenshotZipEntity
-import com.screenlake.data.enums.Action
 import com.screenlake.data.repository.AmplifyRepository
 import com.screenlake.di.DatabaseModule
-import com.screenlake.recorder.constants.ConstantSettings.ACTION_START_MANUAL_UPLOAD
 import com.screenlake.recorder.constants.ConstantSettings.ACTION_STOP_SERVICE
 import com.screenlake.recorder.screenshot.ScreenCollector
 import com.screenlake.recorder.services.ScreenRecordService
@@ -65,6 +64,7 @@ import com.screenlake.recorder.utilities.AssetUtils
 import com.screenlake.recorder.utilities.HardwareChecks
 import com.screenlake.recorder.utilities.TimeUtility
 import com.screenlake.recorder.viewmodels.MainViewModel
+import com.screenlake.recorder.viewmodels.SequentialWorkScheduler
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import pub.devrel.easypermissions.EasyPermissions
@@ -91,6 +91,8 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
     lateinit var screenCollector: ScreenCollector
 
     private val mainViewModel: MainViewModel by activityViewModels()
+    private val seqWorkerModel: SequentialWorkScheduler by viewModels()
+
     private lateinit var binding: FragmentScreenRecordBinding
     private var isRecording = false
 
@@ -104,15 +106,30 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
     private val animPause = ValueAnimator.ofFloat(1f, 1.2f)
     private val MEDIA_PROJECTION_REQUEST_CODE = 1001
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == MEDIA_PROJECTION_REQUEST_CODE && resultCode == Activity.RESULT_OK && data != null) {
-            ScreenRecordService.isProjectionValid.postValue(true)
-            startScreenRecordService(data)
+    interface MediaProjectionCallback {
+        fun onMediaProjectionRequested()
+        fun onMediaProjectionResult(resultCode: Int, data: Intent?)
+    }
+
+    private var mediaProjectionCallback: MediaProjectionCallback? = null
+    private var restartProjection = false
+
+    private val startMediaProjection = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            startScreenshotService(result.resultCode, result.data)
         } else {
-            // Permission denied
-            ScreenRecordService.isProjectionValid.postValue(false)
-            showPermissionDeniedMessage()
+            Toast.makeText(requireContext(), "Screen capture permission denied", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+        if (context is MediaProjectionCallback) {
+            mediaProjectionCallback = context
+        } else {
+            throw RuntimeException("$context must implement MediaProjectionCallback")
         }
     }
 
@@ -133,9 +150,19 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
         //if the user cancelled screen cast permission projection will be null
         if (projection != null) {
             updateMediaProjectionInService(projection!!)
-            ScreenRecordService.isRecording.value = true
+            ScreenshotService.isRunning.value = true
 
             lifecycleScope.launch { saveLog(RECORD_TRIGGERED, "true") }
+        }
+    }
+
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        // Check if we should restart projection from arguments
+        arguments?.let {
+            restartProjection = it.getBoolean("restartProjection", false)
         }
     }
 
@@ -145,11 +172,6 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
         savedInstanceState: Bundle?
     ): View? {
         val view = inflater.inflate(R.layout.fragment_screen_record, container, false)
-
-        manager =
-            requireContext().getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-
-
         return view
     }
 
@@ -157,6 +179,11 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
         super.onViewCreated(view, savedInstanceState)
         binding = DataBindingUtil.bind(view)!!
         binding.fragment = this
+
+        // If restarting, request media projection immediately
+        if (restartProjection) {
+            requestScreenCapture()
+        }
 
         Timber.d("Record Fragment created!")
 
@@ -205,6 +232,40 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
         }
 
         subscribeToObservers()
+    }
+
+    private fun requestScreenCapture() {
+        val mediaProjectionManager = requireContext().getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        mediaProjectionCallback?.onMediaProjectionRequested()
+        startMediaProjection.launch(mediaProjectionManager.createScreenCaptureIntent())
+    }
+
+    private fun startScreenshotService(resultCode: Int, data: Intent?) {
+        if (data == null) return
+
+        mediaProjectionCallback?.onMediaProjectionResult(resultCode, data)
+
+        val serviceIntent = Intent(requireContext(), ScreenshotService::class.java).apply {
+            putExtra(ScreenshotService.EXTRA_RESULT_CODE, resultCode)
+            putExtra(ScreenshotService.EXTRA_DATA, data)
+            // Check if we're restarting after permission loss
+            if (restartProjection) {
+                action = ScreenshotService.ACTION_RESTART_PROJECTION
+            }
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            ContextCompat.startForegroundService(this@ScreenRecordFragment.requireContext(), serviceIntent)
+        } else {
+            requireContext().startService(serviceIntent)
+        }
+
+        Toast.makeText(requireContext(), "Screenshot service started", Toast.LENGTH_SHORT).show()
+
+        // Notify activity if it was opened just for restart
+        if (restartProjection && activity != null) {
+            activity?.finish()
+        }
     }
 
     private fun resizeViews() {
@@ -318,7 +379,7 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
     }
 
     private fun wifiUIChange(isConnected: Boolean) {
-        binding.statusBar.setBackgroundResource(if (isConnected) R.color.green else androidx.cardview.R.color.cardview_dark_background)
+        binding.statusBar.setBackgroundResource(if (isConnected) R.color.green else R.color.dark)
         binding.onlineStatus.setTextColor(
             if (isConnected) resources.getColor(R.color.white) else resources.getColor(
                 R.color.black
@@ -355,7 +416,7 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
     }
 
     private fun sendCommandToRecordService(action: String) =
-        Intent(requireContext(), ScreenRecordService::class.java).apply {
+        Intent(requireContext(), ScreenshotService::class.java).apply {
             this.action = action
             addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
             ContextCompat.startForegroundService(requireContext(), this)
@@ -379,7 +440,7 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
     private fun subscribeToObservers() {
         val backgroundColorTransition = binding.loginFragmentRecordBack.background as TransitionDrawable
 
-        ScreenRecordService.isRecording.observe(viewLifecycleOwner, Observer {
+        ScreenshotService.isRunning.observe(viewLifecycleOwner, Observer {
             updateRecording(it)
             binding.apply {
                 if (it) {
@@ -488,7 +549,7 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
             setIsTouchedFlag = { isTouchedPause = it },
             runnableAction = {
                 if (binding.screenRecordFragmentPause.tag == "pause_main") {
-                    if (!ScreenRecordService.isRecording.value!!) {
+                    if (!ScreenshotService.isRunning.value!!) {
                         Toast.makeText(activity, "Not Recording.", Toast.LENGTH_LONG).show()
                         return@setupTouchListener
                     }
@@ -567,9 +628,17 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
 
 
     private fun toggleRecording() {
-        requestPermissions()
-        requestPackageUsageStatsPermissions()
-        startRecording()
+
+        lifecycleScope.launch {
+            val user = userDao.getUser()
+            if(user.emailHash.isNullOrEmpty()) {
+                showMissingIdDialog()
+            }else{
+                requestPermissions()
+                requestPackageUsageStatsPermissions()
+                startRecording()
+            }
+        }
     }
 
     private fun requestPermissions() {
@@ -620,14 +689,9 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
             //sendCommandToRecordService(ACTION_START_OR_RESUME_SERVICE)
             //user must allow casting'
             // requestScreenCastPermissions()
-            requestMediaProjectionPermission()
+            requestScreenCapture()
 //            //blocking dialog to wait for user to accept cast permissions
         }
-    }
-
-    private fun requestMediaProjectionPermission() {
-        val permissionIntent = manager.createScreenCaptureIntent()
-        startActivityForResult(permissionIntent, MEDIA_PROJECTION_REQUEST_CODE)
     }
 
     private fun requestPackageUsageStatsPermissions() {
@@ -674,44 +738,57 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
     }
 
     private fun stopRecording() {
-        ScreenRecordService.isRecording.postValue(false)
+        ScreenshotService.isRunning.postValue(false)
         sendCommandToRecordServiceStop()
         Toast.makeText(activity, getString(R.string.recording_stopped), Toast.LENGTH_LONG).show()
         lifecycleScope.launch { saveLog(RECORD_TRIGGERED, "false") }
     }
 
     private fun uploadCommand() = CoroutineScope(Dispatchers.IO).launch {
-        try {
-            val savedFile = AssetUtils.copyAssetToLocalStorage(this@ScreenRecordFragment.requireContext(), "image_zip_178ecc88-1df2-4661-bde3-2c79349f0d4f_51.zip", "test.zip")
+        seqWorkerModel.startSequentialWork(this@ScreenRecordFragment.requireContext())
 
-            if (savedFile != null && savedFile.exists()) {
-                println("File saved at: ${savedFile.absolutePath}")
+        // Observe progress updates
+        lifecycleScope.launch {
+            seqWorkerModel.progressUpdates.collect { progressUpdate ->
+                // Update UI with progress
+                binding.tvUpdates.text = progressUpdate
 
-                val zipObj = ScreenshotZipEntity().apply {
-                    this.file = savedFile.path
-                    this.localTimeStamp = TimeUtility.getCurrentTimestampDefaultTimezoneString()
-                    this.timestamp = TimeUtility.getCurrentTimestampString()
-                    this.user = "test@me.com"
-                    this.toDelete = false
-                    this.panelId = "1234"
-                    this.panelName = "1234"
-                }
-
-                val db = DatabaseModule.provideDatabase(this@ScreenRecordFragment.requireContext())
-                val zipDao = db.getScreenshotZipDao()
-                zipDao.insertZipObj(zipObj)
-            } else {
-                Timber.d("Failed to save file.")
+                // Optionally log progress
+                Timber.d("WorkerProgress $progressUpdate")
             }
-
-            val workRequest = OneTimeWorkRequest.Builder(ZipFileWorker::class.java).build()
-            WorkManager.getInstance(this@ScreenRecordFragment.requireContext()).enqueue(workRequest)
-            val workManager = WorkManager.getInstance(this@ScreenRecordFragment.requireContext())
-            workManager.enqueue(OneTimeWorkRequest.Builder(UploadWorker::class.java).build())
-
-        } catch (e: Exception) {
-            Timber.e("Error in uploadCommand: $e")
         }
+
+//        try {
+//            val savedFile = AssetUtils.copyAssetToLocalStorage(this@ScreenRecordFragment.requireContext(), "image_zip_178ecc88-1df2-4661-bde3-2c79349f0d4f_51.zip", "test.zip")
+//
+//            if (savedFile != null && savedFile.exists()) {
+//                println("File saved at: ${savedFile.absolutePath}")
+//
+//                val zipObj = ScreenshotZipEntity().apply {
+//                    this.file = savedFile.path
+//                    this.localTimeStamp = TimeUtility.getCurrentTimestampDefaultTimezoneString()
+//                    this.timestamp = TimeUtility.getCurrentTimestampString()
+//                    this.user = "test@me.com"
+//                    this.toDelete = false
+//                    this.panelId = "1234"
+//                    this.panelName = "1234"
+//                }
+//
+//                val db = DatabaseModule.provideDatabase(this@ScreenRecordFragment.requireContext())
+//                val zipDao = db.getScreenshotZipDao()
+//                zipDao.insertZipObj(zipObj)
+//            } else {
+//                Timber.d("Failed to save file.")
+//            }
+//
+//            val workRequest = OneTimeWorkRequest.Builder(ZipFileWorker::class.java).build()
+//            WorkManager.getInstance(this@ScreenRecordFragment.requireContext()).enqueue(workRequest)
+//            val workManager = WorkManager.getInstance(this@ScreenRecordFragment.requireContext())
+//            workManager.enqueue(OneTimeWorkRequest.Builder(UploadWorker::class.java).build())
+//
+//        } catch (e: Exception) {
+//            Timber.e("Error in uploadCommand: $e")
+//        }
     }
 
 
@@ -734,7 +811,68 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
             getString(R.string.screen_recording_permission_was_denied_cannot_start_screen_recording), Toast.LENGTH_LONG).show()
     }
 
+    private fun showMissingIdDialog() {
+        // Get the layout inflater
+        val context = this@ScreenRecordFragment.requireContext()
+        val inflater = context.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
+        val dialogView = inflater.inflate(R.layout.dialog_missing_id, null)
+
+        // Get the EditText from the inflated view
+        val codeEditText = dialogView.findViewById<EditText>(R.id.codeEditText)
+
+        // Build the dialog
+        val builder = AlertDialog.Builder(context)
+            .setTitle("Missing ID")
+            .setMessage("Please enter your 4 digit panel invite code before continuing.")
+            .setPositiveButton("Continue") { dialog, _ ->
+                val inviteCode = codeEditText.text.toString()
+                if (inviteCode.isNotEmpty()) {
+
+                    if (!validateCode(inviteCode)) {
+                        Toast.makeText(context, "Error -> Please enter a valid 4 digit invite code", Toast.LENGTH_SHORT).show()
+                    } else {
+                        // Process the invite code
+                        lifecycleScope.launch {
+                            val user = userDao.getUser()
+                            user.emailHash = inviteCode
+
+                            userDao.insertUserObj(user)
+                        }
+
+                        Toast.makeText(context, "Invite code: $inviteCode", Toast.LENGTH_SHORT).show()
+                        dialog.dismiss()
+                    }
+                } else {
+                    Toast.makeText(context, "Please enter a valid invite code", Toast.LENGTH_SHORT).show()
+                    // Keep the dialog open
+                }
+            }
+            .setNegativeButton("Cancel") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .setView(dialogView)
+
+
+        // Show the dialog
+        builder.create().show()
+    }
+
+    fun validateCode(code: String): Boolean {
+        if (code.length != 4) {
+            return false
+        }
+        if (!code.all { it.isDigit() }) {
+            return false
+        }
+        val numericCode = code.toInt()
+        return numericCode in 0..9999
+    }
+
     companion object {
         private const val CHANGE_BACKGROUND_ANIMATION_TIME = 350
+
+        fun newInstance(): ScreenRecordFragment {
+            return ScreenRecordFragment()
+        }
     }
 }

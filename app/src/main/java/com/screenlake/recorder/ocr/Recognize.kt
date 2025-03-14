@@ -17,10 +17,10 @@ class Recognize @Inject constructor(
     private val userDao: UserDao
 ) {
 
-    private val tessApi: TessBaseAPI
+    private var tessApi: TessBaseAPI
     val processing = MutableLiveData(false)
     private val progress = MutableLiveData<String>()
-    var isInitialized = false
+    var isInitialized = true
         private set
     var stopped = false
 
@@ -40,6 +40,9 @@ class Recognize @Inject constructor(
     fun initTesseract(dataPath: String, language: String, engineMode: Int) {
         Timber.tag(TAG).d("Initializing Tesseract with: dataPath = [$dataPath], language = [$language], engineMode = [$engineMode]")
         try {
+            // Initialize TessBaseAPI
+            this.tessApi = TessBaseAPI()
+
             this.isInitialized = tessApi.init(dataPath, language, engineMode)
             tessApi.setVariable("tessedit_char_whitelist", "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz/' '")
             tessApi.setVariable("user_defined_dpi", "300")
@@ -92,6 +95,7 @@ class Recognize @Inject constructor(
     fun stop() {
         tessApi.recycle()
         stopped = true
+        isInitialized = false
     }
 
     companion object {

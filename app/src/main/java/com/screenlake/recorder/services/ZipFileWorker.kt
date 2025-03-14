@@ -12,6 +12,7 @@ import com.screenlake.data.repository.GeneralOperationsRepository
 import com.screenlake.recorder.screenshot.DataTransformation
 import com.screenlake.recorder.utilities.TimeUtility
 import com.screenlake.recorder.utilities.ZipFile
+import com.screenlake.recorder.viewmodels.WorkerProgressManager
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Dispatchers
@@ -50,6 +51,7 @@ class ZipFileWorker @AssistedInject constructor(
         return try {
             zipUpScreenshots(0, 200)
             Timber.tag(TAG).d("Zip Worker has finished.")
+            WorkerProgressManager.updateProgress("Zip Worker has finished.")
             Result.success()
         } catch (ex: Exception) {
             Timber.tag(TAG).e(ex, "Zip Worker failed.")
@@ -256,9 +258,9 @@ class ZipFileWorker @AssistedInject constructor(
         }
 
         generalOperationsRepository.insertScreenshotZip(zipObj)
-//        generalOperationsRepository.deleteScreenshots(screenshots)
+        generalOperationsRepository.deleteScreenshots(screenshots)
 //
-//        toZip.forEach { it.delete() }
+        toZip.forEach { it.delete() }
         Timber.tag(TAG).d("Zip file created with ${toZip.size} files.")
     }
 

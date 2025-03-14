@@ -9,6 +9,7 @@ import com.screenlake.data.database.entity.ScreenshotEntity
 import com.screenlake.data.repository.GeneralOperationsRepository
 import com.screenlake.recorder.ocr.Assets
 import com.screenlake.recorder.ocr.Recognize
+import com.screenlake.recorder.viewmodels.WorkerProgressManager
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.*
@@ -25,7 +26,7 @@ class OcrWorker @AssistedInject constructor(
     companion object {
         private const val TAG = "OcrWorker"
         private const val BATCH_SIZE = 10  // Number of images to process per batch
-        private const val OCR_IMAGE_THRESHOLD = 25  // Minimum number of images to trigger OCR
+        private const val OCR_IMAGE_THRESHOLD = 10  // Minimum number of images to trigger OCR
     }
 
     /**
@@ -61,6 +62,8 @@ class OcrWorker @AssistedInject constructor(
         if (screenshots.size >= OCR_IMAGE_THRESHOLD) {
             try {
                 initializeTesseract()  // Initialize Tesseract for OCR
+                delay(3000)
+
                 val imagesToOcr = generalOperationsRepository.getScreenshotsToOcr(200)
                 recognizeImages(imagesToOcr)  // Process the images in batches
                 Timber.tag(TAG).d("Ending OCR.")
@@ -103,6 +106,7 @@ class OcrWorker @AssistedInject constructor(
             batch.forEach { screenshot ->
                 processScreenshot(screenshot)
                 processedCount++
+                WorkerProgressManager.updateProgress("Processed $processedCount images of ${images.size}.")
             }
         }
 

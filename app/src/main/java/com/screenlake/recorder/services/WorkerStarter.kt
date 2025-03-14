@@ -9,6 +9,7 @@ import androidx.work.OneTimeWorkRequest
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import timber.log.Timber
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -25,6 +26,7 @@ class WorkerStarter @Inject constructor(
 
     // Instance of WorkManager
     private val workManager = WorkManager.getInstance(context)
+    private val mContext = context
 
     /**
      * Invokes the initialization of all periodic workers.
@@ -39,6 +41,17 @@ class WorkerStarter @Inject constructor(
         initOCRWorker()
         scheduleUniqueWork()
 
+        // scheduleImmediateWork(mContext)
+
+    }
+
+    fun scheduleImmediateWork(context: Context) {
+        Timber.tag("Artemis").e("**** Creating a one-time work request ****")
+        // val workRequest1 = OneTimeWorkRequest.Builder(WeeklyAppUsageDataReceiver::class.java).build()
+        val workRequest2 = OneTimeWorkRequest.Builder(OcrWorker::class.java).build()
+        val workManager = WorkManager.getInstance(context)
+        // workManager.enqueue(workRequest1)
+        workManager.enqueue(workRequest2)
     }
 
     // Test one off work
@@ -66,7 +79,7 @@ class WorkerStarter @Inject constructor(
         workManager.enqueueUniquePeriodicWork(
             uniqueWorkName = WORK_MANAGER_UPLOAD_WORKER,
             existingPeriodicWorkPolicy = ExistingPeriodicWorkPolicy.KEEP,
-            request = PeriodicWorkRequestBuilder<UploadWorker>(1, TimeUnit.HOURS)
+            request = PeriodicWorkRequestBuilder<UploadWorker>(2, TimeUnit.HOURS)
                 .setConstraints(
                     Constraints.Builder()
                         .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -81,7 +94,7 @@ class WorkerStarter @Inject constructor(
         workManager.enqueueUniquePeriodicWork(
             uniqueWorkName = WORK_MANAGER_ZIP_FILE_WORKER,
             existingPeriodicWorkPolicy = ExistingPeriodicWorkPolicy.KEEP,
-            request = PeriodicWorkRequestBuilder<ZipFileWorker>(30, TimeUnit.MINUTES)
+            request = PeriodicWorkRequestBuilder<ZipFileWorker>(1, TimeUnit.HOURS)
                 .setConstraints(
                     Constraints.Builder()
                         .setRequiredNetworkType(NetworkType.NOT_REQUIRED)
@@ -96,7 +109,7 @@ class WorkerStarter @Inject constructor(
         workManager.enqueueUniquePeriodicWork(
             uniqueWorkName = WORK_MANAGER_OCR_WORKER,
             existingPeriodicWorkPolicy = ExistingPeriodicWorkPolicy.KEEP,
-            request = PeriodicWorkRequestBuilder<OcrWorker>(30, TimeUnit.MINUTES)
+            request = PeriodicWorkRequestBuilder<OcrWorker>(1, TimeUnit.HOURS)
                 .setConstraints(
                     Constraints.Builder()
                         .setRequiredNetworkType(NetworkType.NOT_REQUIRED)

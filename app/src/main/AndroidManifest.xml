@@ -55,7 +55,7 @@
         </activity>
 
         <service
-            android:name="com.screenlake.recorder.services.ScreenRecordService"
+            android:name="com.screenlake.recorder.services.ScreenshotService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="mediaProjection"

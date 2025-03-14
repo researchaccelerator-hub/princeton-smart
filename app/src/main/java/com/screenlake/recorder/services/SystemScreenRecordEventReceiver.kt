@@ -48,7 +48,6 @@ class SystemScreenRecordEventReceiver : BroadcastReceiver() {
                 NotificationHelper(context).showNotification("Screenlake", "Please re-enable screen recording.", notificationID)
             }
 
-            saveSessionSegmentsInBackground()
             screenOff = true
         }
     }
@@ -71,14 +70,5 @@ class SystemScreenRecordEventReceiver : BroadcastReceiver() {
         val sessionStartTime = currentTime.toInstant()
         generalOperationsRepository.currentSession = SessionTempEntity(sessionStart = sessionStartTime)
         ScreenRecordService.isScreenOn.postValue(true)
-    }
-
-    /**
-     * Launches a coroutine to save all session segments in the background.
-     */
-    private fun saveSessionSegmentsInBackground() {
-        CoroutineScope(Dispatchers.IO).launch {
-            generalOperationsRepository.saveAllSessionSegments()
-        }
     }
 }

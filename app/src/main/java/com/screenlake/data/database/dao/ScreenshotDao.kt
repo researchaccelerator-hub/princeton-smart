@@ -127,7 +127,7 @@ interface ScreenshotDao {
      *
      * @return The count of Screenshots where OCR is complete.
      */
-    @Query("SELECT COUNT(id) FROM screenshot_table where isOcrComplete is 0")
+    @Query("SELECT COUNT(id) FROM screenshot_table where isOcrComplete is 1")
     suspend fun getCountWhereOcrIsComplete(): Int
 
     /**

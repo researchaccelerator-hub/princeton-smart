@@ -23,6 +23,7 @@ import com.screenlake.data.repository.GeneralOperationsRepository
 import com.screenlake.recorder.services.AccessibilityServiceDependencies.context
 import com.screenlake.recorder.services.AccessibilityServiceDependencies.eventHandler
 import com.screenlake.recorder.services.AccessibilityServiceDependencies.ioDispatcher
+import com.screenlake.recorder.services.ScreenshotService.Companion.isRunning
 import com.screenlake.recorder.services.util.AccessibilityEventUtils
 import com.screenlake.recorder.services.util.CustomObserver
 import com.screenlake.recorder.utilities.TimeUtility
@@ -182,6 +183,11 @@ class TouchAccessibilityService() : AccessibilityService() {
                 appIntervalId = UUID.randomUUID().toString()
             } else {
                 firstRun = false
+            }
+
+            if (isRunning.value != true) {
+                Timber.d("<<<< ScreenshotService not running >>>>")
+                continue
             }
 
             // Handle screen-off events

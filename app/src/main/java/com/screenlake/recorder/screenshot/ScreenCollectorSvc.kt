@@ -16,6 +16,7 @@ import com.screenlake.data.enums.MobIleStatusEnum
 import com.screenlake.data.database.entity.ScreenshotEntity
 import com.screenlake.data.repository.GeneralOperationsRepository
 import com.screenlake.recorder.services.ScreenRecordService
+import com.screenlake.recorder.services.ScreenshotService
 import com.screenlake.recorder.utilities.HardwareChecks
 import kotlinx.coroutines.*
 import timber.log.Timber
@@ -120,16 +121,16 @@ class ScreenCollectorSvc @Inject constructor(
             Timber.tag("Metrics").d("Emmitting metrics.")
             System.gc()
 
-            generalOperationsRepository.saveLog(IS_RECORDING, ScreenRecordService.isRecording.value.toString())
+            generalOperationsRepository.saveLog(IS_RECORDING, ScreenshotService.isRunning.value.toString())
             generalOperationsRepository.saveLog(IS_CONNECTED, HardwareChecks.isConnected(context).toString())
-            generalOperationsRepository.saveLog(IS_POWERED, ScreenRecordService.isPowerConnected.value.toString())
+            generalOperationsRepository.saveLog(IS_POWERED, ScreenshotService.isPowerConnected.value.toString())
             generalOperationsRepository.saveLog(OCR_NOT, getOCRScreenshotCount().toString())
             generalOperationsRepository.saveLog(OCR_DONE, generalOperationsRepository.getScreenshotCount().toString())
 
             val status = amplifyRepository.getMobileStatus(context)
             val statusEnum = MobIleStatusEnum.TERMINATED.toString()
             if (status?.mobileStatus == statusEnum) {
-                ScreenRecordService.isRecording.postValue(false)
+                ScreenshotService.isRunning.postValue(false)
                 amplifyRepository.confirmMobileStatusChange(status.id)
             }
 
@@ -174,8 +175,8 @@ class ScreenCollectorSvc @Inject constructor(
      */
     private fun isSettingsResolved(): Boolean {
         return when {
-            ScreenRecordService.uploadOverPower.value == true -> HardwareChecks.isPowerConnected(this@ScreenCollectorSvc.context)
-            ScreenRecordService.uploadOverWifi.value == true -> HardwareChecks.isConnected(this@ScreenCollectorSvc.context)
+            ScreenshotService.uploadOverPower.value == true -> HardwareChecks.isPowerConnected(this@ScreenCollectorSvc.context)
+            ScreenshotService.uploadOverWifi.value == true -> HardwareChecks.isConnected(this@ScreenCollectorSvc.context)
             else -> true
         }
     }

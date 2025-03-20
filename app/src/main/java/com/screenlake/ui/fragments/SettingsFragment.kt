@@ -21,6 +21,7 @@ import com.screenlake.recorder.authentication.CloudAuthentication
 import com.screenlake.recorder.constants.ConstantSettings
 import com.screenlake.recorder.constants.ConstantSettings.SCREENSHOT_MAPPING
 import com.screenlake.recorder.services.ScreenRecordService
+import com.screenlake.recorder.services.ScreenshotService
 import com.screenlake.recorder.viewmodels.MainViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
@@ -50,15 +51,15 @@ class SettingsFragment : PreferenceFragmentCompat() {
             when (key) {
                 getString(R.string.fps) -> {
                     val framesPerSecond = prefs.getString(key, "0.2")?.toDoubleOrNull()
-                    ScreenRecordService.screenshotInterval.postValue(SCREENSHOT_MAPPING[framesPerSecond])
+                    ScreenshotService.screenshotInterval.postValue(SCREENSHOT_MAPPING[framesPerSecond])
                 }
 
                 getString(R.string.limit_data_usage) -> {
-                    ScreenRecordService.uploadOverWifi.postValue(prefs.getBoolean(key, true))
+                    ScreenshotService.uploadOverWifi.postValue(prefs.getBoolean(key, true))
                 }
 
                 getString(R.string.limit_power_usage) -> {
-                    ScreenRecordService.uploadOverPower.postValue(prefs.getBoolean(key, false))
+                    ScreenshotService.uploadOverPower.postValue(prefs.getBoolean(key, false))
                 }
 
                 getString(R.string.payment_handle) -> {
@@ -226,7 +227,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
      * @param action The action string to be sent.
      */
     private fun sendCommandToRecordService(action: String) {
-        Intent(requireContext(), ScreenRecordService::class.java).apply {
+        Intent(requireContext(), ScreenshotService::class.java).apply {
             this.action = action
             requireContext().startService(this)
         }

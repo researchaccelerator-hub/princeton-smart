@@ -33,7 +33,10 @@ import com.screenlake.data.database.entity.SessionTempEntity
 import com.screenlake.data.database.entity.UserEntity
 import com.screenlake.data.model.AppInfo
 import com.screenlake.data.repository.GeneralOperationsRepository
+import com.screenlake.recorder.constants.ConstantSettings.ACTION_PAUSE_SERVICE
+import com.screenlake.recorder.constants.ConstantSettings.ACTION_STOP_SERVICE
 import com.screenlake.recorder.constants.ConstantSettings.RESTRICTED_APPS
+import com.screenlake.recorder.constants.ConstantSettings.SCREENSHOT_MAPPING
 import com.screenlake.recorder.screenshot.ScreenCollectorSvc
 import com.screenlake.recorder.services.ScreenRecordService.Companion.appNameVsPackageName
 import com.screenlake.recorder.services.ScreenRecordService.Companion.isPaused
@@ -45,11 +48,13 @@ import com.screenlake.recorder.services.util.ScreenshotData
 import com.screenlake.recorder.utilities.BaseUtility.getForegroundTaskPackageName
 import com.screenlake.recorder.utilities.TimeUtility
 import com.screenlake.recorder.utilities.TimeUtility.getFormattedScreenCaptureTime
+import com.screenlake.recorder.utilities.record
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -64,6 +69,7 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.HashSet
 import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.TimeUnit
@@ -74,6 +80,36 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
     companion object {
+        var lastCaptureDate = 0L
+        val isScreenOn = MutableLiveData<Boolean>()
+        val isRecording = MutableLiveData<Boolean>()
+        val screenshotInterval = MutableLiveData<Long>()
+        val isPaused = MutableLiveData<Boolean>()
+        var offlineUpdates = MutableLiveData<Int>()
+        var pausedTimer = MutableLiveData<String>()
+        var projection : MediaProjection? = null
+        var isProjectionValid = MutableLiveData<Boolean>()
+        // Settings
+        var uploadOverWifi = MutableLiveData<Boolean>()
+        var uploadOverPower = MutableLiveData<Boolean>()
+        var pauseTiming = MutableLiveData<Long>()
+
+        val isMaintenanceOccurring = MutableLiveData<Boolean>()
+
+        val isPowerConnected = MutableLiveData<Boolean>()
+
+        val isBatteryLow = MutableLiveData<Boolean>()
+
+        val uploadedThisWeek = MutableLiveData<Int>()
+
+        var appNameVsPackageName = mapOf<String, String>()
+
+        var isMediaProjectionValid = false
+
+        const val framesPerSecondConst: Double = 0.3
+        var framesPerSecond: Double = framesPerSecondConst
+        val notUploaded = MutableLiveData<Int>()
+        var sessionId = UUID.randomUUID().toString()
         const val NOTIFICATION_ID = 1337
         const val CHANNEL_ID = "screenshot_service_channel"
         const val EXTRA_RESULT_CODE = "resultCode"
@@ -89,8 +125,25 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         val uploadTotal = MutableLiveData<Int>()
         val manualUploadPercentComplete = MutableLiveData<Double>()
         var uploadCountMsg = MutableLiveData<Int>()
+        var restrictedApps = MutableLiveData<HashSet<String>>()
+        var user = UserEntity()
+        // TODO: Is this not getting set??
+        var lastUnlockTime: Long? = null
+
+        fun postInitialValues(){
+            // Disabled, user should not set this value.
+            // framesPerSecond = PreferenceManager.getDefaultSharedPreferences(this).getString(getString(R.string.fps), "1.0")?.toDouble()!!
+            screenshotInterval.postValue(SCREENSHOT_MAPPING[ScreenRecordService.Companion.framesPerSecond])
+            isPaused.postValue(false)
+            uploadCountMsg.postValue(0)
+            isRunning.postValue(false)
+            offlineUpdates.postValue(0)
+            pauseTiming.postValue(300000)
+            restrictedApps.postValue(hashSetOf())
+        }
     }
 
+    private var imagesProduced = 0
     private var countDownTimer: CountDownTimer? = null
     private var mediaProjection: MediaProjection? = null
     private var virtualDisplay: VirtualDisplay? = null
@@ -167,14 +220,14 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
 
     private fun pauseRecordingForMinutes()
     {
-        if(isRecording.value == true && isPaused.value!!){
+        if(isRunning.value == true && isPaused.value!!){
             countDownTimer = object : CountDownTimer(pauseTiming.value!!, 1000)  {
 
                 override fun onTick(millisUntilFinished: Long) {
                     if(isPaused.value == false){
                         countDownTimer?.cancel()
 
-                        if(isRecording.value == true) pausedTimer.postValue("recording")
+                        if(isRunning.value == true) pausedTimer.postValue("recording")
 
                     }else{
                         pausedTimer.postValue("resuming in: " + ""+String.format("%d min, %d sec",
@@ -199,10 +252,19 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         }
     }
 
+    private fun handlePauseService() {
+        pauseRecordingForMinutes()
+        Timber.d("Service paused")
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         try {
+            postInitialValues()
             if (intent != null) {
                 when (intent.action) {
+                    ACTION_STOP_SERVICE -> stopCapturing()
+                    ACTION_PAUSE_SERVICE -> handlePauseService()
+
                     ACTION_RESTART_PROJECTION -> {
                         // Media projection permission has been re-granted
                         Timber.d("Restarting media projection")
@@ -219,7 +281,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                             resultCode = newResultCode
                             resultData = newData
 
-                            setupMediaProjection(newResultCode, newData)
+                            // setupMediaProjection(newResultCode, newData)
                             startCapturing()
                         } else {
                             Timber.e("Invalid result code or missing data for projection restart")
@@ -228,6 +290,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                     }
                     else -> {
                         // Initial start of the service
+                        isRunning.postValue(true)
                         val newResultCode = intent.getIntExtra(EXTRA_RESULT_CODE, Activity.RESULT_CANCELED)
                         val newData = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                             intent.getParcelableExtra(EXTRA_DATA, Intent::class.java)
@@ -244,6 +307,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                             setupMediaProjection(newResultCode, newData)
                             startCapturing()
                         } else {
+                            CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("MEDIA_PROJECTION", "Invalid result code or missing data for initial start") }
                             Timber.e("Invalid result code or missing data for initial start")
                             showErrorNotification("Could not start screen capture", "Permission data is invalid")
                         }
@@ -252,6 +316,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
             }
         } catch (e: Exception) {
             Timber.e(e, "Error in onStartCommand")
+            CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("MEDIA_PROJECTION", "${e.message} -> ${e.stackTrace}") }
             showErrorNotification("Service Start Error", "Could not start screenshot service: ${e.message}")
         }
         return START_NOT_STICKY
@@ -279,11 +344,13 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
             }
         } catch (e: Exception) {
             Timber.e(e, "Error starting foreground service")
+            CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("MEDIA_PROJECTION", "${e.message} -> ${e.stackTrace}") }
             // Fallback to starting foreground without type
             try {
                 startForeground(NOTIFICATION_ID, notification)
             } catch (e2: Exception) {
                 Timber.e(e2, "Critical error starting foreground service")
+                CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("MEDIA_PROJECTION", "${e.message} -> ${e.stackTrace}") }
                 stopSelf()
             }
         }
@@ -308,12 +375,15 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                         coroutineScope.launch {
                             stopCapturing()
                             showProjectionStoppedNotification()
+                            isMediaProjectionValid = false
                         }
                     }
                 }, handler)
             }
         } catch (e: Exception) {
             Timber.e(e, "Error setting up media projection")
+            isMediaProjectionValid = false
+            CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("MEDIA_PROJECTION", "${e.message} -> ${e.stackTrace}") }
             showErrorNotification("Setup Error", "Failed to setup screen capture: ${e.message}")
         }
     }
@@ -334,6 +404,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
 
             notificationManager.notify(RESTART_NOTIFICATION_ID, notification)
         } catch (e: Exception) {
+            CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("PROJECTION_NOTIFICATION", "${e.message} -> ${e.stackTrace}") }
             Timber.e(e, "Error showing projection stopped notification")
         }
     }
@@ -367,6 +438,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
             notificationManager.notify(ERROR_NOTIFICATION_ID, notification)
         } catch (e: Exception) {
             Timber.e(e, "Error showing error notification")
+            CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("PROJECTION_NOTIFICATION", "${e.message} -> ${e.stackTrace}") }
         }
     }
 
@@ -396,7 +468,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
 
                 // Load app data with timeout and error handling
                 try {
-                    withTimeout(TimeUnit.SECONDS.toMillis(10)) {
+                    withTimeout(5000) {
                         val allApps = withContext(Dispatchers.Default) {
                             try {
                                 generalOperationsRepository.getALlApps()
@@ -406,9 +478,12 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                             }
                         }
 
+                        val restricted = allApps.filter { it.isUserRestricted }.map { it.appName }.toHashSet()
+                        restrictedApps.postValue(restricted)
+
                         appNameVsPackageName = allApps.associate { it.packageName to it.appName }
 
-                        ScreenRecordService.Companion.user = withContext(Dispatchers.Default) {
+                        user = withContext(Dispatchers.Default) {
                             try {
                                 generalOperationsRepository.getUser()
                             } catch (e: Exception) {
@@ -419,6 +494,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                     }
                 } catch (e: Exception) {
                     Timber.e(e, "Error loading initial data with timeout")
+                    CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("START_CAPTURE", "${e.message} -> ${e.stackTrace}") }
                     // Continue anyway, will use empty data
                 }
 
@@ -434,6 +510,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                                 }
                             } catch (e: Exception) {
                                 handleScreenshotError(e)
+                                CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("TAKE_SCREENSHOT", "${e.message} -> ${e.stackTrace}") }
                             }
                         } else {
                             Timber.d("Screen locked, skipping screenshot")
@@ -445,6 +522,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
             } catch (e: Exception) {
                 Timber.e(e, "Error in startCapturing")
                 showErrorNotification("Capture Error", "Failed to start capture: ${e.message}")
+                CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("TAKE_SCREENSHOT", "${e.message} -> ${e.stackTrace}") }
                 stopCapturing()
             }
         }
@@ -475,6 +553,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                     }
                 } catch (e: Exception) {
                     Timber.e(e, "Error during error recovery")
+                    CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("SCREENSHOT_ERROR", "${e.message} -> ${e.stackTrace}") }
                     showErrorNotification(
                         "Critical Error",
                         "Service needs to be restarted manually: ${e.message}"
@@ -504,6 +583,9 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
 
             return virtualDisplay != null
         } catch (e: Exception) {
+            e.record()
+            isMediaProjectionValid = false
+            CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("VIRTUAL_DISPLAY", "${e.message} -> ${e.stackTrace}") }
             Timber.e(e, "Error setting up virtual display")
             return false
         }
@@ -532,6 +614,8 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                     try {
                         screenCollectorSvc.add(screenshotData)
                     } catch (e: Exception) {
+                        e.record()
+                        CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("TAKE_SCREENSHOT", "${e.message} -> ${e.stackTrace}") }
                         Timber.e(e, "Error adding restricted app data to collector")
                     }
                     return@withTimeout
@@ -545,6 +629,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                 }
 
                 try {
+                    isMediaProjectionValid = true
                     saveImageToFile(image, currentAppInUse)
                 } finally {
                     // Always close the image to avoid memory leaks
@@ -553,11 +638,14 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                             image.close()
                         } catch (e: Exception) {
                             Timber.e(e, "Error closing image")
+                            CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("TAKE_SCREENSHOT", "${e.message} -> ${e.stackTrace}") }
                         }
                     }
                 }
             } catch (e: Exception) {
+                e.record()
                 Timber.e(e, "Error in takeScreenshot")
+                CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("TAKE_SCREENSHOT", "${e.message} -> ${e.stackTrace}") }
                 throw e
             }
         }
@@ -582,6 +670,8 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                 )
                 bitmap.copyPixelsFromBuffer(buffer)
 
+                imagesProduced++
+
                 // Create file
                 val dateFormat = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.getDefault())
                 val timestamp = dateFormat.format(Date())
@@ -593,7 +683,9 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                 try {
                     screenCollectorSvc.add(screenshotData)
                 } catch (e: Exception) {
+                    e.record()
                     Timber.e(e, "Error adding screenshot data to collector")
+                    CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("IMAGE_READER", "${e.message} -> ${e.stackTrace}") }
                 }
 
                 val screenshotsDir = File(filename)
@@ -603,12 +695,17 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 50, fileOutputStream)
                 Timber.d("Screenshot saved: ${screenshotsDir.absolutePath}")
             } catch (e: IOException) {
+                e.record()
+                CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("IMAGE_READER", "${e.message} -> ${e.stackTrace}") }
                 Timber.e(e, "I/O error saving screenshot")
                 throw e
             } catch (e: OutOfMemoryError) {
+                CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("IMAGE_READER", "${e.message} -> ${e.stackTrace}") }
                 Timber.e(e, "Out of memory when creating bitmap")
                 throw e
             } catch (e: Exception) {
+                e.record()
+                CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("IMAGE_READER", "${e.message} -> ${e.stackTrace}") }
                 Timber.e(e, "Error saving screenshot")
                 throw e
             } finally {
@@ -616,6 +713,8 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                 try {
                     fileOutputStream?.close()
                 } catch (e: IOException) {
+                    e.record()
+                    CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("IMAGE_READER", "${e.message} -> ${e.stackTrace}") }
                     Timber.e(e, "Error closing FileOutputStream")
                 }
 
@@ -634,6 +733,8 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         try {
             virtualDisplay?.release()
         } catch (e: Exception) {
+            e.record()
+            CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("STOP_CAPTURE", "${e.message} -> ${e.stackTrace}") }
             Timber.e(e, "Error releasing virtual display")
         }
         virtualDisplay = null
@@ -641,6 +742,8 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         try {
             imageReader?.close()
         } catch (e: Exception) {
+            CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("STOP_CAPTURE", "${e.message} -> ${e.stackTrace}") }
+            e.record()
             Timber.e(e, "Error closing image reader")
         }
         imageReader = null
@@ -648,9 +751,12 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         try {
             mediaProjection?.stop()
         } catch (e: Exception) {
+            e.record()
+            CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("STOP_CAPTURE", "${e.message} -> ${e.stackTrace}") }
             Timber.e(e, "Error stopping media projection")
         }
         mediaProjection = null
+        isMediaProjectionValid = false
     }
 
     override fun onDestroy() {
@@ -666,6 +772,8 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         try {
             coroutineScope.cancel() // Cancel all coroutines when service is destroyed
         } catch (e: Exception) {
+            e.record()
+            CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("ON_DESTROY", "${e.message} -> ${e.stackTrace}") }
             Timber.e(e, "Error cancelling coroutine scope")
         }
 

@@ -96,6 +96,7 @@ class UploadWorker @AssistedInject constructor(
         var count = 0.0
         zipsToUpload?.let {
             for (zip in it) {
+                WorkerProgressManager.updateProgress("Uploading $count of ${zipsToUpload?.count()}")
                 zip.file?.let { filePath ->
                     val file = File(filePath)
                     if (file.exists() && uploadHandler.isNetworkConnected()) {
@@ -105,7 +106,7 @@ class UploadWorker @AssistedInject constructor(
                         uploadHandler.uploadFile(file, zip.id, user)
 
                         delay(3000) // Delay between uploads
-                        ScreenRecordService.manualUploadPercentComplete.postValue(count / it.count())
+                        ScreenshotService.manualUploadPercentComplete.postValue(count / it.count())
                         count++
                     } else {
                         // Handle the case where the file does not exist

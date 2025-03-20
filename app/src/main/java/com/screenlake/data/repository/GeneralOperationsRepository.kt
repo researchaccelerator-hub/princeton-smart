@@ -33,6 +33,7 @@ import com.screenlake.recorder.authentication.CloudAuthentication
 import com.screenlake.recorder.constants.ConstantSettings
 import com.screenlake.recorder.screenshot.DataTransformation
 import com.screenlake.recorder.services.ScreenRecordService
+import com.screenlake.recorder.services.ScreenshotService
 import com.screenlake.recorder.utilities.TimeUtility
 import com.screenlake.recorder.utilities.silence
 import kotlinx.coroutines.CoroutineScope
@@ -133,7 +134,7 @@ class GeneralOperationsRepository @Inject constructor(
         }
 
         // Create a new session.
-        ScreenRecordService.sessionId = UUID.randomUUID().toString()
+        ScreenshotService.sessionId = UUID.randomUUID().toString()
 
         ScreenRecordService.screenshotInterval.postValue(ConstantSettings.SCREENSHOT_MAPPING[ScreenRecordService.framesPerSecond])
     }
@@ -150,12 +151,12 @@ class GeneralOperationsRepository @Inject constructor(
 
         if((currentSession.secondsSinceLastActive ?: 0L) <= 0L) currentSession.secondsSinceLastActive = 0L
 
-        currentSession.sessionId = ScreenRecordService.sessionId
+        currentSession.sessionId = ScreenshotService.sessionId
         currentSession.tenantId = UserEntity.TENANT_ID
         currentSession.panelId = UserEntity.PANEL_ID
         currentSession.fps = localFPS
         if (currentSession.sessionId.isNullOrEmpty()) {
-            currentSession.sessionId = ScreenRecordService.sessionId
+            currentSession.sessionId = ScreenshotService.sessionId
         }
 
         this.lastActiveTime = currentSession.sessionEnd?.toEpochMilli()
@@ -195,7 +196,7 @@ class GeneralOperationsRepository @Inject constructor(
         screenshotDao.setOcrComplete(
             screenshot.id!!,
             true,
-            screenshot.text!!
+            screenshot.text ?: ""
         )
     }
 

@@ -64,10 +64,21 @@
         </service>
 
         <service
+            android:name=".recorder.services.OcrWorker"
+            android:enabled="true"
+            android:exported="false"
+            android:process=":ocr_process" />
+
+        <service
             android:name="com.screenlake.recorder.services.MetricService"
             android:exported="false"
             android:label="Metric Service"
             android:permission="android.permission.BIND_JOB_SERVICE" />
+
+<!--        <service-->
+<!--            android:name=".recorder.services.DatabaseService"-->
+<!--            android:enabled="true"-->
+<!--            android:exported="false" />-->
 
         <service
             android:name="com.screenlake.recorder.services.TouchAccessibilityService"

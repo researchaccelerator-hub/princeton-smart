@@ -26,7 +26,6 @@ class WorkerStarter @Inject constructor(
 
     // Instance of WorkManager
     private val workManager = WorkManager.getInstance(context)
-    private val mContext = context
 
     /**
      * Invokes the initialization of all periodic workers.
@@ -40,6 +39,7 @@ class WorkerStarter @Inject constructor(
         initZipFileWorker()
         initOCRWorker()
         scheduleUniqueWork()
+        scheduleMetricWorker()
 
         // scheduleImmediateWork(mContext)
 
@@ -120,6 +120,21 @@ class WorkerStarter @Inject constructor(
         )
     }
 
+    private fun scheduleMetricWorker() {
+        workManager.enqueueUniquePeriodicWork(
+            uniqueWorkName = WORK_MANAGER_METRIC_WORKER,
+            existingPeriodicWorkPolicy = ExistingPeriodicWorkPolicy.KEEP,
+            request = PeriodicWorkRequestBuilder<MetricWorker>(1, TimeUnit.MINUTES)
+                .setConstraints(
+                    Constraints.Builder()
+                        .setRequiredNetworkType(NetworkType.NOT_REQUIRED)
+                        .setRequiresBatteryNotLow(false)
+                        .setRequiresStorageNotLow(false)
+                        .build()
+                ).build()
+        )
+    }
+
     /**
      * Companion object to store unique names for the workers.
      */
@@ -127,5 +142,6 @@ class WorkerStarter @Inject constructor(
         const val WORK_MANAGER_UPLOAD_WORKER = "WORK_MANAGER_UPLOAD_WORKER"
         const val WORK_MANAGER_ZIP_FILE_WORKER = "WORK_MANAGER_ZIP_FILE_WORKER"
         const val WORK_MANAGER_OCR_WORKER = "WORK_MANAGER_OCR_WORKER"
+        const val WORK_MANAGER_METRIC_WORKER = "WORK_MANAGER_METRIC_WORKER"
     }
 }

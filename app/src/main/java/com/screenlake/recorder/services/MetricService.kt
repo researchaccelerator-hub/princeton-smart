@@ -45,7 +45,7 @@ class MetricService : JobService() {
     private suspend fun runMetricJob(params: JobParameters?) {
         try {
             // Log metric details to genOp
-            generalOperationsRepository.saveLog("METRIC_SERVICE_RUN_RECORDING", ScreenRecordService.isRecording.value.toString())
+            generalOperationsRepository.saveLog("METRIC_SERVICE_RUN_RECORDING", ScreenshotService.isRunning.value.toString())
         } catch (e: Exception) {
             Timber.tag(tag).e(e, "Error while running the metric job.")
         } finally {

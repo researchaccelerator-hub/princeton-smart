@@ -8,6 +8,7 @@ import android.content.IntentFilter
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.view.accessibility.AccessibilityEvent
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.MutableLiveData
@@ -35,6 +36,7 @@ import java.lang.ref.WeakReference
 import java.time.Instant
 import java.util.*
 import javax.inject.Inject
+import kotlin.text.contains
 
 object AccessibilityServiceDependencies {
     var ioDispatcher: CoroutineDispatcher? = null
@@ -64,6 +66,17 @@ class TouchAccessibilityService() : AccessibilityService() {
         var sessionStartTime: Long? = null
         var appIntervalId = UUID.randomUUID().toString()
         var user: UserEntity? = null
+
+        fun isAccessibilitySettingsOn(mContext: Context): Boolean {
+            return isAccessServiceEnabled(mContext)
+        }
+
+        private fun isAccessServiceEnabled(context: Context): Boolean {
+            val prefString = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+            return prefString != null && prefString.contains(
+                context.packageName + "/" + TouchAccessibilityService::class.java.name
+            )
+        }
     }
 
     private val handler = CoroutineExceptionHandler { _, exception ->

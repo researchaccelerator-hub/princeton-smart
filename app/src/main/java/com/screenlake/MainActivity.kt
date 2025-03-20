@@ -42,7 +42,7 @@ class MainActivity : AppCompatActivity(), ScreenRecordFragment.MediaProjectionCa
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == MEDIA_PROJECTION_REQUEST_CODE && resultCode == Activity.RESULT_OK && data != null) {
-            ScreenRecordService.isProjectionValid.postValue(true)
+            ScreenshotService.isProjectionValid.postValue(true)
             startScreenRecordService(resultCode, data)
         }
     }

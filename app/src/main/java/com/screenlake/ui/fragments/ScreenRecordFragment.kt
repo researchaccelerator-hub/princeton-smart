@@ -134,7 +134,7 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
     }
 
     private fun updateMediaProjectionInService(projection: MediaProjection) {
-        ScreenRecordService.projection = projection
+        ScreenshotService.projection = projection
     }
 
     private fun startScreenRecordService(projectionData: Intent?) {
@@ -181,9 +181,9 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
         binding.fragment = this
 
         // If restarting, request media projection immediately
-        if (restartProjection) {
-            requestScreenCapture()
-        }
+//        if (restartProjection) {
+//            requestScreenCapture()
+//        }
 
         Timber.d("Record Fragment created!")
 
@@ -401,7 +401,7 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
             .setTitle("Pause for")
             .setIcon(R.drawable.ic_pause_48px)
             .setSingleChoiceItems(listItems, -1) { _, i ->
-                ScreenRecordService.pauseTiming.postValue(mapOfEntrees[listItems[i]])
+                ScreenshotService.pauseTiming.postValue(mapOfEntrees[listItems[i]])
             }
             .setCancelable(false)
             .setPositiveButton(getString(R.string.done)) { _, _ -> pauseRecording() }
@@ -411,7 +411,7 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
     }
 
     private fun pauseRecording() {
-        ScreenRecordService.isPaused.postValue(true)
+        ScreenshotService.isPaused.postValue(true)
         sendCommandToRecordService(ACTION_PAUSE_SERVICE)
     }
 
@@ -422,11 +422,19 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
             ContextCompat.startForegroundService(requireContext(), this)
         }
 
-    private fun sendCommandToRecordServiceStop() =
-        Intent(requireContext(), ScreenRecordService::class.java).apply {
-            this.action = ACTION_STOP_SERVICE
-            addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
+    // 1. In your Activity/Fragment (where you want to trigger the stop)
+    fun stopForegroundService() {
+        val stopIntent = Intent(context, ScreenshotService::class.java).apply {
+            // Define a custom action to signal stopping
+            action = "ACTION_STOP_SERVICE"
+
+            // Add flags for reliable delivery
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
+
+        // Send the intent to the service
+        context?.startService(stopIntent)
+    }
 
     private fun clearButtonExplainerText() {
         binding.buttonExplainerText.text = ""
@@ -462,27 +470,27 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
             }
         })
 
-        ScreenRecordService.manualUploadPercentComplete.observe(viewLifecycleOwner, Observer {
+        ScreenshotService.manualUploadPercentComplete.observe(viewLifecycleOwner, Observer {
             binding.determinateBar.progress = it.toInt()
         })
 
-        ScreenRecordService.uploadTotal.observe(viewLifecycleOwner, Observer {
+        ScreenshotService.uploadTotal.observe(viewLifecycleOwner, Observer {
             binding.textBoxOne.text = it.toString()
         })
 
-        ScreenRecordService.uploadedThisWeek.observe(viewLifecycleOwner, Observer {
+        ScreenshotService.uploadedThisWeek.observe(viewLifecycleOwner, Observer {
             binding.textBoxThree.text = it.toString()
         })
 
-        ScreenRecordService.notUploaded.observe(viewLifecycleOwner, Observer {
+        ScreenshotService.notUploaded.observe(viewLifecycleOwner, Observer {
             binding.textBoxTwo.text = it.toString()
         })
 
-        ScreenRecordService.uploadCountMsg.observe(viewLifecycleOwner, Observer {
+        ScreenshotService.uploadCountMsg.observe(viewLifecycleOwner, Observer {
             binding.tvUpdates.text = it.toString()
         })
 
-        ScreenRecordService.isPaused.observe(viewLifecycleOwner, Observer {
+        ScreenshotService.isPaused.observe(viewLifecycleOwner, Observer {
             if (it) {
                 clearButtonExplainerText()
                 changePauseToCancel()
@@ -492,7 +500,7 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
             }
         })
 
-        ScreenRecordService.pausedTimer.observe(viewLifecycleOwner, Observer {
+        ScreenshotService.pausedTimer.observe(viewLifecycleOwner, Observer {
             binding.explainerText.text = it
         })
 
@@ -527,7 +535,7 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
                     triggerVibrateRecordOptions()
                     stopRecording()
                     binding.buttonExplainerText.text = ""
-                    if (ScreenRecordService.isPaused.value == true) {
+                    if (ScreenshotService.isPaused.value == true) {
                         changeCancelToPause()
                     }
                 }
@@ -558,7 +566,7 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
                 } else {
                     changeCancelToPause()
                     triggerVibrateRecordOptions()
-                    ScreenRecordService.isPaused.postValue(false)
+                    ScreenshotService.isPaused.postValue(false)
                 }
             },
             textUpdateAction = {
@@ -739,7 +747,7 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
 
     private fun stopRecording() {
         ScreenshotService.isRunning.postValue(false)
-        sendCommandToRecordServiceStop()
+        stopForegroundService()
         Toast.makeText(activity, getString(R.string.recording_stopped), Toast.LENGTH_LONG).show()
         lifecycleScope.launch { saveLog(RECORD_TRIGGERED, "false") }
     }

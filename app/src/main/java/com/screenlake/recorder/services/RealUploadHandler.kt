@@ -10,6 +10,7 @@ import com.screenlake.data.repository.GeneralOperationsRepository
 import com.screenlake.recorder.services.util.ScreenshotData
 import com.screenlake.recorder.upload.Util
 import com.screenlake.recorder.utilities.HardwareChecks
+import com.screenlake.recorder.viewmodels.WorkerProgressManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.RequestBody.Companion.asRequestBody
@@ -66,6 +67,7 @@ class RealUploadHandler @Inject constructor(
                 "Upload failed with message -> ${error.message} stacktrace -> ${ScreenshotData.ocrCleanUp(error.stackTraceToString())}."
             )
             Timber.tag(TAG).e(error, "Upload failed")
+            WorkerProgressManager.updateProgress("Upload failed -> ${error.message}")
         }
     }
 

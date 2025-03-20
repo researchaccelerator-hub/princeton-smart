@@ -77,7 +77,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            manifestPlaceholders["crashlyticsCollectionEnabled"] = "false"
+            manifestPlaceholders["crashlyticsCollectionEnabled"] = "true"
 
             buildConfigField("String", "AMAZON_REGION_NAME", "\"$amazonRegionName\"")
             buildConfigField("String", "AMAZON_BUCKET_NAME", "\"$amazonBucketName\"")
@@ -169,9 +169,12 @@ dependencies {
     ksp(libs.androidx.hilt.compiler)
     ksp(libs.androidx.room.compiler)
 
+    implementation("androidx.sqlite:sqlite-framework:2.4.0")
+    implementation("androidx.sqlite:sqlite-ktx:2.4.0")
+
     testRuntimeOnly(libs.junit.jupiter.engine)
     testImplementation(libs.junit)
-    testImplementation(libs.junit.jupiter.api)
+//    testImplementation(libs.junit.jupiter.api)
     testImplementation(libs.mockk)
     testImplementation(libs.robolectric)
     androidTestImplementation(libs.androidx.espresso.core)

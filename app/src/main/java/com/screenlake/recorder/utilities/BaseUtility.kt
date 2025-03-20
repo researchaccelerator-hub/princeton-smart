@@ -137,3 +137,11 @@ inline fun silence(body: () -> Unit) {
         FirebaseCrashlytics.getInstance().recordException(e)
     }
 }
+
+fun Exception.record() {
+    try {
+        FirebaseCrashlytics.getInstance().recordException(this)
+    } catch (ex: Exception) {
+
+    }
+}

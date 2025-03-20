@@ -298,7 +298,7 @@ class ZipFileWorker @AssistedInject constructor(
         val logCount = generalOperationsRepository.logCount()
         Timber.tag("LogEvent").d("LogEvents $logCount")
 
-        return if (logCount > 25) {
+        return if (logCount > 1) {
             generalOperationsRepository.getLogs(1000, 0)?.let { logs ->
                 val csv = DataTransformation.getAndSaveLogs(logs)
                 logs.chunked(100).forEach { batchLogs ->

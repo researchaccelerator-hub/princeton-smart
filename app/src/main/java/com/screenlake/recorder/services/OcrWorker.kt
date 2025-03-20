@@ -9,6 +9,7 @@ import com.screenlake.data.database.entity.ScreenshotEntity
 import com.screenlake.data.repository.GeneralOperationsRepository
 import com.screenlake.recorder.ocr.Assets
 import com.screenlake.recorder.ocr.Recognize
+import com.screenlake.recorder.utilities.record
 import com.screenlake.recorder.viewmodels.WorkerProgressManager
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -37,18 +38,50 @@ class OcrWorker @AssistedInject constructor(
         return try {
             generalOperationsRepository.saveLog("OCR_SERVICE_RUN", "")
 
-            // Run the OCR process in a background thread
-            withContext(Dispatchers.Default) {
-                beginOcr()
-            }
+//            // Run the OCR process in a background thread
+//            withContext(Dispatchers.Default) {
+//                beginOcr()
+//            }
 
-            recognize?.stop()
+            val test = getScreenshotsForOcr(10, 0)
+            Timber.tag(TAG).d("Test: ${test.size}")
+
+//            recognize?.stop()
             Timber.tag(TAG).d("OCR Worker has finished.")
             Result.success()
         } catch (ex: Exception) {
             handleException(ex)
             Result.failure()
         }
+    }
+
+    fun getScreenshotsForOcr(limit: Int = 10, offset: Int = 0): List<ScreenshotEntity> {
+        val uri = ScreenshotContentProvider.OCR_INCOMPLETE_URI
+            .buildUpon()
+            .appendQueryParameter("limit", limit.toString())
+            .appendQueryParameter("offset", offset.toString())
+            .build()
+
+        val screenshots = mutableListOf<ScreenshotEntity>()
+
+        applicationContext.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            while (cursor.moveToNext()) {
+                // Create ScreenshotEntity from cursor
+                val id = cursor.getInt(cursor.getColumnIndexOrThrow("id"))
+                val text = cursor.getString(cursor.getColumnIndexOrThrow("text"))
+                val isOcrComplete = cursor.getInt(cursor.getColumnIndexOrThrow("isOcrComplete")) == 1
+                // Get other fields as needed
+
+                // Add to list
+                screenshots.add(ScreenshotEntity().apply {
+                    this.id = id
+                    this.text = text
+                    this.isOcrComplete = isOcrComplete
+                })
+            }
+        }
+
+        return screenshots
     }
 
     /**
@@ -82,9 +115,7 @@ class OcrWorker @AssistedInject constructor(
         val dataPath = Assets.getTessDataPath(applicationContext)
         val language = Assets.language
 
-        if (recognize == null || !recognize!!.isInitialized) {
-            recognize.initTesseract(dataPath, language, TessBaseAPI.OEM_LSTM_ONLY)
-        }
+        recognize.initTesseract(dataPath, language, TessBaseAPI.OEM_LSTM_ONLY)
     }
 
     /**
@@ -112,7 +143,6 @@ class OcrWorker @AssistedInject constructor(
 
         val endTime = System.currentTimeMillis()
         Timber.d("OCR completed for $processedCount images in ${endTime - startTime} ms.")
-        recognize?.stop()  // Stop Tesseract after processing
     }
 
     /**
@@ -121,29 +151,31 @@ class OcrWorker @AssistedInject constructor(
     private suspend fun processScreenshot(screenshot: ScreenshotEntity) {
         try {
             Timber.tag(TAG).d("Processing image: ${screenshot.filePath}")
-            if (recognize!!.processImage(screenshot)) {
+            if (recognize.processImage(screenshot)) {
                 generalOperationsRepository.setScreenToOcrComplete(screenshot)
             } else {
-                logOcrFailure(screenshot.filePath)
+                logOcrFailure(screenshot.filePath, "")
             }
         } catch (ex: Exception) {
+            ex.record()
             Timber.tag(TAG).w("Error processing image: ${screenshot.filePath}, ${ex.message}")
-            logOcrFailure(screenshot.filePath)
+            logOcrFailure(screenshot.filePath, "Error processing image: ${screenshot.filePath}, ${ex.stackTrace}")
         }
     }
 
     /**
      * Logs an OCR failure for a given image.
      */
-    private suspend fun logOcrFailure(filePath: String?) {
+    private suspend fun logOcrFailure(filePath: String?, msg: String) {
         Timber.tag(TAG).w("Could not process OCR for file: $filePath")
-        generalOperationsRepository.saveLog("OCRProcess", "Could not process OCR for filePath $filePath")
+        generalOperationsRepository.saveLog("OCRProcess", "Could not process OCR for filePath $filePath -> $msg")
     }
 
     /**
      * Handles any exceptions that occur during the OCR process.
      */
     private fun handleException(ex: Exception) {
+        ex.record()
         recognize?.stop()
         Timber.tag(TAG).e(ex, "OCR Worker failed.")
     }
@@ -152,6 +184,7 @@ class OcrWorker @AssistedInject constructor(
      * Handles exceptions that occur during the OCR process specifically.
      */
     private fun handleOcrException(ex: Exception) {
+        ex.record()
         recognize.stop()
         Timber.tag(TAG).e(ex, "OCR exception occurred.")
     }

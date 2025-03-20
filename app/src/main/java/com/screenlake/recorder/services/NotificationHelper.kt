@@ -3,6 +3,7 @@ package com.screenlake.recorder.services
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.NotificationManager.IMPORTANCE_HIGH
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -14,11 +15,22 @@ import androidx.core.app.NotificationManagerCompat
 import com.screenlake.MainActivity
 import com.screenlake.R
 import com.screenlake.recorder.constants.ConstantSettings
+import com.screenlake.recorder.constants.ConstantSettings.NOTIFICATION_CHANNEL_ID
+import com.screenlake.recorder.constants.ConstantSettings.NOTIFICATION_CHANNEL_NAME
 
 class NotificationHelper(private val context: Context) {
 
     private val notificationManager: NotificationManager =
         context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+    fun createNotificationChannel(){
+        val channel = NotificationChannel(
+            NOTIFICATION_CHANNEL_ID,
+            NOTIFICATION_CHANNEL_NAME,
+            IMPORTANCE_HIGH
+        )
+        notificationManager.createNotificationChannel(channel)
+    }
 
     fun showNotification(title: String, message: String, notificationId: Int) {
         val builder = NotificationCompat.Builder(context, ConstantSettings.NOTIFICATION_CHANNEL_ID)

@@ -53,10 +53,13 @@ import com.screenlake.recorder.constants.ConstantSettings.RECORD_TRIGGERED
 import com.screenlake.data.database.entity.LogEventEntity
 import com.screenlake.data.database.entity.ScreenshotZipEntity
 import com.screenlake.data.repository.AmplifyRepository
+import com.screenlake.data.repository.GeneralOperationsRepository
 import com.screenlake.di.DatabaseModule
 import com.screenlake.recorder.constants.ConstantSettings.ACTION_STOP_SERVICE
 import com.screenlake.recorder.screenshot.ScreenCollector
 import com.screenlake.recorder.services.ScreenRecordService
+import com.screenlake.recorder.services.ScreenRecordService.Companion.appNameVsPackageName
+import com.screenlake.recorder.services.ScreenRecordService.Companion.restrictedApps
 import com.screenlake.recorder.services.TouchAccessibilityService
 import com.screenlake.recorder.services.UploadWorker
 import com.screenlake.recorder.services.ZipFileWorker
@@ -89,6 +92,9 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
 
     @Inject
     lateinit var screenCollector: ScreenCollector
+
+    @Inject
+    lateinit var generalOperationsRepository: GeneralOperationsRepository
 
     private val mainViewModel: MainViewModel by activityViewModels()
     private val seqWorkerModel: SequentialWorkScheduler by viewModels()
@@ -186,6 +192,16 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
 //        }
 
         Timber.d("Record Fragment created!")
+
+        lifecycleScope.launch {
+            val allApps = withContext(Dispatchers.Default) {
+                generalOperationsRepository.getALlApps()
+            }
+
+            val restricted = allApps.filter { it.isUserRestricted }.map { it.appName }.toHashSet()
+
+            restrictedApps.postValue(restricted)
+        }
 
         checkConnectionStatus()
 
@@ -381,9 +397,7 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
     private fun wifiUIChange(isConnected: Boolean) {
         binding.statusBar.setBackgroundResource(if (isConnected) R.color.green else R.color.dark)
         binding.onlineStatus.setTextColor(
-            if (isConnected) resources.getColor(R.color.white) else resources.getColor(
-                R.color.black
-            )
+            resources.getColor(R.color.white)
         )
         binding.onlineStatus.text = if (isConnected) getString(R.string.online) else getString(R.string.offline)
     }
@@ -549,6 +563,11 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
 
     @SuppressLint("ClickableViewAccessibility")
     private fun setOnTouchListenerPause() {
+        if (!ScreenshotService.isRunning.isInitialized) {
+            Toast.makeText(activity, "Must be recording to pause", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         setupTouchListener(
             view = binding.screenRecordFragmentPause,
             enlargeAction = { enlargeButtonPause(binding.screenRecordFragmentPause) },
@@ -753,9 +772,10 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
     }
 
     private fun uploadCommand() = CoroutineScope(Dispatchers.IO).launch {
-        seqWorkerModel.startSequentialWork(this@ScreenRecordFragment.requireContext())
-
-        // Observe progress updates
+//        seqWorkerModel.startSequentialWork(this@ScreenRecordFragment.requireContext())
+//
+//        // Observe progress updates
+        ScreenshotService.manualOcr.postValue(true)
         lifecycleScope.launch {
             seqWorkerModel.progressUpdates.collect { progressUpdate ->
                 // Update UI with progress

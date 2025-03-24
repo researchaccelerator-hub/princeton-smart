@@ -26,6 +26,7 @@ class WorkerStarter @Inject constructor(
 
     // Instance of WorkManager
     private val workManager = WorkManager.getInstance(context)
+    private var mContext = context
 
     /**
      * Invokes the initialization of all periodic workers.
@@ -37,18 +38,20 @@ class WorkerStarter @Inject constructor(
     operator fun invoke() {
         initUploadWorker()
         initZipFileWorker()
-        initOCRWorker()
+//        initOCRWorker()
         scheduleUniqueWork()
         scheduleMetricWorker()
 
-        // scheduleImmediateWork(mContext)
+        // PeriodicOcrService.startService(mContext)
+
+        scheduleImmediateWork(mContext)
 
     }
 
     fun scheduleImmediateWork(context: Context) {
         Timber.tag("Artemis").e("**** Creating a one-time work request ****")
         // val workRequest1 = OneTimeWorkRequest.Builder(WeeklyAppUsageDataReceiver::class.java).build()
-        val workRequest2 = OneTimeWorkRequest.Builder(OcrWorker::class.java).build()
+        val workRequest2 = OneTimeWorkRequest.Builder(MetricWorker::class.java).build()
         val workManager = WorkManager.getInstance(context)
         // workManager.enqueue(workRequest1)
         workManager.enqueue(workRequest2)
@@ -105,20 +108,20 @@ class WorkerStarter @Inject constructor(
         )
     }
 
-    private fun initOCRWorker() {
-        workManager.enqueueUniquePeriodicWork(
-            uniqueWorkName = WORK_MANAGER_OCR_WORKER,
-            existingPeriodicWorkPolicy = ExistingPeriodicWorkPolicy.KEEP,
-            request = PeriodicWorkRequestBuilder<OcrWorker>(1, TimeUnit.HOURS)
-                .setConstraints(
-                    Constraints.Builder()
-                        .setRequiredNetworkType(NetworkType.NOT_REQUIRED)
-                        .setRequiresBatteryNotLow(true)
-                        .setRequiresStorageNotLow(true)
-                        .build()
-                ).build()
-        )
-    }
+//    private fun initOCRWorker() {
+//        workManager.enqueueUniquePeriodicWork(
+//            uniqueWorkName = WORK_MANAGER_OCR_WORKER,
+//            existingPeriodicWorkPolicy = ExistingPeriodicWorkPolicy.KEEP,
+//            request = PeriodicWorkRequestBuilder<OcrWorker>(1, TimeUnit.HOURS)
+//                .setConstraints(
+//                    Constraints.Builder()
+//                        .setRequiredNetworkType(NetworkType.NOT_REQUIRED)
+//                        .setRequiresBatteryNotLow(true)
+//                        .setRequiresStorageNotLow(true)
+//                        .build()
+//                ).build()
+//        )
+//    }
 
     private fun scheduleMetricWorker() {
         workManager.enqueueUniquePeriodicWork(

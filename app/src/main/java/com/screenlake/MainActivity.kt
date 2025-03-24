@@ -58,7 +58,7 @@ class MainActivity : AppCompatActivity(), ScreenRecordFragment.MediaProjectionCa
         if (isGranted) {
             showToast(getString(R.string.notification_permission_granted))
         } else {
-            showToast(getString(R.string.notification_permission_denied))
+            // showToast(getString(R.string.notification_permission_denied))
         }
     }
 

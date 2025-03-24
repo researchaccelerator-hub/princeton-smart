@@ -50,7 +50,7 @@ class UsageAccessSelectFragment : Fragment() {
                 }
 
                 hasPackageUsageStatsPermissions() -> {
-                    findNavController().navigate(R.id.accessibilityAccessSelectFragment)
+                    findNavController().navigate(R.id.powerAccessFragment)
                 }
 
                 else -> {

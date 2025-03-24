@@ -25,7 +25,7 @@
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/inter_black"
                 android:gravity="center"
-                android:text="What is Screenlake"
+                android:text="What is SRK"
                 android:textColor="@color/black"
                 android:textSize="24sp"
                 app:layout_constraintBottom_toBottomOf="parent"

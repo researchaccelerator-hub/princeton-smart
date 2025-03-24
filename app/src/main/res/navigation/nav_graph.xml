@@ -113,6 +113,10 @@
         android:name="com.screenlake.ui.fragments.RegisterOrLoginFragment"
         android:label="RegisterOrLoginFragment" />
     <fragment
+        android:id="@+id/powerAccessFragment"
+        android:name="com.screenlake.ui.fragments.onboarding.PowerAccessSelectFragment"
+        android:label="PowerAccessSelectFragment" />
+    <fragment
         android:id="@+id/registerConfirmPasswordResetFragment"
         android:name="com.screenlake.ui.fragments.onboarding.RegisterConfirmPasswordResetFragment"
         android:label="RegisterConfirmPasswordResetFragment" />

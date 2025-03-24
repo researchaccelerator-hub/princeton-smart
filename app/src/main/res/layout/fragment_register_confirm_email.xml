@@ -41,7 +41,7 @@
         android:fontFamily="@font/inter_light"
         android:gravity="center"
         android:paddingBottom="10dp"
-        android:text="A four digit code was sent to your email..."
+        android:text="A 6 digit code was sent to your email..."
         android:textColor="@color/screenlake_light_gray"
         android:textSize="16sp"
         android:textStyle="bold"

@@ -7,7 +7,6 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
-import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
@@ -20,7 +19,6 @@ import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.CountDownTimer
-import android.os.Environment
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -28,7 +26,12 @@ import android.util.DisplayMetrics
 import android.view.WindowManager
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.MutableLiveData
+import androidx.work.BackoffPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import com.googlecode.tesseract.android.TessBaseAPI
 import com.screenlake.MainActivity
+import com.screenlake.data.database.entity.ScreenshotEntity
 import com.screenlake.data.database.entity.SessionTempEntity
 import com.screenlake.data.database.entity.UserEntity
 import com.screenlake.data.model.AppInfo
@@ -36,25 +39,22 @@ import com.screenlake.data.repository.GeneralOperationsRepository
 import com.screenlake.recorder.constants.ConstantSettings.ACTION_PAUSE_SERVICE
 import com.screenlake.recorder.constants.ConstantSettings.ACTION_STOP_SERVICE
 import com.screenlake.recorder.constants.ConstantSettings.RESTRICTED_APPS
+import com.screenlake.recorder.constants.ConstantSettings.SCREENSHOT_IMAGE_QUALITY
 import com.screenlake.recorder.constants.ConstantSettings.SCREENSHOT_MAPPING
+import com.screenlake.recorder.ocr.Assets
+import com.screenlake.recorder.ocr.Recognize
 import com.screenlake.recorder.screenshot.ScreenCollectorSvc
-import com.screenlake.recorder.services.ScreenRecordService.Companion.appNameVsPackageName
-import com.screenlake.recorder.services.ScreenRecordService.Companion.isPaused
-import com.screenlake.recorder.services.ScreenRecordService.Companion.isRecording
-import com.screenlake.recorder.services.ScreenRecordService.Companion.pauseTiming
-import com.screenlake.recorder.services.ScreenRecordService.Companion.pausedTimer
-import com.screenlake.recorder.services.ScreenRecordService.Companion.sessionId
 import com.screenlake.recorder.services.util.ScreenshotData
 import com.screenlake.recorder.utilities.BaseUtility.getForegroundTaskPackageName
 import com.screenlake.recorder.utilities.TimeUtility
-import com.screenlake.recorder.utilities.TimeUtility.getFormattedScreenCaptureTime
 import com.screenlake.recorder.utilities.record
+import com.screenlake.recorder.viewmodels.WorkerProgressManager
 import dagger.hilt.android.AndroidEntryPoint
+import jakarta.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -67,6 +67,7 @@ import timber.log.Timber
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.nio.ByteBuffer
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.HashSet
@@ -75,11 +76,13 @@ import java.util.UUID
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
-import javax.inject.Inject
+import androidx.core.graphics.createBitmap
 
 @AndroidEntryPoint
 class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
     companion object {
+        var lastOcrTime = 0L
+        var manualOcr = MutableLiveData<Boolean>()
         var lastCaptureDate = 0L
         val isScreenOn = MutableLiveData<Boolean>()
         val isRecording = MutableLiveData<Boolean>()
@@ -114,7 +117,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         const val CHANNEL_ID = "screenshot_service_channel"
         const val EXTRA_RESULT_CODE = "resultCode"
         const val EXTRA_DATA = "data"
-        private const val SCREENSHOT_INTERVAL_MS = 3000L
+        private const val SCREENSHOT_INTERVAL_MS = 5000L
         const val RESTART_NOTIFICATION_ID = 1338
         private const val MAX_RETRY_ATTEMPTS = 3
         private const val SCREENSHOT_TIMEOUT_MS = 5000L  // 5 seconds timeout for screenshot operations
@@ -130,6 +133,10 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         // TODO: Is this not getting set??
         var lastUnlockTime: Long? = null
 
+        private const val TAG = "OcrWorker"
+        private const val BATCH_SIZE = 10  // Number of images to process per batch
+        private const val OCR_IMAGE_THRESHOLD = 2  // Minimum number of images to trigger OCR
+
         fun postInitialValues(){
             // Disabled, user should not set this value.
             // framesPerSecond = PreferenceManager.getDefaultSharedPreferences(this).getString(getString(R.string.fps), "1.0")?.toDouble()!!
@@ -140,6 +147,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
             offlineUpdates.postValue(0)
             pauseTiming.postValue(300000)
             restrictedApps.postValue(hashSetOf())
+            manualOcr.postValue(false)
         }
     }
 
@@ -159,6 +167,8 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
     private var consecutiveErrors = AtomicInteger(0)
     var moveForward = true
     private var screenshotJob: Job? = null
+    var ocrSubmitted = false
+
 
     // Create an exception handler for coroutines
     private val errorHandler = CoroutineExceptionHandler { _, exception ->
@@ -175,6 +185,9 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
 
     @Inject
     lateinit var screenCollectorSvc: ScreenCollectorSvc
+
+    @Inject
+    lateinit var recognize: Recognize
 
     var user = UserEntity()
     var currentAppInUse = AppInfo()
@@ -281,7 +294,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                             resultCode = newResultCode
                             resultData = newData
 
-                            // setupMediaProjection(newResultCode, newData)
+                            setupMediaProjection(newResultCode, newData)
                             startCapturing()
                         } else {
                             Timber.e("Invalid result code or missing data for projection restart")
@@ -305,7 +318,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                             resultData = newData
 
                             setupMediaProjection(newResultCode, newData)
-                            startCapturing()
+                            // startCapturing()
                         } else {
                             CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("MEDIA_PROJECTION", "Invalid result code or missing data for initial start") }
                             Timber.e("Invalid result code or missing data for initial start")
@@ -468,7 +481,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
 
                 // Load app data with timeout and error handling
                 try {
-                    withTimeout(5000) {
+                    withTimeout(30000) {
                         val allApps = withContext(Dispatchers.Default) {
                             try {
                                 generalOperationsRepository.getALlApps()
@@ -501,6 +514,12 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                 // Start screenshot loop with error handling
                 screenshotJob = launch(errorHandler) {
                     while (isRunning.value == true && isActive) {
+
+                        if (manualOcr.value == true && !ocrSubmitted) {
+                            ocrSubmitted = true
+                            beginOcr()
+                        }
+
                         if (!isScreenLocked.get()) {
                             try {
                                 takeScreenshot()
@@ -621,26 +640,21 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                     return@withTimeout
                 }
 
-                val image = withContext(Dispatchers.IO) {
-                    imageReader?.acquireLatestImage()
-                } ?: run {
-                    Timber.e("Failed to acquire image, imageReader returned null")
-                    return@withTimeout
-                }
+//                val image = withContext(Dispatchers.IO) {
+//                    imageReader?.acquireLatestImage()
+//                } ?: run {
+//                    Timber.e("Failed to acquire image, imageReader returned null")
+//                    return@withTimeout
+//                }
 
                 try {
                     isMediaProjectionValid = true
-                    saveImageToFile(image, currentAppInUse)
-                } finally {
+//                    saveImageToFile(image, currentAppInUse)
+                    setImageListener(imageReader!!, currentAppInUse)
+                } catch (ex: Exception) {
                     // Always close the image to avoid memory leaks
-                    withContext(Dispatchers.IO) {
-                        try {
-                            image.close()
-                        } catch (e: Exception) {
-                            Timber.e(e, "Error closing image")
-                            CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("TAKE_SCREENSHOT", "${e.message} -> ${e.stackTrace}") }
-                        }
-                    }
+                    ex.record()
+                    generalOperationsRepository.saveLog("TAKE_SCREENSHOT", "${ex.message} -> ${ex.stackTrace}")
                 }
             } catch (e: Exception) {
                 e.record()
@@ -651,8 +665,17 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         }
     }
 
-    private suspend fun saveImageToFile(image: Image, appInfo: AppInfo) {
-        return withContext(Dispatchers.IO) {
+    private suspend fun setImageListener(mImageReader: ImageReader, currentApp: AppInfo) {
+        mImageReader.setOnImageAvailableListener({ image ->
+            val latestImage = image.acquireLatestImage()
+
+            if (latestImage != null) {
+                saveImageToFile(latestImage, currentApp)
+            }
+        }, null)
+    }
+
+    private fun saveImageToFile(image: Image, appInfo: AppInfo) {
             var bitmap: Bitmap? = null
             var fileOutputStream: FileOutputStream? = null
 
@@ -664,10 +687,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                 val rowPadding = rowStride - pixelStride * width
 
                 // Create bitmap
-                bitmap = Bitmap.createBitmap(
-                    width + rowPadding / pixelStride, height,
-                    Bitmap.Config.ARGB_8888
-                )
+                bitmap = createBitmap(width + rowPadding / pixelStride, height)
                 bitmap.copyPixelsFromBuffer(buffer)
 
                 imagesProduced++
@@ -681,7 +701,11 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                 val screenshotData = ScreenshotData.saveScreenshotData(filename, appInfo, sessionId, user)
 
                 try {
-                    screenCollectorSvc.add(screenshotData)
+                    CoroutineScope(Dispatchers.IO).launch {
+                        withTimeout(3000) {
+                            screenCollectorSvc.add(screenshotData)
+                        }
+                    }
                 } catch (e: Exception) {
                     e.record()
                     Timber.e(e, "Error adding screenshot data to collector")
@@ -720,7 +744,6 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
 
                 bitmap?.recycle()
             }
-        }
     }
 
     private fun stopCapturing() {
@@ -789,6 +812,10 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && mediaProjection == null && resultData != null) {
             // showProjectionStoppedNotification()
         }
+
+        if (manualOcr.value == false) {
+            beginOcr()
+        }
     }
 
     override fun onScreenOn() {
@@ -810,6 +837,114 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         }
     }
 
+        /**
+     * Initializes the Tesseract OCR engine if not already initialized.
+     */
+    private fun initializeTesseract() {
+        val dataPath = Assets.getTessDataPath(applicationContext)
+        val language = Assets.language
+
+        recognize.initTesseract(dataPath, language, TessBaseAPI.OEM_LSTM_ONLY)
+    }
+
+    private fun beginOcr() = CoroutineScope(Dispatchers.IO).launch {
+        val screenshots = generalOperationsRepository.getScreenshotsToOcr(1000)
+        Timber.tag(TAG).d("Starting OCR: Processing ${screenshots.size} images.")
+
+        // Only proceed if there are enough images to process
+        if (screenshots.size >= OCR_IMAGE_THRESHOLD && isOlderThanTwoHours(lastOcrTime)) {
+            lastOcrTime = System.currentTimeMillis()
+            try {
+                initializeTesseract()  // Initialize Tesseract for OCR
+                delay(5000)
+
+                val imagesToOcr = generalOperationsRepository.getScreenshotsToOcr(200)
+                recognizeImages(imagesToOcr)  // Process the images in batches
+                ocrSubmitted = false
+
+                if (manualOcr.value == true) {
+                    val firstWorkRequest = OneTimeWorkRequestBuilder<ZipFileWorker>()
+                        .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.SECONDS)
+                        .build()
+
+                    val secondWorkRequest = OneTimeWorkRequestBuilder<UploadWorker>()
+                        .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.SECONDS)
+                        .build()
+
+                            // Chain the work requests to run sequentially
+                    WorkManager.getInstance(this@ScreenshotService)
+                        .beginWith(firstWorkRequest)
+                        .then(secondWorkRequest)
+                        .enqueue()
+                }
+
+                manualOcr.postValue(false)
+                ocrSubmitted = false
+                Timber.tag(TAG).d("Ending OCR.")
+            } catch (ex: Exception) {
+                // handleOcrException(ex)
+                ocrSubmitted = false
+                manualOcr.postValue(false)
+            } finally {
+                System.gc()  // Trigger garbage collection to free memory
+                ocrSubmitted = false
+                manualOcr.postValue(false)
+            }
+        } else {
+            if (manualOcr.value == true) {
+                manualOcr.postValue(false)
+                ocrSubmitted = false
+                Timber.tag(TAG).d("Ending OCR.")
+            }
+            ocrSubmitted = false
+        }
+    }
+
+    private suspend fun recognizeImages(images: List<ScreenshotEntity>) {
+        if (recognize == null || !recognize!!.isInitialized) {
+            Timber.tag(TAG).d("Tesseract is not initialized.")
+            return
+        }
+
+        val startTime = System.currentTimeMillis()
+        var processedCount = 0
+
+        // Process images in batches to manage memory and performance
+        images.chunked(BATCH_SIZE).forEachIndexed { batchIndex, batch ->
+            Timber.tag(TAG).d("Processing batch ${batchIndex + 1} with ${batch.size} images.")
+            batch.forEach { screenshot ->
+                if (isScreenLocked.get() || manualOcr.value == true) {
+                    processScreenshot(screenshot)
+                    processedCount++
+                    WorkerProgressManager.updateProgress("Processed $processedCount images of ${images.size}.")
+                }
+            }
+        }
+
+        val endTime = System.currentTimeMillis()
+        Timber.d("OCR completed for $processedCount images in ${endTime - startTime} ms.")
+    }
+
+    private suspend fun processScreenshot(screenshot: ScreenshotEntity) {
+        try {
+            Timber.tag(TAG).d("Processing image: ${screenshot.filePath}")
+            if (recognize.processImage(screenshot)) {
+                generalOperationsRepository.setScreenToOcrComplete(screenshot)
+            } else {
+                logOcrFailure(screenshot.filePath, "")
+            }
+        } catch (ex: Exception) {
+            ex.record()
+            Timber.tag(TAG).w("Error processing image: ${screenshot.filePath}, ${ex.message}")
+            logOcrFailure(screenshot.filePath, "Error processing image: ${screenshot.filePath}, ${ex.stackTrace}")
+        }
+    }
+
+    private suspend fun logOcrFailure(filePath: String?, msg: String) {
+        Timber.tag(TAG).w("Could not process OCR for file: $filePath")
+        generalOperationsRepository.saveLog("OCRProcess", "Could not process OCR for filePath $filePath -> $msg")
+    }
+
     /**
      * Launches a coroutine to save all session segments in the background.
      */
@@ -817,5 +952,19 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         CoroutineScope(Dispatchers.IO).launch {
             generalOperationsRepository.saveAllSessionSegments()
         }
+    }
+
+    /**
+     * Checks if the provided timestamp is older than 5 minutes compared to the current time.
+     *
+     * @param timestamp The timestamp to check, in milliseconds since epoch
+     * @return true if the timestamp is more than 5 minutes old, false otherwise
+     */
+    fun isOlderThanTwoHours(timestamp: Long): Boolean {
+        val fiveMinutesInMillis = 2 * 60 * 60 * 1000L // 5 minutes in milliseconds
+        val currentTime = System.currentTimeMillis()
+        val elapsedTime = currentTime - timestamp
+
+        return elapsedTime > fiveMinutesInMillis
     }
 }

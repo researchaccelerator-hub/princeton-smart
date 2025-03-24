@@ -276,7 +276,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/inter_extrabold"
                     android:gravity="center"
-                    android:text="The recording button below controls visual screen-recording only. Separate ongoing recording of all text on-screen (accessibility permissions) and apps (app usage permission) continue, and can be turned off by revoking the Accessibility permission and App Usage permission in the settings menu."
+                    android:text="The recording button below controls visual screen-recording only. Separate ongoing recording of all text on-screen (accessibility permissions) and apps (app usage permission) continue, and can be turned off by revoking the Accessibility permission and App Usage permission in your device’s settings menu."
                     android:textSize="14sp" />
             </LinearLayout>
         </LinearLayout>

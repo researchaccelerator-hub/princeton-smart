@@ -120,7 +120,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         private const val SCREENSHOT_INTERVAL_MS = 5000L
         const val RESTART_NOTIFICATION_ID = 1338
         private const val MAX_RETRY_ATTEMPTS = 3
-        private const val SCREENSHOT_TIMEOUT_MS = 5000L  // 5 seconds timeout for screenshot operations
+        private const val SCREENSHOT_TIMEOUT_MS = 300000L  // 5 seconds timeout for screenshot operations
         private const val ERROR_NOTIFICATION_ID = 1339
         val isRunning = MutableLiveData<Boolean>()
         // Action for restarting media projection
@@ -158,7 +158,6 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
     private var imageReader: ImageReader? = null
     private var handler: Handler? = null
     private var handlerThread: Thread? = null
-    private var threadLooper: Looper? = null
     private var width = 0
     private var height = 0
     private var density = 0
@@ -168,6 +167,9 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
     var moveForward = true
     private var screenshotJob: Job? = null
     var ocrSubmitted = false
+    private var captureThread: Thread? = null
+    private var threadLooper: Looper? = null
+    var mHandler: Handler? = null
 
 
     // Create an exception handler for coroutines
@@ -225,6 +227,20 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
             // Register screen state receiver
             screenStateReceiver = ScreenStateReceiver(this)
             screenStateReceiver?.register(this)
+
+            // Only start if not already running
+            if (captureThread == null || !captureThread!!.isAlive) {
+                // Start capture handling thread for imageAvailableListener
+                captureThread = object : Thread() {
+                    override fun run() {
+                        Looper.prepare()
+                        threadLooper = Looper.myLooper() // Store reference to this thread's looper
+                        mHandler = Handler(threadLooper!!) // Use this thread's looper, not main looper
+                        Looper.loop()
+                    }
+                }
+                captureThread!!.start()
+            }
         } catch (e: Exception) {
             Timber.e(e, "Error in onCreate")
             stopSelf()
@@ -318,7 +334,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                             resultData = newData
 
                             setupMediaProjection(newResultCode, newData)
-                            // startCapturing()
+                            startCapturing()
                         } else {
                             CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("MEDIA_PROJECTION", "Invalid result code or missing data for initial start") }
                             Timber.e("Invalid result code or missing data for initial start")
@@ -589,18 +605,18 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                 return false
             }
 
-            // Create image reader to capture screenshots
-            imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
+//            // Create image reader to capture screenshots
+//            imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
+//
+//            // Create virtual display
+//            virtualDisplay = mediaProjection?.createVirtualDisplay(
+//                "ScreenCapture",
+//                width, height, density,
+//                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+//                imageReader?.surface, null, null
+//            )
 
-            // Create virtual display
-            virtualDisplay = mediaProjection?.createVirtualDisplay(
-                "ScreenCapture",
-                width, height, density,
-                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                imageReader?.surface, null, null
-            )
-
-            return virtualDisplay != null
+            return true
         } catch (e: Exception) {
             e.record()
             isMediaProjectionValid = false
@@ -639,18 +655,42 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                     }
                     return@withTimeout
                 }
+                // Create image reader to capture screenshots
+                imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
 
-//                val image = withContext(Dispatchers.IO) {
-//                    imageReader?.acquireLatestImage()
-//                } ?: run {
-//                    Timber.e("Failed to acquire image, imageReader returned null")
-//                    return@withTimeout
+                // Create virtual display
+                virtualDisplay = virtualDisplay ?: projection?.createVirtualDisplay(
+                    System.currentTimeMillis().toString(),
+                    width, height, density,
+                    0,
+                    imageReader?.surface, null, mHandler
+                )
+
+                delay(1000)
+
+                // setImageListener(imageReader!!, currentAppInUse)
+
+                var image: Image? = withContext(Dispatchers.IO) {
+                    imageReader?.acquireLatestImage()
+                } ?: run {
+                    Timber.e("Failed to acquire image, imageReader returned null")
+                    imageReader?.close()
+                    return@withTimeout
+                }
+
+//                var retry = 3
+//                while (image == null && retry > 0) {
+//                    delay(300)
+//
+//                    image = imageReader?.acquireLatestImage()
+//                    retry = retry - 1
 //                }
 
                 try {
                     isMediaProjectionValid = true
-//                    saveImageToFile(image, currentAppInUse)
-                    setImageListener(imageReader!!, currentAppInUse)
+                    saveImageToFile(image!!, currentAppInUse)
+                    //imageReader?.close()
+                    // setImageListener(imageReader!!, currentAppInUse)
                 } catch (ex: Exception) {
                     // Always close the image to avoid memory leaks
                     ex.record()
@@ -672,7 +712,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
             if (latestImage != null) {
                 saveImageToFile(latestImage, currentApp)
             }
-        }, null)
+        }, mHandler)
     }
 
     private fun saveImageToFile(image: Image, appInfo: AppInfo) {

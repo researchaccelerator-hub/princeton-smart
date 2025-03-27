@@ -2,9 +2,11 @@ package com.screenlake.recorder.authentication
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.widget.Toast
 import androidx.lifecycle.MutableLiveData
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
+import com.amazonaws.mobile.auth.core.internal.util.ThreadUtils.runOnUiThread
 import com.amplifyframework.auth.AuthException
 import com.amplifyframework.auth.AuthUserAttributeKey
 import com.amplifyframework.auth.cognito.AWSCognitoAuthSession
@@ -12,7 +14,10 @@ import com.amplifyframework.auth.options.AuthSignUpOptions
 import com.amplifyframework.core.Amplify
 import com.screenlake.data.model.EmailPasswordData
 import com.screenlake.data.repository.AmplifyRepository
+import com.screenlake.recorder.services.util.CognitoErrorHelper
 import com.screenlake.ui.fragments.onboarding.RegisterConfirmPassword
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.lang.ref.WeakReference
 import java.security.MessageDigest
@@ -79,7 +84,7 @@ class CloudAuthentication @Inject constructor(
      *
      * @param password The password.
      */
-    fun signUp(password: String) {
+    fun signUp(password: String, context: Context) {
         val options = AuthSignUpOptions.builder()
             .userAttribute(AuthUserAttributeKey.email(), amplifyRepository.email)
             .build()
@@ -92,6 +97,10 @@ class CloudAuthentication @Inject constructor(
             { error ->
                 RegisterConfirmPassword.isRegisteredIn.postValue(false)
                 RegisterConfirmPassword.loginErrorMsg.postValue(error.message)
+                val errorMessage = CognitoErrorHelper.getReadableMessage(error)
+                runOnUiThread {
+                    Toast.makeText(context, errorMessage, Toast.LENGTH_LONG).show()
+                }
                 Timber.e("Sign up error: $error")
             }
         )

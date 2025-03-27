@@ -17,6 +17,7 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.MutableLiveData
 import androidx.navigation.findNavController
 import androidx.preference.PreferenceManager
@@ -27,6 +28,7 @@ import com.screenlake.recorder.services.ScreenRecordService
 import com.screenlake.recorder.services.ScreenshotService
 import com.screenlake.recorder.utilities.PermissionHelper
 import com.screenlake.recorder.viewmodels.MainViewModel
+import com.screenlake.recorder.viewmodels.RestrictedAppViewModel
 import com.screenlake.ui.fragments.ScreenRecordFragment
 import dagger.hilt.android.AndroidEntryPoint
 import timber.log.Timber
@@ -36,6 +38,7 @@ class MainActivity : AppCompatActivity(), ScreenRecordFragment.MediaProjectionCa
 
     private lateinit var binding: ActivityMainBinding // ViewBinding instance
     private val mainViewModel: MainViewModel by viewModels()
+    private val viewModel: RestrictedAppViewModel by viewModels()
     private lateinit var manager: MediaProjectionManager
     private val MEDIA_PROJECTION_REQUEST_CODE = 1002
 
@@ -81,6 +84,8 @@ class MainActivity : AppCompatActivity(), ScreenRecordFragment.MediaProjectionCa
 //                putBoolean("restartProjection", restartProjection)
 //            }
 //        }
+
+        viewModel
 
         // Initialize ViewBinding
         binding = ActivityMainBinding.inflate(layoutInflater)

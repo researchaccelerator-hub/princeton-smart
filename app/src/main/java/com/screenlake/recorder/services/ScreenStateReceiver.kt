@@ -38,8 +38,11 @@ class ScreenStateReceiver(private val callback: ScreenStateCallback) : Broadcast
         when (intent.action) {
             Intent.ACTION_SCREEN_OFF -> {
                 // showProjectionStoppedNotification(context)
-                Log.d(TAG, "Screen OFF")
-                callback.onScreenOff()
+                if (ScreenshotService.isActionScreenOff.value == true) {
+                    Log.d(TAG, "Screen OFF")
+                    callback.onScreenOff()
+                    ScreenshotService.isActionScreenOff.postValue(false)
+                }
             }
             Intent.ACTION_SCREEN_ON -> {
                 Log.d(TAG, "Screen ON")
@@ -48,6 +51,7 @@ class ScreenStateReceiver(private val callback: ScreenStateCallback) : Broadcast
             Intent.ACTION_USER_PRESENT -> {
                 Log.d(TAG, "Screen UNLOCKED")
                 callback.onScreenUnlocked()
+                ScreenshotService.isActionScreenOff.postValue(true)
             }
         }
     }

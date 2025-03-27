@@ -279,7 +279,7 @@
     <string name="password_must_include_a_special_character">Password must include a special character</string>
     <string name="password_must_be_8_characters_long">Password must be 8 characters long</string>
     <string name="for_screenlake_to_work_properly_we_need_you_to_accept_accessibility_settings">For SRK to work properly, we need you to accept Accessibility Settings.</string>
-    <string name="screenlake">Screenlake</string>
+    <string name="screenlake">SRK</string>
     <string name="agree">Agree</string>
     <string name="are_you_sure_you_want_to_log_out_of_screenlake_this_will_delete_all_user_data_from_the_phone">Are you sure you want to log out of SRK? This will delete all user data from the phone.</string>
     <string name="email_cannot_be_empty">Email cannot be empty</string>

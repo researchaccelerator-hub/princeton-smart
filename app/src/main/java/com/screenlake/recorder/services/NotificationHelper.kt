@@ -34,7 +34,7 @@ class NotificationHelper(private val context: Context) {
 
     fun showNotification(title: String, message: String, notificationId: Int) {
         val builder = NotificationCompat.Builder(context, ConstantSettings.NOTIFICATION_CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_screenlake_logo)
+            .setSmallIcon(R.drawable.logo_just_square_small)
             .setContentTitle(title)
             .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_MAX)

@@ -124,6 +124,9 @@ class Recognize @Inject constructor(
                         // Handle exceptions that occur inside Tesseract operations
                         Timber.tag(TAG).e(e, "Tesseract operation failed")
 
+                        screenshot.filePath?.let { File(it).delete() }
+                        screenshot.id?.let { generalOperationsRepository.deleteScreenshots(listOf(it)) }
+
                         // If we get here and insideTesseract is still true, we might need to recover
                         if (insideTesseract) {
                             try {

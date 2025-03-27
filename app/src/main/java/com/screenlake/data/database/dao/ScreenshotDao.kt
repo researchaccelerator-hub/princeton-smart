@@ -53,6 +53,9 @@ interface ScreenshotDao {
     @Query("SELECT * FROM screenshot_table where isOcrComplete is 1 and appSegmentId is not NULL ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
     suspend fun getAllScreenshotsSortedByDateWhereOcrIsComplete(limit: Int, offset: Int): List<ScreenshotEntity>
 
+    @Query("SELECT DISTINCT sessionId FROM screenshot_table WHERE appSegmentId IS NULL ORDER BY timestamp DESC")
+    suspend fun getAllSessionsWithoutAppSegments(): List<String>
+
     /**
      * Retrieves a list of Screenshots where OCR is not complete, type is 'SCREENSHOT', and isAppRestricted is false, ordered by timestamp in descending order, limited by the specified number and offset.
      *
@@ -60,7 +63,7 @@ interface ScreenshotDao {
      * @param offset The offset from which to start retrieving Screenshots.
      * @return A list of Screenshots.
      */
-    @Query("SELECT * FROM screenshot_table where isOcrComplete is 0 and type is 'SCREENSHOT' and isAppRestricted is 0 ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+    @Query("SELECT * FROM screenshot_table where isOcrComplete is 0 and type is 'SCREENSHOT' and isAppRestricted is 0 ORDER BY timestamp DESC LIMIT :limit")
     suspend fun getAllScreenshotsSortedByDateWhereOcrIsNotComplete(limit: Int, offset: Int): List<ScreenshotEntity>
 
     /**

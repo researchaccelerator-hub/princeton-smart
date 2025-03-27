@@ -23,6 +23,8 @@ import com.screenlake.recorder.services.util.SharedPreferencesUtil
 import com.screenlake.recorder.utilities.BaseUtility
 import com.screenlake.recorder.viewmodels.UserViewModel
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.lang.ref.WeakReference
@@ -73,6 +75,23 @@ class RegisterLoadingFragment : Fragment() {
         if(!ConstantSettings.IS_PRODUCTION){
             isConfirmed.postValue(true)
         }
+
+        startTimerForTenSeconds()
+    }
+
+    fun startTimerForTenSeconds() {
+        lifecycleScope.launch {
+            // Delay for 10 seconds
+            delay(10000)
+
+            // This code will execute after 10 seconds
+            performAction()
+        }
+    }
+
+    fun performAction() {
+        // Replace this with whatever action you want to perform after 10 seconds
+        findNavController().navigate(R.id.screenlakeInfoFragment)
     }
 
     fun setUpUser(user: UserEntity) = lifecycleScope.launch {

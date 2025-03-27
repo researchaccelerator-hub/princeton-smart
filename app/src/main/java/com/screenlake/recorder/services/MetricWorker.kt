@@ -20,16 +20,12 @@ class MetricWorker(
         val context = this@MetricWorker.applicationContext
         var notificationID = 2
 
-        // Check if accessibility service is enabled
+//        // Check if accessibility service is enabled
         if (!isOlderThanFiveMinutes(ScreenshotService.lastCaptureDate) && !ScreenshotService.isMediaProjectionValid) {
             val notiManager = NotificationHelper(context)
             notiManager.createNotificationChannel()
             NotificationHelper(context).showNotification("Screenlake", "Please re-enable screen recording.", notificationID)
         }
-
-        val notiManager = NotificationHelper(context)
-        notiManager.createNotificationChannel()
-        NotificationHelper(context).showNotification("Screenlake", "Please re-enable screen recording.", notificationID)
 
         // Indicate success
         return Result.success()
@@ -42,7 +38,7 @@ class MetricWorker(
      * @return true if the timestamp is more than 5 minutes old, false otherwise
      */
     fun isOlderThanFiveMinutes(timestamp: Long): Boolean {
-        val fiveMinutesInMillis = 15 * 60 * 1000L // 5 minutes in milliseconds
+        val fiveMinutesInMillis = 2 * 60 * 60 * 1000L // 5 minutes in milliseconds
         val currentTime = System.currentTimeMillis()
         val elapsedTime = currentTime - timestamp
 

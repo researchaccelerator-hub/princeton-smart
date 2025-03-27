@@ -123,13 +123,17 @@ class GeneralOperationsRepository @Inject constructor(
 
         CoroutineScope(Dispatchers.IO).launch { saveSession(currentSession) }
 
-        if (!currentSession.sessionId.isNullOrEmpty()) {
-            val screenshots = getScreenshotsBySessionId(currentSession.sessionId!!)
-            DataTransformation.getAppSegmentData(screenshots).takeIf {
-                it?.appSegments?.isNotEmpty() == true
-            }.apply {
-                this?.let { saveAppSegments(it.appSegments) }
-                this?.let { saveScreenshots(it.screenshots) }
+        val sessionIds = getAllSessionsWithoutAppSegments()
+
+        for (sessionId in sessionIds) {
+            if (sessionId.isNotEmpty()) {
+                val screenshots = getScreenshotsBySessionId(sessionId)
+                DataTransformation.getAppSegmentData(screenshots).takeIf {
+                    it?.appSegments?.isNotEmpty() == true
+                }.apply {
+                    this?.let { saveAppSegments(it.appSegments) }
+                    this?.let { saveScreenshots(it.screenshots) }
+                }
             }
         }
 
@@ -375,6 +379,10 @@ class GeneralOperationsRepository @Inject constructor(
             limit = limit,
             offset = offset
         )
+    }
+
+    suspend fun getAllSessionsWithoutAppSegments(): List<String> {
+        return screenshotDao.getAllSessionsWithoutAppSegments()
     }
 
     suspend fun getLogs(limit: Int, offset: Int): List<LogEventEntity> {

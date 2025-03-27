@@ -81,6 +81,10 @@ class ZipFileWorker @AssistedInject constructor(
         val screenshotCount = withContext(Dispatchers.IO) { generalOperationsRepository.getScreenshotCount() }
         Timber.tag(TAG).d("Found $screenshotCount to zip. Batch is set to ${ConstantSettings.getBatch()}")
 
+        withContext(Dispatchers.IO) {
+            generalOperationsRepository.saveAllSessionSegments()
+        }
+
         val path = (if (testing) file?.path else applicationContext.filesDir?.path) ?: ""
         writeLogsToCsv(path)
 

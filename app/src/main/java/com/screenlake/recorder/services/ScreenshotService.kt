@@ -84,7 +84,9 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
     companion object {
         var lastOcrTime = 0L
         var manualOcr = MutableLiveData<Boolean>()
+        var isActionScreenOff = MutableLiveData<Boolean>()
         var lastCaptureDate = 0L
+        private var imagesProduced = 0
         val isScreenOn = MutableLiveData<Boolean>()
         val isRecording = MutableLiveData<Boolean>()
         val screenshotInterval = MutableLiveData<Long>()
@@ -121,7 +123,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         private const val SCREENSHOT_INTERVAL_MS = 5000L
         const val RESTART_NOTIFICATION_ID = 1338
         private const val MAX_RETRY_ATTEMPTS = 3
-        private const val SCREENSHOT_TIMEOUT_MS = 300000L  // 5 seconds timeout for screenshot operations
+        private const val SCREENSHOT_TIMEOUT_MS = 5000L  // 5 seconds timeout for screenshot operations
         private const val ERROR_NOTIFICATION_ID = 1339
         val isRunning = MutableLiveData<Boolean>()
         // Action for restarting media projection
@@ -136,7 +138,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
 
         private const val TAG = "OcrWorker"
         private const val BATCH_SIZE = 10  // Number of images to process per batch
-        private const val OCR_IMAGE_THRESHOLD = 2  // Minimum number of images to trigger OCR
+        private const val OCR_IMAGE_THRESHOLD = 10  // Minimum number of images to trigger OCR
 
         fun postInitialValues(){
             // Disabled, user should not set this value.
@@ -149,6 +151,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
             pauseTiming.postValue(300000)
             restrictedApps.postValue(hashSetOf())
             manualOcr.postValue(false)
+            isActionScreenOff.postValue(false)
         }
     }
 
@@ -236,17 +239,17 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
 
     private fun pauseRecordingForMinutes()
     {
-        if(ScreenRecordService.Companion.isRecording.value == true && ScreenRecordService.Companion.isPaused.value!!){
-            countDownTimer = object : CountDownTimer(ScreenRecordService.Companion.pauseTiming.value!!, 1000)  {
+        if(isRunning.value == true && isPaused.value!!){
+            countDownTimer = object : CountDownTimer(pauseTiming.value!!, 1000)  {
 
                 override fun onTick(millisUntilFinished: Long) {
-                    if(ScreenRecordService.Companion.isPaused.value == false){
+                    if(isPaused.value == false){
                         countDownTimer?.cancel()
 
-                        if(ScreenRecordService.Companion.isRecording.value == true) ScreenRecordService.Companion.pausedTimer.postValue("recording")
+                        if(isRunning.value == true) pausedTimer.postValue("recording")
 
                     }else{
-                        ScreenRecordService.Companion.pausedTimer.postValue("resuming in: " + ""+String.format("%d min, %d sec",
+                        pausedTimer.postValue("resuming in: " + ""+String.format("%d min, %d sec",
                             TimeUnit.MILLISECONDS.toMinutes(millisUntilFinished),
                             TimeUnit.MILLISECONDS.toSeconds(millisUntilFinished) -
                                     TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(millisUntilFinished))))
@@ -254,26 +257,36 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                 }
 
                 override fun onFinish() {
-                    ScreenRecordService.Companion.isPaused.postValue(false)
-                    ScreenRecordService.Companion.pausedTimer.postValue("recording")
+                    isPaused.postValue(false)
+                    pausedTimer.postValue("recording")
                     countDownTimer = null
                 }
             }
 
             countDownTimer?.start()
-        }else if(ScreenRecordService.Companion.isPaused.value != null && !ScreenRecordService.Companion.isPaused.value!!){
+        }else if(isPaused.value != null && !isPaused.value!!){
             countDownTimer?.cancel()
-            ScreenRecordService.Companion.pausedTimer.postValue("")
-            ScreenRecordService.Companion.isPaused.postValue(false)
+            pausedTimer.postValue("")
+            isPaused.postValue(false)
         }
+    }
+
+    private fun handlePauseService() {
+        pauseRecordingForMinutes()
+        Timber.d("Service paused")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         try {
+            postInitialValues()
             if (intent != null) {
                 when (intent.action) {
+                    ACTION_STOP_SERVICE -> stopCapturing()
+                    ACTION_PAUSE_SERVICE -> handlePauseService()
+
                     ACTION_RESTART_PROJECTION -> {
                         // Media projection permission has been re-granted
+                        isRunning.postValue(true)
                         Timber.d("Restarting media projection")
                         val newResultCode = intent.getIntExtra(EXTRA_RESULT_CODE, Activity.RESULT_CANCELED)
                         val newData = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -292,11 +305,12 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                             startCapturing()
                         } else {
                             Timber.e("Invalid result code or missing data for projection restart")
-                            showErrorNotification("Could not restart screen capture", "Permission data is invalid")
+                            // showErrorNotification("Could not restart screen capture", "Permission data is invalid")
                         }
                     }
                     else -> {
                         // Initial start of the service
+                        isRunning.postValue(true)
                         val newResultCode = intent.getIntExtra(EXTRA_RESULT_CODE, Activity.RESULT_CANCELED)
                         val newData = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                             intent.getParcelableExtra(EXTRA_DATA, Intent::class.java)
@@ -313,6 +327,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                             setupMediaProjection(newResultCode, newData)
                             startCapturing()
                         } else {
+                            CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("MEDIA_PROJECTION", "Invalid result code or missing data for initial start") }
                             Timber.e("Invalid result code or missing data for initial start")
                             showErrorNotification("Could not start screen capture", "Permission data is invalid")
                         }
@@ -321,6 +336,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
             }
         } catch (e: Exception) {
             Timber.e(e, "Error in onStartCommand")
+            CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("MEDIA_PROJECTION", "${e.message} -> ${e.stackTrace}") }
             showErrorNotification("Service Start Error", "Could not start screenshot service: ${e.message}")
         }
         return START_NOT_STICKY
@@ -336,7 +352,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Screenshot Service")
             .setContentText("Taking screenshots every 3 seconds")
-            .setSmallIcon(R.drawable.ic_menu_camera)
+            .setSmallIcon(com.screenlake.R.drawable.logo_just_square_small)
             .setContentIntent(pendingIntent)
             .build()
 
@@ -348,11 +364,13 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
             }
         } catch (e: Exception) {
             Timber.e(e, "Error starting foreground service")
+            CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("MEDIA_PROJECTION", "${e.message} -> ${e.stackTrace}") }
             // Fallback to starting foreground without type
             try {
                 startForeground(NOTIFICATION_ID, notification)
             } catch (e2: Exception) {
                 Timber.e(e2, "Critical error starting foreground service")
+                CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("MEDIA_PROJECTION", "${e.message} -> ${e.stackTrace}") }
                 stopSelf()
             }
         }
@@ -377,12 +395,15 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                         coroutineScope.launch {
                             stopCapturing()
                             showProjectionStoppedNotification()
+                            isMediaProjectionValid = false
                         }
                     }
                 }, handler)
             }
         } catch (e: Exception) {
             Timber.e(e, "Error setting up media projection")
+            isMediaProjectionValid = false
+            CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("MEDIA_PROJECTION", "${e.message} -> ${e.stackTrace}") }
             showErrorNotification("Setup Error", "Failed to setup screen capture: ${e.message}")
         }
     }
@@ -394,15 +415,16 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
 
             val notification = NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Screenshot Service Stopped")
-                .setContentText("Media projection permission revoked. Tap to restart.")
+                .setContentText("Tap to restart.")
                 .setPriority(NotificationCompat.PRIORITY_MAX)
-                .setSmallIcon(R.drawable.ic_menu_camera)
+                .setSmallIcon(com.screenlake.R.drawable.logo_just_square_small)
                 .setContentIntent(NotificationHelper(this).getMainActivityPendingIntent())
                 .setAutoCancel(true)
                 .build()
 
             notificationManager.notify(RESTART_NOTIFICATION_ID, notification)
         } catch (e: Exception) {
+            CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("PROJECTION_NOTIFICATION", "${e.message} -> ${e.stackTrace}") }
             Timber.e(e, "Error showing projection stopped notification")
         }
     }
@@ -436,6 +458,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
             notificationManager.notify(ERROR_NOTIFICATION_ID, notification)
         } catch (e: Exception) {
             Timber.e(e, "Error showing error notification")
+            CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("PROJECTION_NOTIFICATION", "${e.message} -> ${e.stackTrace}") }
         }
     }
 
@@ -465,29 +488,33 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
 
                 // Load app data with timeout and error handling
                 try {
-                    withTimeout(TimeUnit.SECONDS.toMillis(10)) {
-                        val allApps = withContext(Dispatchers.Default) {
-                            try {
-                                generalOperationsRepository.getALlApps()
-                            } catch (e: Exception) {
-                                Timber.e(e, "Error fetching apps")
-                                emptyList()
-                            }
-                        }
-
-                        ScreenRecordService.Companion.appNameVsPackageName = allApps.associate { it.packageName to it.appName }
-
-                        ScreenRecordService.Companion.user = withContext(Dispatchers.Default) {
-                            try {
-                                generalOperationsRepository.getUser()
-                            } catch (e: Exception) {
-                                Timber.e(e, "Error fetching user")
-                                UserEntity() // Fallback to empty user
-                            }
+                    val allApps = withContext(Dispatchers.Default) {
+                        try {
+                            generalOperationsRepository.getALlApps()
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error fetching apps")
+                            emptyList()
                         }
                     }
+
+                    val restricted = allApps.filter { it.isUserRestricted }.map { it.appName }.toHashSet()
+                    restrictedApps.postValue(restricted)
+
+                    appNameVsPackageName = allApps.associate { it.packageName to it.appName }
+
+                    user = withContext(Dispatchers.Default) {
+                        try {
+                            generalOperationsRepository.getUser()
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error fetching user")
+                            UserEntity() // Fallback to empty user
+                        }
+                    }
+
+                    startProcessingWithRestarts()
                 } catch (e: Exception) {
                     Timber.e(e, "Error loading initial data with timeout")
+                    CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("START_CAPTURE", "${e.message} -> ${e.stackTrace}") }
                     // Continue anyway, will use empty data
                 }
 
@@ -505,27 +532,31 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         coroutineScope.launch {
             while (isActive) {
                 try {
-                    // Try to execute the operation with a timeout
-                    withTimeout(SCREENSHOT_TIMEOUT_MS) {
-                        // Your operation that might timeout
-                        screenshotJob = launch(errorHandler) {
-                            while (isRunning.value == true && isActive) {
-                                if (!isScreenLocked.get()) {
-                                    try {
-                                        takeScreenshot()
-                                        // Reset consecutive errors on success
-                                        if (consecutiveErrors.get() > 0) {
-                                            consecutiveErrors.set(0)
-                                        }
-                                    } catch (e: Exception) {
-                                        handleScreenshotError(e)
-                                    }
-                                } else {
-                                    Timber.d("Screen locked, skipping screenshot")
-                                }
-
-                                delay(SCREENSHOT_INTERVAL_MS)
+                    // Your operation that might timeout
+                    screenshotJob = launch(errorHandler) {
+                        while (isRunning.value == true && isActive) {
+                            if (manualOcr.value == true && !ocrSubmitted) {
+                                ocrSubmitted = true
+                                beginOcr()
                             }
+                            if (!isScreenLocked.get()) {
+                                try {
+                                    withTimeout(SCREENSHOT_TIMEOUT_MS){
+                                        takeScreenshot()
+                                    }
+
+                                    // Reset consecutive errors on success
+                                    if (consecutiveErrors.get() > 0) {
+                                        consecutiveErrors.set(0)
+                                    }
+                                } catch (e: Exception) {
+                                    // handleScreenshotError(e)
+                                }
+                            } else {
+                                Timber.d("Screen locked, skipping screenshot")
+                            }
+
+                            delay(SCREENSHOT_INTERVAL_MS)
                         }
                     }
 
@@ -535,10 +566,10 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                 } catch (e: TimeoutCancellationException) {
                     // Timeout occurred, log it
                     Timber.d("Operation timed out, restarting...")
-
+                    // imageReader?.close()
                     // Optional: add a delay before restarting
                     delay(1000)
-
+                    // resetCapturing()
                     // Continue the loop to restart the operation
                     continue
                 }
@@ -571,6 +602,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                     }
                 } catch (e: Exception) {
                     Timber.e(e, "Error during error recovery")
+                    CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("SCREENSHOT_ERROR", "${e.message} -> ${e.stackTrace}") }
                     showErrorNotification(
                         "Critical Error",
                         "Service needs to be restarted manually: ${e.message}"
@@ -623,6 +655,9 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                     true
                 )
 
+                imagesProduced++
+                uploadCountMsg.postValue(imagesProduced)
+
                 try {
                     screenCollectorSvc.add(screenshotData)
                 } catch (e: Exception) {
@@ -631,7 +666,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                 return
             }
 
-            val image = captureScreenshotWithRetry(isActive, 2, 500)
+            val image = captureScreenshotWithRetry(2, 500)
 
             if (image == null) {
                 Timber.d("No image available, skipping")
@@ -656,10 +691,10 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         }
     }
 
-    private suspend fun captureScreenshotWithRetry(isActive: Boolean, maxRetries: Int = 5, delayMs: Long = 500) : Image? {
+    private suspend fun captureScreenshotWithRetry(maxRetries: Int = 5, delayMs: Long = 500) : Image? {
         var attempts = 0
 
-        while (attempts < maxRetries && isActive) {
+        while (attempts < maxRetries) {
             try {
                 val image = imageReader?.acquireLatestImage()
 
@@ -712,9 +747,13 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                     ScreenRecordService.Companion.sessionId, user)
 
                 try {
-                    screenCollectorSvc.add(screenshotData)
+                    CoroutineScope(Dispatchers.IO).launch {
+                        withTimeout(3000) {
+                            screenCollectorSvc.add(screenshotData)
+                        }
+                    }
                 } catch (e: Exception) {
-                    Timber.e(e, "Error adding screenshot data to collector")
+                    Timber.e(e, "Error adding screenshot data to collector ${e.message}")
                 }
 
                 val screenshotsDir = File(filename)
@@ -724,12 +763,17 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 50, fileOutputStream)
                 Timber.d("Screenshot saved: ${screenshotsDir.absolutePath}")
             } catch (e: IOException) {
+                e.record()
+                CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("IMAGE_READER", "${e.message} -> ${e.stackTrace}") }
                 Timber.e(e, "I/O error saving screenshot")
                 throw e
             } catch (e: OutOfMemoryError) {
+                CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("IMAGE_READER", "${e.message} -> ${e.stackTrace}") }
                 Timber.e(e, "Out of memory when creating bitmap")
                 throw e
             } catch (e: Exception) {
+                e.record()
+                CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("IMAGE_READER", "${e.message} -> ${e.stackTrace}") }
                 Timber.e(e, "Error saving screenshot")
                 throw e
             } finally {
@@ -737,6 +781,8 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                 try {
                     fileOutputStream?.close()
                 } catch (e: IOException) {
+                    e.record()
+                    CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("IMAGE_READER", "${e.message} -> ${e.stackTrace}") }
                     Timber.e(e, "Error closing FileOutputStream")
                 }
 
@@ -744,6 +790,29 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
             }
         }
     }
+
+    private fun resetCapturing() {
+//        try {
+//            virtualDisplay?.release()
+//        } catch (e: Exception) {
+//            e.record()
+//            CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("STOP_CAPTURE_RESET", "${e.message} -> ${e.stackTrace}") }
+//            Timber.e(e, "Error releasing virtual display")
+//        }
+//        virtualDisplay = null
+
+        try {
+            imageReader?.close()
+        } catch (e: Exception) {
+            CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("STOP_CAPTURE_RESET", "${e.message} -> ${e.stackTrace}") }
+            e.record()
+            Timber.e(e, "Error closing image reader")
+        }
+        imageReader = null
+
+        imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
+    }
+
 
     private fun stopCapturing() {
         isRunning.postValue(false)
@@ -755,6 +824,8 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         try {
             virtualDisplay?.release()
         } catch (e: Exception) {
+            e.record()
+            CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("STOP_CAPTURE", "${e.message} -> ${e.stackTrace}") }
             Timber.e(e, "Error releasing virtual display")
         }
         virtualDisplay = null
@@ -762,6 +833,8 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         try {
             imageReader?.close()
         } catch (e: Exception) {
+            CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("STOP_CAPTURE", "${e.message} -> ${e.stackTrace}") }
+            e.record()
             Timber.e(e, "Error closing image reader")
         }
         imageReader = null
@@ -769,13 +842,17 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         try {
             mediaProjection?.stop()
         } catch (e: Exception) {
+            e.record()
+            CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("STOP_CAPTURE", "${e.message} -> ${e.stackTrace}") }
             Timber.e(e, "Error stopping media projection")
         }
         mediaProjection = null
+        isMediaProjectionValid = false
     }
 
     override fun onDestroy() {
         try {
+            isMediaProjectionValid = false
             screenStateReceiver?.unregister(this)
         } catch (e: Exception) {
             Timber.e(e, "Error unregistering screen state receiver")
@@ -787,6 +864,8 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         try {
             coroutineScope.cancel() // Cancel all coroutines when service is destroyed
         } catch (e: Exception) {
+            e.record()
+            CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("ON_DESTROY", "${e.message} -> ${e.stackTrace}") }
             Timber.e(e, "Error cancelling coroutine scope")
         }
 
@@ -800,7 +879,11 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         saveSessionSegmentsInBackground()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && mediaProjection == null && resultData != null) {
-            // showProjectionStoppedNotification()
+            showProjectionStoppedNotification()
+        }
+
+        if (manualOcr.value == false) {
+            beginOcr()
         }
     }
 
@@ -823,6 +906,118 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         }
     }
 
+        /**
+     * Initializes the Tesseract OCR engine if not already initialized.
+     */
+    private fun initializeTesseract() {
+        val dataPath = Assets.getTessDataPath(applicationContext)
+        val language = Assets.language
+
+        recognize.initTesseract(dataPath, language, TessBaseAPI.OEM_LSTM_ONLY)
+    }
+
+    private fun beginOcr() = CoroutineScope(Dispatchers.IO).launch {
+        val screenshots = generalOperationsRepository.getScreenshotsToOcr(1000)
+        Timber.tag(TAG).d("Starting OCR: Processing ${screenshots.size} images.")
+
+        withContext(Dispatchers.IO) {
+            generalOperationsRepository.saveAllSessionSegments()
+        }
+
+        // Only proceed if there are enough images to process
+        if (screenshots.size >= OCR_IMAGE_THRESHOLD && isOlderThanTwoHours(lastOcrTime) || manualOcr.value == true) {
+            lastOcrTime = System.currentTimeMillis()
+            try {
+                initializeTesseract()  // Initialize Tesseract for OCR
+                delay(5000)
+
+                val imagesToOcr = generalOperationsRepository.getScreenshotsToOcr(200)
+                recognizeImages(imagesToOcr)  // Process the images in batches
+                ocrSubmitted = false
+
+                if (manualOcr.value == true) {
+                    val firstWorkRequest = OneTimeWorkRequestBuilder<ZipFileWorker>()
+                        .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.SECONDS)
+                        .build()
+
+                    val secondWorkRequest = OneTimeWorkRequestBuilder<UploadWorker>()
+                        .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.SECONDS)
+                        .build()
+
+                            // Chain the work requests to run sequentially
+                    WorkManager.getInstance(this@ScreenshotService)
+                        .beginWith(firstWorkRequest)
+                        .then(secondWorkRequest)
+                        .enqueue()
+                }
+
+                manualOcr.postValue(false)
+                ocrSubmitted = false
+                Timber.tag(TAG).d("Ending OCR.")
+            } catch (ex: Exception) {
+                // handleOcrException(ex)
+                ocrSubmitted = false
+                manualOcr.postValue(false)
+            } finally {
+                System.gc()  // Trigger garbage collection to free memory
+                ocrSubmitted = false
+                manualOcr.postValue(false)
+            }
+        } else {
+            if (manualOcr.value == true) {
+                manualOcr.postValue(false)
+                ocrSubmitted = false
+                Timber.tag(TAG).d("Ending OCR.")
+            }
+            ocrSubmitted = false
+        }
+    }
+
+    private suspend fun recognizeImages(images: List<ScreenshotEntity>) {
+        if (recognize == null || !recognize!!.isInitialized) {
+            Timber.tag(TAG).d("Tesseract is not initialized.")
+            return
+        }
+
+        val startTime = System.currentTimeMillis()
+        var processedCount = 0
+
+        // Process images in batches to manage memory and performance
+        images.chunked(BATCH_SIZE).forEachIndexed { batchIndex, batch ->
+            Timber.tag(TAG).d("Processing batch ${batchIndex + 1} with ${batch.size} images.")
+            batch.forEach { screenshot ->
+                if (isScreenLocked.get() || manualOcr.value == true) {
+                    processScreenshot(screenshot)
+                    processedCount++
+                    WorkerProgressManager.updateProgress("Processed $processedCount images of ${images.size}.")
+                }
+            }
+        }
+
+        val endTime = System.currentTimeMillis()
+        Timber.d("OCR completed for $processedCount images in ${endTime - startTime} ms.")
+    }
+
+    private suspend fun processScreenshot(screenshot: ScreenshotEntity) {
+        try {
+            Timber.tag(TAG).d("Processing image: ${screenshot.filePath}")
+            if (recognize.processImage(screenshot)) {
+                generalOperationsRepository.setScreenToOcrComplete(screenshot)
+            } else {
+                logOcrFailure(screenshot.filePath, "")
+            }
+        } catch (ex: Exception) {
+            ex.record()
+            Timber.tag(TAG).w("Error processing image: ${screenshot.filePath}, ${ex.message}")
+            logOcrFailure(screenshot.filePath, "Error processing image: ${screenshot.filePath}, ${ex.stackTrace}")
+        }
+    }
+
+    private suspend fun logOcrFailure(filePath: String?, msg: String) {
+        Timber.tag(TAG).w("Could not process OCR for file: $filePath")
+        generalOperationsRepository.saveLog("OCRProcess", "Could not process OCR for filePath $filePath -> $msg")
+    }
+
     /**
      * Launches a coroutine to save all session segments in the background.
      */
@@ -830,5 +1025,19 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         CoroutineScope(Dispatchers.IO).launch {
             generalOperationsRepository.saveAllSessionSegments()
         }
+    }
+
+    /**
+     * Checks if the provided timestamp is older than 5 minutes compared to the current time.
+     *
+     * @param timestamp The timestamp to check, in milliseconds since epoch
+     * @return true if the timestamp is more than 5 minutes old, false otherwise
+     */
+    fun isOlderThanTwoHours(timestamp: Long): Boolean {
+        val fiveMinutesInMillis = 2 * 60 * 60 * 1000L // 5 minutes in milliseconds
+        val currentTime = System.currentTimeMillis()
+        val elapsedTime = currentTime - timestamp
+
+        return elapsedTime > fiveMinutesInMillis
     }
 }

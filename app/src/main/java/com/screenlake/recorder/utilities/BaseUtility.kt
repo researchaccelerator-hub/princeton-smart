@@ -61,7 +61,7 @@ object BaseUtility {
         return appInfo
     }
 
-    private fun getAppNameFromPackage(context: Context, packageName: String): String {
+    fun getAppNameFromPackage(context: Context, packageName: String): String {
         val packageManager = context.packageManager
         val applicationInfo = packageManager.getApplicationInfo(packageName, 0)
 

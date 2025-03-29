@@ -39,12 +39,12 @@ class WorkerStarter @Inject constructor(
         initUploadWorker()
         initZipFileWorker()
 //        initOCRWorker()
-        scheduleUniqueWork()
+//        scheduleUniqueWork()
         scheduleMetricWorker()
 
         // PeriodicOcrService.startService(mContext)
 
-        scheduleImmediateWork(mContext)
+        // scheduleImmediateWork(mContext)
 
     }
 
@@ -82,11 +82,11 @@ class WorkerStarter @Inject constructor(
         workManager.enqueueUniquePeriodicWork(
             uniqueWorkName = WORK_MANAGER_UPLOAD_WORKER,
             existingPeriodicWorkPolicy = ExistingPeriodicWorkPolicy.KEEP,
-            request = PeriodicWorkRequestBuilder<UploadWorker>(2, TimeUnit.HOURS)
+            request = PeriodicWorkRequestBuilder<UploadWorker>(1, TimeUnit.HOURS)
                 .setConstraints(
                     Constraints.Builder()
                         .setRequiredNetworkType(NetworkType.CONNECTED)
-                        .setRequiresBatteryNotLow(true)
+                        .setRequiresBatteryNotLow(false)
                         .setRequiresStorageNotLow(false)
                         .build()
                 ).build()

@@ -119,10 +119,6 @@ class GeneralOperationsRepository @Inject constructor(
     }
 
     suspend fun saveAllSessionSegments() {
-        buildCurrentSession(framesPerSecondConst)
-
-        CoroutineScope(Dispatchers.IO).launch { saveSession(currentSession) }
-
         val sessionIds = getAllSessionsWithoutAppSegments()
 
         for (sessionId in sessionIds) {
@@ -137,13 +133,10 @@ class GeneralOperationsRepository @Inject constructor(
             }
         }
 
-        // Create a new session.
-        ScreenshotService.sessionId = UUID.randomUUID().toString()
-
         ScreenRecordService.screenshotInterval.postValue(ConstantSettings.SCREENSHOT_MAPPING[ScreenRecordService.framesPerSecond])
     }
 
-    private suspend fun buildCurrentSession(localFPS: Double) {
+    suspend fun buildCurrentSession(localFPS: Double) {
         val lastActiveTime1 = getLastTimeSessionActive()
         val time = TimeUtility.getCurrentTimestamp()
         currentSession.user = null
@@ -278,7 +271,7 @@ class GeneralOperationsRepository @Inject constructor(
        }
     }
 
-    private suspend fun saveSession(sessionTemp: SessionTempEntity) {
+    suspend fun saveSession(sessionTemp: SessionTempEntity) {
         sessionDao.saveSession(sessionTemp.toSession())
     }
 
@@ -364,7 +357,7 @@ class GeneralOperationsRepository @Inject constructor(
     }
 
     suspend fun getScreenshotCount(): Int {
-        return screenshotDao.getCountWhereOcrIsComplete()
+        return screenshotDao.getOcrCompleteOrRestrictedCount()
     }
 
     suspend fun getScreenshotsToOcr(limit: Int): List<ScreenshotEntity> {

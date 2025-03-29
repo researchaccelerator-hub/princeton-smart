@@ -20,8 +20,8 @@ android {
         applicationId = "com.screenlake"
         minSdk = 28
         targetSdk = 35
-        versionCode = 44
-        versionName = "1.36"
+        versionCode = 47
+        versionName = "1.39"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

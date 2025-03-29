@@ -128,6 +128,10 @@
         android:id="@+id/accessibilityAccessSelectFragment"
         android:name="com.screenlake.ui.fragments.onboarding.AccessibilityAccessSelectFragment"
         android:label="AccessibilityAccessSelectFragment" />
+    <fragment
+        android:id="@+id/screenshotStatsFragment"
+        android:name="com.screenlake.ui.fragments.ScreenshotStatsFragment"
+        android:label="ScreenshotStatsFragment" />
     <!--    <fragment-->
     <!--        android:id="@+id/splashScreenFragment"-->
     <!--        android:name="com.screenlake.recorder.fragments.SplashScreenFragment"-->

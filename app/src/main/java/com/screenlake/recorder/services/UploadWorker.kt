@@ -12,6 +12,7 @@ import com.screenlake.recorder.viewmodels.WorkerProgressManager
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -103,9 +104,10 @@ class UploadWorker @AssistedInject constructor(
                         Timber.tag(TAG).d("Uploading file ${file.name}")
 
                         // Upload the file
-                        uploadHandler.uploadFile(file, zip.id, user)
+                        async {
+                            uploadHandler.uploadFile(file, zip.id, user)
+                        }.await()
 
-                        delay(3000) // Delay between uploads
                         ScreenshotService.manualUploadPercentComplete.postValue(count / it.count())
                         count++
                     } else {

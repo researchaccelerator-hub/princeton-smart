@@ -49,6 +49,7 @@ internal object DataModule {
         loggingInterceptor: HttpLoggingInterceptor
     ): OkHttpClient = OkHttpClient.Builder()
         .addInterceptor(loggingInterceptor)
+        .writeTimeout(60, TimeUnit.SECONDS)    // Default is 10 seconds
         .readTimeout(60, TimeUnit.SECONDS)
         .connectTimeout(60, TimeUnit.SECONDS)
         .build()

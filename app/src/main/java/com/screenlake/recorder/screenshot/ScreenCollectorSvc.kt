@@ -95,7 +95,7 @@ class ScreenCollectorSvc @Inject constructor(
      * @return The count of screenshots with completed OCR.
      */
     private suspend fun getOCRScreenshotCount() {
-        screenshotDao.getCountWhereOcrIsComplete()
+        screenshotDao.getOcrCompleteOrRestrictedCount()
     }
 
 

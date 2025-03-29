@@ -226,13 +226,13 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
             }
         }
 
-        val isEnabled =
-            isAccessibilityServiceEnabled(requireContext(), TouchAccessibilityService::class.java)
-        if (!isEnabled) {
-            val dialog =
-                packageDialog(getString(R.string.disclaimer), Settings.ACTION_ACCESSIBILITY_SETTINGS)
-            dialog.show()
-        }
+//        val isEnabled =
+//            isAccessibilityServiceEnabled(requireContext(), TouchAccessibilityService::class.java)
+//        if (!isEnabled) {
+//            val dialog =
+//                packageDialog(getString(R.string.disclaimer), Settings.ACTION_ACCESSIBILITY_SETTINGS)
+//            dialog.show()
+//        }
 
         mainViewModel.isOnPastOnBoarding(true)
 

@@ -165,6 +165,7 @@ class MainActivity : AppCompatActivity(), ScreenRecordFragment.MediaProjectionCa
             when (it.itemId) {
                 R.id.home -> binding.navHostFragment.findNavController().navigate(R.id.screenRecordFragment)
                 R.id.settings -> binding.navHostFragment.findNavController().navigate(R.id.settingsWrapper)
+                R.id.stats -> binding.navHostFragment.findNavController().navigate(R.id.screenshotStatsFragment)
             }
             true
         }

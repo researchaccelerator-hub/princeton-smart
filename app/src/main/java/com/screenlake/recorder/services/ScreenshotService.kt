@@ -100,6 +100,9 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         var uploadOverPower = MutableLiveData<Boolean>()
         var pauseTiming = MutableLiveData<Long>()
 
+        var lastUploadSuccessful = MutableLiveData<Boolean>()
+        var lastUploadTime = MutableLiveData<Long>()
+
         val isMaintenanceOccurring = MutableLiveData<Boolean>()
 
         val isPowerConnected = MutableLiveData<Boolean>()
@@ -138,7 +141,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
 
         private const val TAG = "OcrWorker"
         private const val BATCH_SIZE = 10  // Number of images to process per batch
-        private const val OCR_IMAGE_THRESHOLD = 10  // Minimum number of images to trigger OCR
+        private const val OCR_IMAGE_THRESHOLD = 5  // Minimum number of images to trigger OCR
 
         fun postInitialValues(){
             // Disabled, user should not set this value.
@@ -151,7 +154,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
             pauseTiming.postValue(300000)
             restrictedApps.postValue(hashSetOf())
             manualOcr.postValue(false)
-            isActionScreenOff.postValue(false)
+            isActionScreenOff.postValue(true)
         }
     }
 
@@ -649,8 +652,8 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                 val screenshotData = ScreenshotData.saveScreenshotData(
                     "",
                     currentAppInUse,
-                    ScreenRecordService.Companion.sessionId,
-                    ScreenRecordService.Companion.user,
+                    sessionId,
+                    user,
                     "Restricted",
                     true
                 )
@@ -744,7 +747,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                 val filename = "${applicationContext.filesDir.path}/img_${UUID.randomUUID()}Screenshot_$timestamp.jpg"
 
                 val screenshotData = ScreenshotData.saveScreenshotData(filename, appInfo,
-                    ScreenRecordService.Companion.sessionId, user)
+                    sessionId, user)
 
                 try {
                     CoroutineScope(Dispatchers.IO).launch {
@@ -878,6 +881,13 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         isScreenLocked.set(true)
         saveSessionSegmentsInBackground()
 
+        CoroutineScope(Dispatchers.IO).launch {
+            generalOperationsRepository.buildCurrentSession(framesPerSecondConst)
+            generalOperationsRepository.saveSession(generalOperationsRepository.currentSession)
+            // Create a new session.
+            sessionId = UUID.randomUUID().toString()
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && mediaProjection == null && resultData != null) {
             showProjectionStoppedNotification()
         }
@@ -925,31 +935,31 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         }
 
         // Only proceed if there are enough images to process
-        if (screenshots.size >= OCR_IMAGE_THRESHOLD && isOlderThanTwoHours(lastOcrTime) || manualOcr.value == true) {
+        if (screenshots.size >= OCR_IMAGE_THRESHOLD || manualOcr.value == true) {
             lastOcrTime = System.currentTimeMillis()
             try {
                 initializeTesseract()  // Initialize Tesseract for OCR
                 delay(5000)
 
                 val imagesToOcr = generalOperationsRepository.getScreenshotsToOcr(200)
-                recognizeImages(imagesToOcr)  // Process the images in batches
-                ocrSubmitted = false
-
-                if (manualOcr.value == true) {
-                    val firstWorkRequest = OneTimeWorkRequestBuilder<ZipFileWorker>()
-                        .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.SECONDS)
-                        .build()
-
-                    val secondWorkRequest = OneTimeWorkRequestBuilder<UploadWorker>()
-                        .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.SECONDS)
-                        .build()
-
-                            // Chain the work requests to run sequentially
-                    WorkManager.getInstance(this@ScreenshotService)
-                        .beginWith(firstWorkRequest)
-                        .then(secondWorkRequest)
-                        .enqueue()
+                withContext(Dispatchers.IO) {
+                    recognizeImages(imagesToOcr)  // Process the images in batches
                 }
+
+
+                val firstWorkRequest = OneTimeWorkRequestBuilder<ZipFileWorker>()
+                    .setBackoffCriteria(BackoffPolicy.LINEAR, 0, TimeUnit.SECONDS)
+                    .build()
+
+                val secondWorkRequest = OneTimeWorkRequestBuilder<UploadWorker>()
+                    .setBackoffCriteria(BackoffPolicy.LINEAR, 0, TimeUnit.SECONDS)
+                    .build()
+
+                        // Chain the work requests to run sequentially
+                WorkManager.getInstance(this@ScreenshotService)
+                    .beginWith(firstWorkRequest)
+                    .then(secondWorkRequest)
+                    .enqueue()
 
                 manualOcr.postValue(false)
                 ocrSubmitted = false

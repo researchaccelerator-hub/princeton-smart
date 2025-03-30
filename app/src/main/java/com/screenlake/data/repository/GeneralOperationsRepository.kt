@@ -31,6 +31,7 @@ import com.screenlake.data.database.entity.UploadHistoryEntity
 import com.screenlake.data.database.entity.UserEntity
 import com.screenlake.recorder.authentication.CloudAuthentication
 import com.screenlake.recorder.constants.ConstantSettings
+import com.screenlake.recorder.constants.ConstantSettings.SCREENSHOT_MAPPING
 import com.screenlake.recorder.screenshot.DataTransformation
 import com.screenlake.recorder.services.ScreenRecordService
 import com.screenlake.recorder.services.ScreenshotService
@@ -151,7 +152,7 @@ class GeneralOperationsRepository @Inject constructor(
         currentSession.sessionId = ScreenshotService.sessionId
         currentSession.tenantId = UserEntity.TENANT_ID
         currentSession.panelId = UserEntity.PANEL_ID
-        currentSession.fps = localFPS
+        currentSession.fps = SCREENSHOT_MAPPING[ScreenRecordService.Companion.framesPerSecond]!!.toDouble()
         if (currentSession.sessionId.isNullOrEmpty()) {
             currentSession.sessionId = ScreenshotService.sessionId
         }

@@ -30,6 +30,19 @@ object SharedPreferencesUtil {
         }
     }
 
+    fun getBatteryOptimizationDisabled(context: Context): Boolean = runBlocking {
+        val dataStore = context.dataStore
+        val batteryOptKey = booleanPreferencesKey(context.getString(R.string.battery_optimization_disabled))
+        dataStore.data.first()[batteryOptKey] ?: false
+    }
+
+    fun setBatteryOptimizationDisabled(context: Context, value: Boolean) = runBlocking {
+        val batteryOptKey = booleanPreferencesKey(context.getString(R.string.battery_optimization_disabled))
+        context.dataStore.edit { settings ->
+            settings[batteryOptKey] = value
+        }
+    }
+
     fun setLimitDataUsage(context: Context, value: Boolean) = runBlocking {
         val onboardingSeenKey = booleanPreferencesKey(context.getString(R.string.limit_power_usage))
         context.dataStore.edit { settings ->

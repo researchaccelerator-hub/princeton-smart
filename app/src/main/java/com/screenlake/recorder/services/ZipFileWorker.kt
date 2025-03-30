@@ -51,7 +51,7 @@ class ZipFileWorker @AssistedInject constructor(
         return try {
             zipUpScreenshots(0, 100)
             Timber.tag(TAG).d("Zip Worker has finished.")
-            WorkerProgressManager.updateProgress("Zip Worker has finished.")
+            WorkerProgressManager.updateProgress("Finished zipping up screenshots.")
             Result.success()
         } catch (ex: Exception) {
             Timber.tag(TAG).e(ex, "Zip Worker failed.")

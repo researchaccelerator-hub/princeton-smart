@@ -184,7 +184,7 @@ class LoginFragment : Fragment() {
                 setUserLoggedOut()
                 saveUserSendToHome(amplifyRepository.email)
             } else {
-                Toast.makeText(activity, getString(R.string.login_failed), Toast.LENGTH_LONG).show()
+                // Toast.makeText(activity, getString(R.string.login_failed), Toast.LENGTH_LONG).show()
             }
         })
     }

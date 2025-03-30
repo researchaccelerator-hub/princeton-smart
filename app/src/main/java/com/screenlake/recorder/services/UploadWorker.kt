@@ -67,7 +67,7 @@ class UploadWorker @AssistedInject constructor(
             uploadZipFilesAsync()
 
             Timber.tag(TAG).d("Upload Worker has finished.")
-            WorkerProgressManager.updateProgress("Upload Worker has finished.")
+            WorkerProgressManager.updateProgress("Upload has finished.")
             Result.success()
         } catch (ex: Exception) {
             // Log the failure of the upload service

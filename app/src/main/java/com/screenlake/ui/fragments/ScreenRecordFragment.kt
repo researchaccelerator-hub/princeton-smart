@@ -563,11 +563,6 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
 
     @SuppressLint("ClickableViewAccessibility")
     private fun setOnTouchListenerPause() {
-        if (!ScreenshotService.isRunning.isInitialized) {
-            Toast.makeText(activity, "Must be recording to pause", Toast.LENGTH_SHORT).show()
-            return
-        }
-
         setupTouchListener(
             view = binding.screenRecordFragmentPause,
             enlargeAction = { enlargeButtonPause(binding.screenRecordFragmentPause) },
@@ -575,6 +570,11 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
             isTouchedFlag = { isTouchedPause },
             setIsTouchedFlag = { isTouchedPause = it },
             runnableAction = {
+                if (!ScreenshotService.isRunning.isInitialized || ScreenshotService.isRunning.value == false) {
+                    Toast.makeText(activity, "Must be recording to pause", Toast.LENGTH_SHORT).show()
+                    return@setupTouchListener
+                }
+
                 if (binding.screenRecordFragmentPause.tag == "pause_main") {
                     if (!ScreenshotService.isRunning.value!!) {
                         Toast.makeText(activity, "Not Recording.", Toast.LENGTH_LONG).show()
@@ -776,15 +776,15 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
 //
 //        // Observe progress updates
         ScreenshotService.manualOcr.postValue(true)
-        lifecycleScope.launch {
-            seqWorkerModel.progressUpdates.collect { progressUpdate ->
-                // Update UI with progress
-                binding.tvUpdates.text = progressUpdate
-
-                // Optionally log progress
-                Timber.d("WorkerProgress $progressUpdate")
-            }
-        }
+//        lifecycleScope.launch {
+//            seqWorkerModel.progressUpdates.collect { progressUpdate ->
+//                // Update UI with progress
+//                binding.tvUpdates.text = progressUpdate
+//
+//                // Optionally log progress
+//                Timber.d("WorkerProgress $progressUpdate")
+//            }
+//        }
 
 //        try {
 //            val savedFile = AssetUtils.copyAssetToLocalStorage(this@ScreenRecordFragment.requireContext(), "image_zip_178ecc88-1df2-4661-bde3-2c79349f0d4f_51.zip", "test.zip")

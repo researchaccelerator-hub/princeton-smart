@@ -1,16 +1,20 @@
 package com.screenlake.recorder.viewmodels
 
+import androidx.lifecycle.MutableLiveData
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 // Define a companion object to hold the progress updates Flow
 class WorkerProgressManager {
     companion object {
-        private val _progressUpdates = MutableStateFlow<String>("")
-        val progressUpdates: StateFlow<String> = _progressUpdates
+        val progressUpdates = MutableLiveData<String>("")
 
         fun updateProgress(message: String) {
-            _progressUpdates.value = message
+            progressUpdates.postValue(progressUpdates.value + ", $message")
+        }
+
+        fun clear() {
+            progressUpdates.postValue("")
         }
     }
 }

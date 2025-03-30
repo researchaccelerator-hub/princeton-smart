@@ -24,6 +24,7 @@ import android.os.IBinder
 import android.os.Looper
 import android.util.DisplayMetrics
 import android.view.WindowManager
+import androidx.concurrent.futures.await
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.MutableLiveData
 import androidx.work.BackoffPolicy
@@ -77,13 +78,18 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import androidx.core.graphics.createBitmap
+import androidx.work.await
+import com.screenlake.recorder.services.util.SharedPreferencesUtil
+import com.screenlake.recorder.utilities.silence
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlin.collections.chunked
 
 @AndroidEntryPoint
 class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
     companion object {
         var lastOcrTime = 0L
         var manualOcr = MutableLiveData<Boolean>()
+        var optimizeUploads = MutableLiveData<Boolean>()
         var isActionScreenOff = MutableLiveData<Boolean>()
         var lastCaptureDate = 0L
         private var imagesProduced = 0
@@ -115,7 +121,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
 
         var isMediaProjectionValid = false
 
-        const val framesPerSecondConst: Double = 0.3
+        const val framesPerSecondConst: Double = 0.5
         var framesPerSecond: Double = framesPerSecondConst
         val notUploaded = MutableLiveData<Int>()
         var sessionId = UUID.randomUUID().toString()
@@ -155,6 +161,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
             restrictedApps.postValue(hashSetOf())
             manualOcr.postValue(false)
             isActionScreenOff.postValue(true)
+            optimizeUploads.postValue(false)
         }
     }
 
@@ -177,6 +184,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
     private var captureThread: Thread? = null
     private var threadLooper: Looper? = null
     var mHandler: Handler? = null
+    var processedCount = 0
 
 
     // Create an exception handler for coroutines
@@ -231,6 +239,8 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                 density = 240
             }
 
+            postInitialValues()
+
             // Register screen state receiver
             screenStateReceiver = ScreenStateReceiver(this)
             screenStateReceiver?.register(this)
@@ -281,7 +291,10 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         try {
-            postInitialValues()
+            silence {
+                optimizeUploads.postValue(SharedPreferencesUtil.getBatteryOptimizationDisabled(this@ScreenshotService))
+            }
+
             if (intent != null) {
                 when (intent.action) {
                     ACTION_STOP_SERVICE -> stopCapturing()
@@ -646,6 +659,11 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                 getForegroundTaskPackageName(this@ScreenshotService)
             }
 
+            if (isPaused.value == true) {
+                Timber.d("Recording paused.")
+                return
+            }
+
             moveForward = !(RESTRICTED_APPS.contains(currentAppInUse.apk))
 
             if (!moveForward) {
@@ -929,37 +947,51 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
     private fun beginOcr() = CoroutineScope(Dispatchers.IO).launch {
         val screenshots = generalOperationsRepository.getScreenshotsToOcr(1000)
         Timber.tag(TAG).d("Starting OCR: Processing ${screenshots.size} images.")
-
+        processedCount = 0
         withContext(Dispatchers.IO) {
             generalOperationsRepository.saveAllSessionSegments()
         }
 
         // Only proceed if there are enough images to process
-        if (screenshots.size >= OCR_IMAGE_THRESHOLD || manualOcr.value == true) {
+        if ((screenshots.size >= OCR_IMAGE_THRESHOLD && isOlderThanTwoHours(lastOcrTime)) || manualOcr.value == true) {
             lastOcrTime = System.currentTimeMillis()
+
+            WorkerProgressManager.clear()
             try {
                 initializeTesseract()  // Initialize Tesseract for OCR
                 delay(5000)
 
-                val imagesToOcr = generalOperationsRepository.getScreenshotsToOcr(200)
-                withContext(Dispatchers.IO) {
-                    recognizeImages(imagesToOcr)  // Process the images in batches
+                screenshots.chunked(50).forEachIndexed { batchIndex, imagesToOcr ->
+                    WorkerProgressManager.updateProgress("Starting OCR batch ${batchIndex + 1}")
+
+                    withContext(Dispatchers.IO) {
+                        recognizeImages(imagesToOcr, screenshots.size)  // Process the images in batches
+                    }
+
+                    val firstWorkRequest = OneTimeWorkRequestBuilder<ZipFileWorker>()
+                        .setBackoffCriteria(BackoffPolicy.LINEAR, 0, TimeUnit.SECONDS)
+                        .build()
+
+                    val secondWorkRequest = OneTimeWorkRequestBuilder<UploadWorker>()
+                        .setBackoffCriteria(BackoffPolicy.LINEAR, 0, TimeUnit.SECONDS)
+                        .build()
+
+                    // Chain the work requests to run sequentially
+                    val workContinuation = WorkManager.getInstance(this@ScreenshotService)
+                        .beginWith(firstWorkRequest)
+                        .then(secondWorkRequest)
+                        .enqueue()
+
+                    try {
+                        // Wait for the operation to complete
+                        workContinuation.result.await()
+                        // Operation completed successfully
+                        Timber.d("ScreenshotService: Work operation completed successfully")
+                    } catch (e: Exception) {
+                        // Operation failed
+                        Timber.e(e, "ScreenshotService: Work operation failed")
+                    }
                 }
-
-
-                val firstWorkRequest = OneTimeWorkRequestBuilder<ZipFileWorker>()
-                    .setBackoffCriteria(BackoffPolicy.LINEAR, 0, TimeUnit.SECONDS)
-                    .build()
-
-                val secondWorkRequest = OneTimeWorkRequestBuilder<UploadWorker>()
-                    .setBackoffCriteria(BackoffPolicy.LINEAR, 0, TimeUnit.SECONDS)
-                    .build()
-
-                        // Chain the work requests to run sequentially
-                WorkManager.getInstance(this@ScreenshotService)
-                    .beginWith(firstWorkRequest)
-                    .then(secondWorkRequest)
-                    .enqueue()
 
                 manualOcr.postValue(false)
                 ocrSubmitted = false
@@ -983,23 +1015,21 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         }
     }
 
-    private suspend fun recognizeImages(images: List<ScreenshotEntity>) {
+    private suspend fun recognizeImages(images: List<ScreenshotEntity>, total: Int) {
         if (recognize == null || !recognize!!.isInitialized) {
             Timber.tag(TAG).d("Tesseract is not initialized.")
             return
         }
 
         val startTime = System.currentTimeMillis()
-        var processedCount = 0
 
         // Process images in batches to manage memory and performance
         images.chunked(BATCH_SIZE).forEachIndexed { batchIndex, batch ->
-            Timber.tag(TAG).d("Processing batch ${batchIndex + 1} with ${batch.size} images.")
+            processedCount = processedCount + batch.count()
+            WorkerProgressManager.updateProgress("Processing ${processedCount} of total $total images.")
             batch.forEach { screenshot ->
                 if (isScreenLocked.get() || manualOcr.value == true) {
                     processScreenshot(screenshot)
-                    processedCount++
-                    WorkerProgressManager.updateProgress("Processed $processedCount images of ${images.size}.")
                 }
             }
         }
@@ -1048,6 +1078,6 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         val currentTime = System.currentTimeMillis()
         val elapsedTime = currentTime - timestamp
 
-        return elapsedTime > fiveMinutesInMillis
+        return (elapsedTime > fiveMinutesInMillis) || optimizeUploads.value == false
     }
 }

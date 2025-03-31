@@ -127,7 +127,7 @@ class WorkerStarter @Inject constructor(
         workManager.enqueueUniquePeriodicWork(
             uniqueWorkName = WORK_MANAGER_METRIC_WORKER,
             existingPeriodicWorkPolicy = ExistingPeriodicWorkPolicy.KEEP,
-            request = PeriodicWorkRequestBuilder<MetricWorker>(1, TimeUnit.MINUTES)
+            request = PeriodicWorkRequestBuilder<MetricWorker>(1, TimeUnit.HOURS)
                 .setConstraints(
                     Constraints.Builder()
                         .setRequiredNetworkType(NetworkType.NOT_REQUIRED)

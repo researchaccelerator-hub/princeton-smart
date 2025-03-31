@@ -1,0 +1,5 @@
+boto3>=1.28.0
+pandas>=1.5.0
+pytz>=2023.3
+tqdm>=4.65.0
+opencv-python>=4.7.0

@@ -4,9 +4,8 @@ import com.screenlake.recorder.constants.ConstantSettings
 import com.screenlake.data.model.AppInfo
 import com.screenlake.data.database.entity.ScreenshotEntity
 import com.screenlake.data.database.entity.UserEntity
-import com.screenlake.recorder.services.ScreenRecordService
-import com.screenlake.recorder.services.ScreenRecordService.Companion.appNameVsPackageName
 import com.screenlake.recorder.services.ScreenshotService
+import com.screenlake.recorder.services.ScreenshotService.Companion.appNameVsPackageName
 import com.screenlake.recorder.services.ScreenshotService.Companion.lastCaptureDate
 import com.screenlake.recorder.utilities.TimeUtility
 

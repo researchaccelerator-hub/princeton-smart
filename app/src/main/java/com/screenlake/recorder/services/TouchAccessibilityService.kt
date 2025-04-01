@@ -62,7 +62,7 @@ class TouchAccessibilityService() : AccessibilityService() {
         var prevUrl = ""
         var prevMeta = ""
         var appAccessibilitySessionId = UUID.randomUUID().toString()
-        var framesPerSecond = ConstantSettings.SCREENSHOT_MAPPING[ScreenRecordService.framesPerSecond] ?: 3333L
+        var framesPerSecond = ConstantSettings.SCREENSHOT_MAPPING[ScreenshotService.framesPerSecond] ?: 3333L
         var sessionStartTime: Long? = null
         var appIntervalId = UUID.randomUUID().toString()
         var user: UserEntity? = null

@@ -33,7 +33,6 @@ import com.screenlake.recorder.authentication.CloudAuthentication
 import com.screenlake.recorder.constants.ConstantSettings
 import com.screenlake.recorder.constants.ConstantSettings.SCREENSHOT_MAPPING
 import com.screenlake.recorder.screenshot.DataTransformation
-import com.screenlake.recorder.services.ScreenRecordService
 import com.screenlake.recorder.services.ScreenshotService
 import com.screenlake.recorder.utilities.TimeUtility
 import com.screenlake.recorder.utilities.silence
@@ -71,7 +70,7 @@ class GeneralOperationsRepository @Inject constructor(
 
     var currentSession = SessionTempEntity()
     private var lastActiveTime: Long? = null
-    private val framesPerSecondConst: Double = ScreenRecordService.framesPerSecondConst
+    private val framesPerSecondConst: Double = ScreenshotService.framesPerSecondConst
 
     suspend fun clearPhone() {
         val path = context.filesDir?.path
@@ -114,7 +113,7 @@ class GeneralOperationsRepository @Inject constructor(
 
         deleteAllAccessibilityEvents()
 
-        ScreenRecordService.postInitialValues()
+        ScreenshotService.postInitialValues()
 
         saveLog(ConstantSettings.LOGGED_OUT)
     }
@@ -134,7 +133,7 @@ class GeneralOperationsRepository @Inject constructor(
             }
         }
 
-        ScreenRecordService.screenshotInterval.postValue(ConstantSettings.SCREENSHOT_MAPPING[ScreenRecordService.framesPerSecond])
+        ScreenshotService.screenshotInterval.postValue(ConstantSettings.SCREENSHOT_MAPPING[ScreenshotService.framesPerSecond])
     }
 
     suspend fun buildCurrentSession(localFPS: Double) {
@@ -152,7 +151,7 @@ class GeneralOperationsRepository @Inject constructor(
         currentSession.sessionId = ScreenshotService.sessionId
         currentSession.tenantId = UserEntity.TENANT_ID
         currentSession.panelId = UserEntity.PANEL_ID
-        currentSession.fps = SCREENSHOT_MAPPING[ScreenRecordService.Companion.framesPerSecond]!!.toDouble()
+        currentSession.fps = SCREENSHOT_MAPPING[ScreenshotService.Companion.framesPerSecond]!!.toDouble()
         if (currentSession.sessionId.isNullOrEmpty()) {
             currentSession.sessionId = ScreenshotService.sessionId
         }

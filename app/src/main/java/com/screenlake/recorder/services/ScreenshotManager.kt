@@ -26,7 +26,7 @@
 //
 //class ScreenshotManager(
 //    private val context: Context,
-//    private val service: ScreenRecordService,
+//    private val service: ScreenshotService,
 //    private val genOp: GenOp,
 //    private val notificationHelper: NotificationHelper
 //) {
@@ -74,7 +74,7 @@
 //        val screenshotData = ScreenshotData.saveScreenshotData(filename, currentAppInUse, sessionId, user)
 //
 //        try {
-//            val projection = ScreenRecordService.projection
+//            val projection = ScreenshotService.projection
 //            if (projection == null) {
 //                Timber.e("Projection is null")
 //                return null
@@ -146,8 +146,8 @@
 //
 //    private fun handleVirtualDisplayError(e: Exception) {
 //        if (e is SecurityException) {
-//            ScreenRecordService.isProjectionValid.postValue(false)
-//            notificationHelper.showNotification("Screenlake", "Please re-enable screen recording.", ScreenRecordService.getRandomNumber(1, 100))
+//            ScreenshotService.isProjectionValid.postValue(false)
+//            notificationHelper.showNotification("Screenlake", "Please re-enable screen recording.", ScreenshotService.getRandomNumber(1, 100))
 //            FirebaseCrashlytics.getInstance().log("Virtual display failed.")
 //            FirebaseCrashlytics.getInstance().recordException(e)
 //            Timber.e("Virtual display failed: $e")
@@ -158,13 +158,13 @@
 //    }
 //
 //    private fun retryVirtualDisplayCreation(e: Exception) {
-//        if (virtualDisplayAttempts < ScreenRecordService.virtualDisplayLimit) {
+//        if (virtualDisplayAttempts < ScreenshotService.virtualDisplayLimit) {
 //            virtualDisplayAttempts++
 //            // Backoff retries based on the number of attempts
 //            when (virtualDisplayAttempts) {
-//                5 -> ScreenRecordService.screenshotInterval.postValue(10000L)
-//                10 -> ScreenRecordService.screenshotInterval.postValue(30000L)
-//                15 -> ScreenRecordService.screenshotInterval.postValue(90000L)
+//                5 -> ScreenshotService.screenshotInterval.postValue(10000L)
+//                10 -> ScreenshotService.screenshotInterval.postValue(30000L)
+//                15 -> ScreenshotService.screenshotInterval.postValue(90000L)
 //            }
 //        } else {
 //            notificationHelper.showNotification("Screenlake", "Please re-enable screen recording.", notificationID)

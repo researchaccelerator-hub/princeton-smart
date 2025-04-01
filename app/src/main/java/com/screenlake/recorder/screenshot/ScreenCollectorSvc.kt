@@ -15,7 +15,6 @@ import com.screenlake.recorder.constants.ConstantSettings.SCREENSHOT_MAPPING
 import com.screenlake.data.enums.MobIleStatusEnum
 import com.screenlake.data.database.entity.ScreenshotEntity
 import com.screenlake.data.repository.GeneralOperationsRepository
-import com.screenlake.recorder.services.ScreenRecordService
 import com.screenlake.recorder.services.ScreenshotService
 import com.screenlake.recorder.utilities.HardwareChecks
 import kotlinx.coroutines.*
@@ -35,7 +34,7 @@ class ScreenCollectorSvc @Inject constructor(
     @Inject
     lateinit var cloudAuthentication: CloudAuthentication
 
-    private val nextIncrement = ScreenRecordService.screenshotInterval.value ?: SCREENSHOT_MAPPING[ScreenRecordService.framesPerSecond]!!
+    private val nextIncrement = ScreenshotService.screenshotInterval.value ?: SCREENSHOT_MAPPING[ScreenshotService.framesPerSecond]!!
     private var uploadCounter = 0L
     private var zipCounter = 0L
     private var metricCounter = 0L
@@ -66,7 +65,7 @@ class ScreenCollectorSvc @Inject constructor(
         uploadCounter += workCoordinatorLimit
         zipCounter += workCoordinatorLimit
 
-        if (ScreenRecordService.isMaintenanceOccurring.value == true) {
+        if (ScreenshotService.isMaintenanceOccurring.value == true) {
             return
         }
 

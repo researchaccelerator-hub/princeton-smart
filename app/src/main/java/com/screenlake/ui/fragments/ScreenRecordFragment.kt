@@ -38,7 +38,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkManager
-import com.screenlake.recorder.services.ScreenshotService
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.screenlake.MainActivity
 import com.screenlake.R
@@ -57,9 +56,9 @@ import com.screenlake.data.repository.GeneralOperationsRepository
 import com.screenlake.di.DatabaseModule
 import com.screenlake.recorder.constants.ConstantSettings.ACTION_STOP_SERVICE
 import com.screenlake.recorder.screenshot.ScreenCollector
-import com.screenlake.recorder.services.ScreenRecordService
-import com.screenlake.recorder.services.ScreenRecordService.Companion.appNameVsPackageName
-import com.screenlake.recorder.services.ScreenRecordService.Companion.restrictedApps
+import com.screenlake.recorder.services.ScreenshotService
+import com.screenlake.recorder.services.ScreenshotService.Companion.appNameVsPackageName
+import com.screenlake.recorder.services.ScreenshotService.Companion.restrictedApps
 import com.screenlake.recorder.services.TouchAccessibilityService
 import com.screenlake.recorder.services.UploadWorker
 import com.screenlake.recorder.services.ZipFileWorker
@@ -144,7 +143,7 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
     }
 
     private fun startScreenRecordService(projectionData: Intent?) {
-        Intent(requireContext(), ScreenRecordService::class.java).apply {
+        Intent(requireContext(), ScreenshotService::class.java).apply {
             this.action = action
             putExtra("media_projection_data", projectionData)
             addFlags(Intent.FLAG_RECEIVER_FOREGROUND)

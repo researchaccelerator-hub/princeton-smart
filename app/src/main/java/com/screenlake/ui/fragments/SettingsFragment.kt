@@ -20,7 +20,6 @@ import com.screenlake.data.repository.GeneralOperationsRepository
 import com.screenlake.recorder.authentication.CloudAuthentication
 import com.screenlake.recorder.constants.ConstantSettings
 import com.screenlake.recorder.constants.ConstantSettings.SCREENSHOT_MAPPING
-import com.screenlake.recorder.services.ScreenRecordService
 import com.screenlake.recorder.services.ScreenshotService
 import com.screenlake.recorder.viewmodels.MainViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -222,7 +221,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
     }
 
     /**
-     * Sends a command to the ScreenRecordService to perform a specific action.
+     * Sends a command to the ScreenshotService to perform a specific action.
      *
      * @param action The action string to be sent.
      */

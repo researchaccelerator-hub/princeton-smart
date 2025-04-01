@@ -24,7 +24,6 @@ import androidx.preference.PreferenceManager
 import com.amplifyframework.core.Amplify
 import com.screenlake.databinding.ActivityMainBinding
 import com.screenlake.recorder.constants.ConstantSettings
-import com.screenlake.recorder.services.ScreenRecordService
 import com.screenlake.recorder.services.ScreenshotService
 import com.screenlake.recorder.utilities.PermissionHelper
 import com.screenlake.recorder.viewmodels.MainViewModel

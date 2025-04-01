@@ -152,7 +152,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         fun postInitialValues(){
             // Disabled, user should not set this value.
             // framesPerSecond = PreferenceManager.getDefaultSharedPreferences(this).getString(getString(R.string.fps), "1.0")?.toDouble()!!
-            screenshotInterval.postValue(SCREENSHOT_MAPPING[ScreenRecordService.Companion.framesPerSecond])
+            screenshotInterval.postValue(SCREENSHOT_MAPPING[ScreenshotService.Companion.framesPerSecond])
             isPaused.postValue(false)
             uploadCountMsg.postValue(0)
             isRunning.postValue(false)

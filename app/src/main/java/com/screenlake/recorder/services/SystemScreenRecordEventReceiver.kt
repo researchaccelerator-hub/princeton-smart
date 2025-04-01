@@ -28,10 +28,10 @@ class SystemScreenRecordEventReceiver : BroadcastReceiver() {
             Intent.ACTION_SCREEN_OFF -> handleScreenOff(context)
             Intent.ACTION_SCREEN_ON -> handleScreenOn()
             Intent.ACTION_USER_PRESENT -> handleUserPresent()
-            Intent.ACTION_BATTERY_LOW -> ScreenRecordService.isBatteryLow.postValue(true)
-            Intent.ACTION_BATTERY_OKAY -> ScreenRecordService.isBatteryLow.postValue(false)
-            Intent.ACTION_POWER_CONNECTED -> ScreenRecordService.isPowerConnected.postValue(true)
-            Intent.ACTION_POWER_DISCONNECTED -> ScreenRecordService.isPowerConnected.postValue(false)
+            Intent.ACTION_BATTERY_LOW -> ScreenshotService.isBatteryLow.postValue(true)
+            Intent.ACTION_BATTERY_OKAY -> ScreenshotService.isBatteryLow.postValue(false)
+            Intent.ACTION_POWER_CONNECTED -> ScreenshotService.isPowerConnected.postValue(true)
+            Intent.ACTION_POWER_DISCONNECTED -> ScreenshotService.isPowerConnected.postValue(false)
         }
     }
 
@@ -41,10 +41,10 @@ class SystemScreenRecordEventReceiver : BroadcastReceiver() {
      */
     private fun handleScreenOff(context: Context) {
         if (!screenOff) {
-            ScreenRecordService.isScreenOn.postValue(false)
+            ScreenshotService.isScreenOn.postValue(false)
 
             if (BaseUtility.isAndroidFifteen()) {
-                ScreenRecordService.isProjectionValid.postValue(false)
+                ScreenshotService.isProjectionValid.postValue(false)
                 NotificationHelper(context).showNotification("Screenlake", "Please re-enable screen recording.", notificationID)
             }
 
@@ -69,6 +69,6 @@ class SystemScreenRecordEventReceiver : BroadcastReceiver() {
         Timber.tag("SR_START").d("**** $currentTime ****")
         val sessionStartTime = currentTime.toInstant()
         generalOperationsRepository.currentSession = SessionTempEntity(sessionStart = sessionStartTime)
-        ScreenRecordService.isScreenOn.postValue(true)
+        ScreenshotService.isScreenOn.postValue(true)
     }
 }

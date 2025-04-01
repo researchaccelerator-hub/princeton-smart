@@ -20,7 +20,6 @@ import com.screenlake.databinding.FragmentRestrictedAppsBinding
 import com.screenlake.recorder.adapters.RestrictedAppAdapter
 import com.screenlake.data.model.RestrictedApp
 import com.screenlake.data.database.entity.RestrictedAppPersistentEntity
-import com.screenlake.recorder.services.ScreenRecordService
 import com.screenlake.recorder.services.ScreenshotService
 import com.screenlake.recorder.utilities.BaseUtility.toRestrictedApp
 
@@ -172,8 +171,8 @@ class RestrictedAppFragment : Fragment() {
     }
 
     fun addRestrictedApp(restrictedApp: RestrictedApp) {
-        restrictedApp.packageName?.let { ScreenRecordService.restrictedApps.value?.add(it) }
-        ScreenRecordService.restrictedApps.notifyObserver()
+        restrictedApp.packageName?.let { ScreenshotService.restrictedApps.value?.add(it) }
+        ScreenshotService.restrictedApps.notifyObserver()
     }
 
     private fun addRestrictedApps(restrictedApps: List<RestrictedApp>) {

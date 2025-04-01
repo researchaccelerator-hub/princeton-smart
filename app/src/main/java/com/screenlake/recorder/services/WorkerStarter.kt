@@ -9,6 +9,9 @@ import androidx.work.OneTimeWorkRequest
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -39,13 +42,13 @@ class WorkerStarter @Inject constructor(
         initUploadWorker()
         initZipFileWorker()
         scheduleMetricWorker()
+
     }
 
-//    fun scheduleImmediateWork(context: Context) {
+//    fun scheduleImmediateWork() {
 //        Timber.tag("Artemis").e("**** Creating a one-time work request ****")
 //        // val workRequest1 = OneTimeWorkRequest.Builder(WeeklyAppUsageDataReceiver::class.java).build()
 //        val workRequest2 = OneTimeWorkRequest.Builder(MetricWorker::class.java).build()
-//        val workManager = WorkManager.getInstance(context)
 //        // workManager.enqueue(workRequest1)
 //        workManager.enqueue(workRequest2)
 //    }

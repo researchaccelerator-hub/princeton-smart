@@ -50,34 +50,34 @@ During the setup, Cognito creates two default IAM roles:
 
 ```json
 {
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": "s3:PutObject",
-      "Resource": [
-        "arn:aws:s3:::<BUCKET-NAME>/PATH/TO/UPLOAD",
-        "arn:aws:s3:::<BUCKET-NAME>/PATH/TO/UPLOAD/*"
-      ]
-    }
-  ]
+   "Version": "2012-10-17",
+   "Statement": [
+      {
+         "Effect": "Allow",
+         "Action": "s3:PutObject",
+         "Resource": [
+            "arn:aws:s3:::<BUCKET-NAME>/PATH/TO/UPLOAD",
+            "arn:aws:s3:::<BUCKET-NAME>/PATH/TO/UPLOAD/*"
+         ]
+      }
+   ]
 }
 ```
 3. Replace /PATH/TO/UPLOAD with the AWS file location where app users’ screenshots and data will go. This should be the s3 you just created (if you’re following this documentation in order). When you replace the path, be sure to keep the formatting as it is in this pasting. For example, if the destination is just the top-level s3 bucket (that’s fine) then the policy should look something like this:
 
 ```json
 {
-	"Version": "2012-10-17",
-	"Statement": [
-		{
-			"Effect": "Allow",
-			"Action": "s3:PutObject",
-			"Resource": [
-				"arn:aws:s3:::srk-dan-test-2-bucket",
-				"arn:aws:s3:::srk-dan-test-2-bucket/*"
-			]
-		}
-	]
+   "Version": "2012-10-17",
+   "Statement": [
+      {
+         "Effect": "Allow",
+         "Action": "s3:PutObject",
+         "Resource": [
+            "arn:aws:s3:::srk-dan-test-2-bucket",
+            "arn:aws:s3:::srk-dan-test-2-bucket/*"
+         ]
+      }
+   ]
 }
 ```
 

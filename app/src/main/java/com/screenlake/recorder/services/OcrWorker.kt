@@ -1,3 +1,5 @@
+// Currently disabled, OCR moved to ScreenshotService.
+
 //package com.screenlake.recorder.services
 //
 //import android.app.Service

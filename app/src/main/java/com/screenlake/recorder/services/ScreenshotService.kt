@@ -119,7 +119,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
 
         var appNameVsPackageName = mapOf<String, String>()
 
-        var isMediaProjectionValid = false
+        var isMediaProjectionValid = MutableLiveData<Boolean>()
 
         const val framesPerSecondConst: Double = 0.5
         var framesPerSecond: Double = framesPerSecondConst
@@ -411,14 +411,14 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                         coroutineScope.launch {
                             stopCapturing()
                             showProjectionStoppedNotification()
-                            isMediaProjectionValid = false
+                            isMediaProjectionValid.postValue(false)
                         }
                     }
                 }, handler)
             }
         } catch (e: Exception) {
             Timber.e(e, "Error setting up media projection")
-            isMediaProjectionValid = false
+            isMediaProjectionValid.postValue(false)
             CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("MEDIA_PROJECTION", "${e.message} -> ${e.stackTrace}") }
             showErrorNotification("Setup Error", "Failed to setup screen capture: ${e.message}")
         }
@@ -726,6 +726,8 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                     continue
                 }
 
+                isMediaProjectionValid.postValue(true)
+
                 return image
 
             } catch (e: Exception) {
@@ -868,12 +870,12 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
             Timber.e(e, "Error stopping media projection")
         }
         mediaProjection = null
-        isMediaProjectionValid = false
+        isMediaProjectionValid.postValue(false)
     }
 
     override fun onDestroy() {
         try {
-            isMediaProjectionValid = false
+            isMediaProjectionValid.postValue(false)
             screenStateReceiver?.unregister(this)
         } catch (e: Exception) {
             Timber.e(e, "Error unregistering screen state receiver")

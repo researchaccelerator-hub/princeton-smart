@@ -38,45 +38,17 @@ class WorkerStarter @Inject constructor(
     operator fun invoke() {
         initUploadWorker()
         initZipFileWorker()
-//        initOCRWorker()
-//        scheduleUniqueWork()
         scheduleMetricWorker()
-
-        // PeriodicOcrService.startService(mContext)
-
-        // scheduleImmediateWork(mContext)
-
     }
 
-    fun scheduleImmediateWork(context: Context) {
-        Timber.tag("Artemis").e("**** Creating a one-time work request ****")
-        // val workRequest1 = OneTimeWorkRequest.Builder(WeeklyAppUsageDataReceiver::class.java).build()
-        val workRequest2 = OneTimeWorkRequest.Builder(MetricWorker::class.java).build()
-        val workManager = WorkManager.getInstance(context)
-        // workManager.enqueue(workRequest1)
-        workManager.enqueue(workRequest2)
-    }
-
-    // Test one off work
-    fun scheduleUniqueWork() {
-        // 1) Create constraints if needed (e.g. only run on Wi-Fi, device charging, etc.)
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.NOT_REQUIRED)
-            .build()
-
-        // 2) Build the work request (could be OneTimeWorkRequest or PeriodicWorkRequest)
-        val myWorkRequest = OneTimeWorkRequestBuilder<ZipFileWorker>()
-            .setConstraints(constraints)
-            .build()
-
-        // 3) Enqueue unique work with REPLACE policy
-        workManager
-            .enqueueUniqueWork(
-                "upload",          // unique name for this job
-                ExistingWorkPolicy.REPLACE,    // cancels and replaces any existing work
-                myWorkRequest
-            )
-    }
+//    fun scheduleImmediateWork(context: Context) {
+//        Timber.tag("Artemis").e("**** Creating a one-time work request ****")
+//        // val workRequest1 = OneTimeWorkRequest.Builder(WeeklyAppUsageDataReceiver::class.java).build()
+//        val workRequest2 = OneTimeWorkRequest.Builder(MetricWorker::class.java).build()
+//        val workManager = WorkManager.getInstance(context)
+//        // workManager.enqueue(workRequest1)
+//        workManager.enqueue(workRequest2)
+//    }
 
     private fun initUploadWorker() {
         workManager.enqueueUniquePeriodicWork(

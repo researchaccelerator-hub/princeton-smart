@@ -21,7 +21,7 @@ class MetricWorker(
         var notificationID = 2
 
 //        // Check if accessibility service is enabled
-        if (!isOlderThanFiveMinutes(ScreenshotService.lastCaptureDate) && !ScreenshotService.isMediaProjectionValid) {
+        if (!isOlderThanFiveMinutes(ScreenshotService.lastCaptureDate) && ScreenshotService.isMediaProjectionValid.value == false) {
             val notiManager = NotificationHelper(context)
             notiManager.createNotificationChannel()
             NotificationHelper(context).showNotification("Screenlake", "Please re-enable screen recording.", notificationID)

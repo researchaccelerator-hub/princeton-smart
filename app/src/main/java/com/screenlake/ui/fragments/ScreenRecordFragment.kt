@@ -66,7 +66,6 @@ import com.screenlake.recorder.utilities.AssetUtils
 import com.screenlake.recorder.utilities.HardwareChecks
 import com.screenlake.recorder.utilities.TimeUtility
 import com.screenlake.recorder.viewmodels.MainViewModel
-import com.screenlake.recorder.viewmodels.SequentialWorkScheduler
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import pub.devrel.easypermissions.EasyPermissions
@@ -96,7 +95,6 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
     lateinit var generalOperationsRepository: GeneralOperationsRepository
 
     private val mainViewModel: MainViewModel by activityViewModels()
-    private val seqWorkerModel: SequentialWorkScheduler by viewModels()
 
     private lateinit var binding: FragmentScreenRecordBinding
     private var isRecording = false
@@ -771,51 +769,7 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
     }
 
     private fun uploadCommand() = CoroutineScope(Dispatchers.IO).launch {
-//        seqWorkerModel.startSequentialWork(this@ScreenRecordFragment.requireContext())
-//
-//        // Observe progress updates
         ScreenshotService.manualOcr.postValue(true)
-//        lifecycleScope.launch {
-//            seqWorkerModel.progressUpdates.collect { progressUpdate ->
-//                // Update UI with progress
-//                binding.tvUpdates.text = progressUpdate
-//
-//                // Optionally log progress
-//                Timber.d("WorkerProgress $progressUpdate")
-//            }
-//        }
-
-//        try {
-//            val savedFile = AssetUtils.copyAssetToLocalStorage(this@ScreenRecordFragment.requireContext(), "image_zip_178ecc88-1df2-4661-bde3-2c79349f0d4f_51.zip", "test.zip")
-//
-//            if (savedFile != null && savedFile.exists()) {
-//                println("File saved at: ${savedFile.absolutePath}")
-//
-//                val zipObj = ScreenshotZipEntity().apply {
-//                    this.file = savedFile.path
-//                    this.localTimeStamp = TimeUtility.getCurrentTimestampDefaultTimezoneString()
-//                    this.timestamp = TimeUtility.getCurrentTimestampString()
-//                    this.user = "test@me.com"
-//                    this.toDelete = false
-//                    this.panelId = "1234"
-//                    this.panelName = "1234"
-//                }
-//
-//                val db = DatabaseModule.provideDatabase(this@ScreenRecordFragment.requireContext())
-//                val zipDao = db.getScreenshotZipDao()
-//                zipDao.insertZipObj(zipObj)
-//            } else {
-//                Timber.d("Failed to save file.")
-//            }
-//
-//            val workRequest = OneTimeWorkRequest.Builder(ZipFileWorker::class.java).build()
-//            WorkManager.getInstance(this@ScreenRecordFragment.requireContext()).enqueue(workRequest)
-//            val workManager = WorkManager.getInstance(this@ScreenRecordFragment.requireContext())
-//            workManager.enqueue(OneTimeWorkRequest.Builder(UploadWorker::class.java).build())
-//
-//        } catch (e: Exception) {
-//            Timber.e("Error in uploadCommand: $e")
-//        }
     }
 
 

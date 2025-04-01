@@ -129,34 +129,6 @@ class MainActivity : AppCompatActivity(), ScreenRecordFragment.MediaProjectionCa
         }
     }
 
-//    private fun startScreenshotService(resultCode: Int, data: Intent?) {
-//        if (data == null) return
-//
-//        mediaProjectionCallback?.onMediaProjectionResult(resultCode, data)
-//
-//        val serviceIntent = Intent(requireContext(), ScreenshotService::class.java).apply {
-//            putExtra(ScreenshotService.EXTRA_RESULT_CODE, resultCode)
-//            putExtra(ScreenshotService.EXTRA_DATA, data)
-//            // Check if we're restarting after permission loss
-//            if (restartProjection) {
-//                action = ScreenshotService.ACTION_RESTART_PROJECTION
-//            }
-//        }
-//
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-//            ContextCompat.startForegroundService(this@ScreenRecordFragment.requireContext(), serviceIntent)
-//        } else {
-//            requireContext().startService(serviceIntent)
-//        }
-//
-//        Toast.makeText(requireContext(), "Screenshot service started", Toast.LENGTH_SHORT).show()
-//
-//        // Notify activity if it was opened just for restart
-//        if (restartProjection && activity != null) {
-//            activity?.finish()
-//        }
-//    }
-
     private fun initializeUI() {
         binding.myToolbar.visibility = View.GONE
         binding.bottomNav.visibility = View.GONE

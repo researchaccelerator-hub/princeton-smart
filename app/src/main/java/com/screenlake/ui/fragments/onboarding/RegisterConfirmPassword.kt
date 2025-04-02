@@ -95,21 +95,21 @@ class RegisterConfirmPassword : Fragment() {
                 binding.registerConfirmPasswordFirst.setError(getString(R.string.must_not_be_empty), null)
                 binding.registerConfirmPasswordSecond.setError(getString(R.string.must_not_be_empty), null)
             }else if(password1 == password2 && validatepass(password1)){
-                signUpUser(password1)
+                signUpUser(password1, this.requireContext())
             }else{
                 binding.registerConfirmPasswordSecond.setError(getString(R.string.passwords_must_match), null)
             }
         }
     }
 
-    private fun signUpUser(password: String) {
+    private fun signUpUser(password: String, context: Context) {
         amplifyRepository.password = password
         if(!ConstantSettings.IS_PRODUCTION){
             isRegisteredIn.postValue(true)
         }else{
             if(HardwareChecks.isConnected(requireContext())){
                 binding.registerConfirmPasswordNext.text = getString(R.string.loading)
-                cloudAuthentication.signUp(password)
+                cloudAuthentication.signUp(password, context)
             }else{
                 binding.registerConfirmPasswordNext.text = getString(R.string.connect_to_wifi)
             }

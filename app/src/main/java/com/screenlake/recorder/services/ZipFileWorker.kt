@@ -12,6 +12,7 @@ import com.screenlake.data.repository.GeneralOperationsRepository
 import com.screenlake.recorder.screenshot.DataTransformation
 import com.screenlake.recorder.utilities.TimeUtility
 import com.screenlake.recorder.utilities.ZipFile
+import com.screenlake.recorder.viewmodels.WorkerProgressManager
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Dispatchers
@@ -48,8 +49,9 @@ class ZipFileWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         Timber.tag(TAG).d("Zip Worker has started.")
         return try {
-            zipUpScreenshots(0, 200)
+            zipUpScreenshots(0, 100)
             Timber.tag(TAG).d("Zip Worker has finished.")
+            WorkerProgressManager.updateProgress("Finished zipping up screenshots.")
             Result.success()
         } catch (ex: Exception) {
             Timber.tag(TAG).e(ex, "Zip Worker failed.")
@@ -79,23 +81,49 @@ class ZipFileWorker @AssistedInject constructor(
         val screenshotCount = withContext(Dispatchers.IO) { generalOperationsRepository.getScreenshotCount() }
         Timber.tag(TAG).d("Found $screenshotCount to zip. Batch is set to ${ConstantSettings.getBatch()}")
 
+        withContext(Dispatchers.IO) {
+            generalOperationsRepository.saveAllSessionSegments()
+        }
+
         val path = (if (testing) file?.path else applicationContext.filesDir?.path) ?: ""
         writeLogsToCsv(path)
 
-        if (screenshotCount >= ConstantSettings.getBatch(testing)) {
-            userObj = userObj ?: withContext(Dispatchers.IO) { generalOperationsRepository.getUser() }
-            val zipFileId = UUID.randomUUID()
-            val toZip = mutableListOf<File>()
+        // Initial offset and count tracking
+        var currentOffset = 0
 
-            val screenshots = getScreenshots(screenshotsStart, offset, limit)
-            if (screenshots.isNotEmpty()) {
-                processAccessibilityEvents(screenshots, path, zipFileId, toZip)
-                processScreenshots(screenshots, path, zipFileId, toZip)
-                processSessions(screenshots, path, zipFileId, toZip)
-                processAppSegments(screenshots, path, zipFileId, toZip)
-                createZipFile(toZip, path, zipFileId, screenshots.size, screenshots.mapNotNull { it.id })
-            } else {
-                Timber.tag(TAG).w("No screenshots found to process.")
+        if (screenshotCount > 0) {
+            userObj = userObj ?: withContext(Dispatchers.IO) { generalOperationsRepository.getUser() }
+            var hasMoreScreenshots = true
+
+            // Loop until all screenshots are processed
+            while (hasMoreScreenshots) {
+                val zipFileId = UUID.randomUUID() // New UUID for each batch
+                val toZip = mutableListOf<File>()
+
+                val screenshots = getScreenshots(screenshotsStart, currentOffset, limit)
+
+                if (screenshots.isNotEmpty()) {
+                    Timber.tag(TAG).d("Processing batch of ${screenshots.size} screenshots (offset: $currentOffset)")
+
+                    processAccessibilityEvents(screenshots, path, zipFileId, toZip)
+                    processScreenshots(screenshots, path, zipFileId, toZip)
+                    processSessions(screenshots, path, zipFileId, toZip)
+                    processAppSegments(screenshots, path, zipFileId, toZip)
+
+                    // Create zip file for this batch
+                    createZipFile(toZip, path, zipFileId, screenshots.size, screenshots.mapNotNull { it.id })
+
+                    // Update offset for next batch
+                    currentOffset += limit
+
+                    // Check if we've reached the end
+                    if (screenshots.size < limit) {
+                        hasMoreScreenshots = false
+                    }
+                } else {
+                    // No more screenshots to process
+                    hasMoreScreenshots = false
+                }
             }
         } else {
             Timber.tag(TAG).w("Found $screenshotCount screenshots which is less than ${ConstantSettings.getBatch()}, skipping...")
@@ -180,7 +208,14 @@ class ZipFileWorker @AssistedInject constructor(
         toZip.add(File(path, screenshotCSVFile))
 
         if (userObj?.uploadImages == true) {
-            toZip.addAll(screenshots.map { File(it.filePath) })
+            for (screenshot in screenshots) {
+                if (screenshot.isAppRestricted == false && !screenshot.fileName.isNullOrEmpty()) {
+                    val file = File(screenshot.filePath!!)
+                    if (file.exists()) {
+                        toZip.add(file)
+                    }
+                }
+            }
         }
     }
 
@@ -256,9 +291,9 @@ class ZipFileWorker @AssistedInject constructor(
         }
 
         generalOperationsRepository.insertScreenshotZip(zipObj)
-//        generalOperationsRepository.deleteScreenshots(screenshots)
+        generalOperationsRepository.deleteScreenshots(screenshots)
 //
-//        toZip.forEach { it.delete() }
+        toZip.forEach { it.delete() }
         Timber.tag(TAG).d("Zip file created with ${toZip.size} files.")
     }
 
@@ -296,7 +331,7 @@ class ZipFileWorker @AssistedInject constructor(
         val logCount = generalOperationsRepository.logCount()
         Timber.tag("LogEvent").d("LogEvents $logCount")
 
-        return if (logCount > 25) {
+        return if (logCount > 1) {
             generalOperationsRepository.getLogs(1000, 0)?.let { logs ->
                 val csv = DataTransformation.getAndSaveLogs(logs)
                 logs.chunked(100).forEach { batchLogs ->

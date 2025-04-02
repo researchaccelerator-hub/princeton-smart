@@ -113,6 +113,10 @@
         android:name="com.screenlake.ui.fragments.RegisterOrLoginFragment"
         android:label="RegisterOrLoginFragment" />
     <fragment
+        android:id="@+id/powerAccessFragment"
+        android:name="com.screenlake.ui.fragments.onboarding.PowerAccessSelectFragment"
+        android:label="PowerAccessSelectFragment" />
+    <fragment
         android:id="@+id/registerConfirmPasswordResetFragment"
         android:name="com.screenlake.ui.fragments.onboarding.RegisterConfirmPasswordResetFragment"
         android:label="RegisterConfirmPasswordResetFragment" />
@@ -124,6 +128,10 @@
         android:id="@+id/accessibilityAccessSelectFragment"
         android:name="com.screenlake.ui.fragments.onboarding.AccessibilityAccessSelectFragment"
         android:label="AccessibilityAccessSelectFragment" />
+    <fragment
+        android:id="@+id/screenshotStatsFragment"
+        android:name="com.screenlake.ui.fragments.ScreenshotStatsFragment"
+        android:label="ScreenshotStatsFragment" />
     <!--    <fragment-->
     <!--        android:id="@+id/splashScreenFragment"-->
     <!--        android:name="com.screenlake.recorder.fragments.SplashScreenFragment"-->

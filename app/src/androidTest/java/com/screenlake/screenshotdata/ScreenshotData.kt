@@ -5,8 +5,7 @@ import androidx.annotation.RequiresApi
 import com.screenlake.data.database.entity.ScreenshotEntity
 import com.screenlake.data.database.entity.UserEntity
 import com.screenlake.recorder.constants.ConstantSettings
-import com.screenlake.recorder.services.ScreenRecordService
-import com.screenlake.recorder.services.ScreenRecordService.Companion.appNameVsPackageName
+import com.screenlake.recorder.services.ScreenshotService
 import com.screenlake.recorder.utilities.TimeUtility
 
 object ScreenshotData {
@@ -21,11 +20,11 @@ object ScreenshotData {
         screenshot.sessionId = sessionId
         if(user.uploadImages) screenshot.imageUrl = "https://screenshot-img.s3.amazonaws.com${filename}"
         screenshot.currentAppInUse = currentAppInUse
-        screenshot.currentAppRealNameInUse = appNameVsPackageName.getOrDefault(currentAppInUse, "")
+        screenshot.currentAppRealNameInUse = ScreenshotService.appNameVsPackageName.getOrDefault(currentAppInUse, "")
         screenshot.localTimeStamp = TimeUtility.getCurrentTimestampDefaultTimezoneString()
         screenshot.isAppRestricted = ConstantSettings.RESTRICTED_APPS.contains(currentAppInUse)
         screenshot.filePath = filename
-        screenshot.sessionDepth = ScreenRecordService.lastUnlockTime?.let { timestamp.epochSecond.minus(it) }
+        screenshot.sessionDepth = ScreenshotService.lastUnlockTime?.let { timestamp.epochSecond.minus(it) }
         return screenshot
     }
 

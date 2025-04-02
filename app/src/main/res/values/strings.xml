@@ -5,7 +5,7 @@
 <!--    <string name="second_fragment_label">Second Fragment</string>-->
 <!--    <string name="next">Next</string>-->
 <!--    <string name="previous">Previous</string>-->
-
+    <string name="battery_optimization_disabled">battery_optimization_disabled</string>
     <string name="lorem_ipsum">
         Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam in scelerisque sem. Mauris
         volutpat, dolor id interdum ullamcorper, risus dolor egestas lectus, sit amet mattis purus
@@ -42,12 +42,12 @@
         libero vel nunc consequat, quis tincidunt nisl eleifend. Cras bibendum enim a justo luctus
         vestibulum. Fusce dictum libero quis erat maximus, vitae volutpat diam dignissim.
     </string>
-    <string name="app_name">Screenlake</string>
+    <string name="app_name">SRK</string>
     <string name="logout">Logout</string>
     <string name="recorded_apps">Recorded Apps</string>
     <string name="settings">settings</string>
     <!-- TODO: Remove or change this placeholder text -->
-    <string name="online">Online</string>
+    <string name="online">Connected to the internet</string>
     <string name="pause_recording">Pause Recording</string>
     <string name="cancel">cancel</string>
     <string name="confirm">confirm</string>
@@ -265,7 +265,7 @@
     <string name="notification_permission_denied">Notification permission denied</string>
     <string name="notification_permission_not_available">"Notification permission is not available on your device."d</string>
     <string name="disclaimer">"This app requests that you grant \"Accessibility API permission\". This permission generally enables apps to capture information about the content you see on-screen. This app in particular uses it to capture three specific pieces of information, improving its functionality as a research tool and thus your experience as a research participant. (1) URLs you visit, (2) buttons you tap on, and (3) text you've seen on-screen. In line with the research participation plan you've made with the :ENTER YOUR UNIVERSITY HERE:, and the research consent form they provide you with, your data is used strictly for scientific analysis. The data is not shared with anyone outside of the designated research team."</string>
-    <string name="offline">offline</string>
+    <string name="offline">Not connected to the internet</string>
     <string name="if_your_account_is_not_confirmed_log_in_normally_with_your_email_and_password_and_your_confirmation_code_will_be_re_sent">. If your account is not confirmed, log in normally with your email and password and your confirmation code will be re-sent.</string>
     <string name="exists">exists</string>
     <string name="must_not_be_empty">Must not be empty.</string>
@@ -279,9 +279,9 @@
     <string name="password_must_include_a_special_character">Password must include a special character</string>
     <string name="password_must_be_8_characters_long">Password must be 8 characters long</string>
     <string name="for_screenlake_to_work_properly_we_need_you_to_accept_accessibility_settings">For SRK to work properly, we need you to accept Accessibility Settings.</string>
-    <string name="screenlake">Screenlake</string>
+    <string name="screenlake">SRK</string>
     <string name="agree">Agree</string>
-    <string name="are_you_sure_you_want_to_log_out_of_screenlake_this_will_delete_all_user_data_from_the_phone">Are you sure you want to log out of Screenlake? This will delete all user data from the phone.</string>
+    <string name="are_you_sure_you_want_to_log_out_of_screenlake_this_will_delete_all_user_data_from_the_phone">Are you sure you want to log out of SRK? This will delete all user data from the phone.</string>
     <string name="email_cannot_be_empty">Email cannot be empty</string>
     <string name="password_cannot_be_empty">Password cannot be empty</string>
     <string name="login">Login</string>

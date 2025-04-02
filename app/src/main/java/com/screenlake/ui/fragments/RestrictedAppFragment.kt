@@ -20,7 +20,7 @@ import com.screenlake.databinding.FragmentRestrictedAppsBinding
 import com.screenlake.recorder.adapters.RestrictedAppAdapter
 import com.screenlake.data.model.RestrictedApp
 import com.screenlake.data.database.entity.RestrictedAppPersistentEntity
-import com.screenlake.recorder.services.ScreenRecordService
+import com.screenlake.recorder.services.ScreenshotService
 import com.screenlake.recorder.utilities.BaseUtility.toRestrictedApp
 
 import com.screenlake.recorder.viewmodels.RestrictedAppViewModel
@@ -65,13 +65,13 @@ class RestrictedAppFragment : Fragment() {
             updateRestrictedApp(model)
 
             if (model.isUserRestricted) {
-                ScreenRecordService.restrictedApps.value?.remove(model.packageName)
+                ScreenshotService.restrictedApps.value?.remove(model.packageName)
 
-                val copy = ScreenRecordService.restrictedApps.value
+                val copy = ScreenshotService.restrictedApps.value
                 if (copy != null) {
                     model.packageName?.let { copy.add(it) }
                 }
-                ScreenRecordService.restrictedApps.postValue(copy)
+                ScreenshotService.restrictedApps.postValue(copy)
             }
         }
 
@@ -171,12 +171,12 @@ class RestrictedAppFragment : Fragment() {
     }
 
     fun addRestrictedApp(restrictedApp: RestrictedApp) {
-        restrictedApp.packageName?.let { ScreenRecordService.restrictedApps.value?.add(it) }
-        ScreenRecordService.restrictedApps.notifyObserver()
+        restrictedApp.packageName?.let { ScreenshotService.restrictedApps.value?.add(it) }
+        ScreenshotService.restrictedApps.notifyObserver()
     }
 
     private fun addRestrictedApps(restrictedApps: List<RestrictedApp>) {
-        ScreenRecordService.restrictedApps.postValue(restrictedApps.mapNotNull { it.packageName }
+        ScreenshotService.restrictedApps.postValue(restrictedApps.mapNotNull { it.packageName }
             .toHashSet())
     }
 }

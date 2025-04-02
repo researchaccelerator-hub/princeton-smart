@@ -8,6 +8,7 @@ import android.content.IntentFilter
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.view.accessibility.AccessibilityEvent
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.MutableLiveData
@@ -23,6 +24,7 @@ import com.screenlake.data.repository.GeneralOperationsRepository
 import com.screenlake.recorder.services.AccessibilityServiceDependencies.context
 import com.screenlake.recorder.services.AccessibilityServiceDependencies.eventHandler
 import com.screenlake.recorder.services.AccessibilityServiceDependencies.ioDispatcher
+import com.screenlake.recorder.services.ScreenshotService.Companion.isRunning
 import com.screenlake.recorder.services.util.AccessibilityEventUtils
 import com.screenlake.recorder.services.util.CustomObserver
 import com.screenlake.recorder.utilities.TimeUtility
@@ -34,6 +36,7 @@ import java.lang.ref.WeakReference
 import java.time.Instant
 import java.util.*
 import javax.inject.Inject
+import kotlin.text.contains
 
 object AccessibilityServiceDependencies {
     var ioDispatcher: CoroutineDispatcher? = null
@@ -59,10 +62,21 @@ class TouchAccessibilityService() : AccessibilityService() {
         var prevUrl = ""
         var prevMeta = ""
         var appAccessibilitySessionId = UUID.randomUUID().toString()
-        var framesPerSecond = ConstantSettings.SCREENSHOT_MAPPING[ScreenRecordService.framesPerSecond] ?: 3333L
+        var framesPerSecond = ConstantSettings.SCREENSHOT_MAPPING[ScreenshotService.framesPerSecond] ?: 3333L
         var sessionStartTime: Long? = null
         var appIntervalId = UUID.randomUUID().toString()
         var user: UserEntity? = null
+
+        fun isAccessibilitySettingsOn(mContext: Context): Boolean {
+            return isAccessServiceEnabled(mContext)
+        }
+
+        private fun isAccessServiceEnabled(context: Context): Boolean {
+            val prefString = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+            return prefString != null && prefString.contains(
+                context.packageName + "/" + TouchAccessibilityService::class.java.name
+            )
+        }
     }
 
     private val handler = CoroutineExceptionHandler { _, exception ->
@@ -182,6 +196,11 @@ class TouchAccessibilityService() : AccessibilityService() {
                 appIntervalId = UUID.randomUUID().toString()
             } else {
                 firstRun = false
+            }
+
+            if (isRunning.value != true) {
+                Timber.d("<<<< ScreenshotService not running >>>>")
+                continue
             }
 
             // Handle screen-off events

@@ -8,9 +8,11 @@ import androidx.work.WorkerParameters
 import com.screenlake.data.database.entity.ScreenshotZipEntity
 import com.screenlake.data.database.entity.UserEntity
 import com.screenlake.data.repository.GeneralOperationsRepository
+import com.screenlake.recorder.viewmodels.WorkerProgressManager
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -65,6 +67,7 @@ class UploadWorker @AssistedInject constructor(
             uploadZipFilesAsync()
 
             Timber.tag(TAG).d("Upload Worker has finished.")
+            WorkerProgressManager.updateProgress("Upload has finished.")
             Result.success()
         } catch (ex: Exception) {
             // Log the failure of the upload service
@@ -94,16 +97,18 @@ class UploadWorker @AssistedInject constructor(
         var count = 0.0
         zipsToUpload?.let {
             for (zip in it) {
+                WorkerProgressManager.updateProgress("Uploading $count of ${zipsToUpload?.count()}")
                 zip.file?.let { filePath ->
                     val file = File(filePath)
                     if (file.exists() && uploadHandler.isNetworkConnected()) {
                         Timber.tag(TAG).d("Uploading file ${file.name}")
 
                         // Upload the file
-                        uploadHandler.uploadFile(file, zip.id, user)
+                        async {
+                            uploadHandler.uploadFile(file, zip.id, user)
+                        }.await()
 
-                        delay(3000) // Delay between uploads
-                        ScreenRecordService.manualUploadPercentComplete.postValue(count / it.count())
+                        ScreenshotService.manualUploadPercentComplete.postValue(count / it.count())
                         count++
                     } else {
                         // Handle the case where the file does not exist

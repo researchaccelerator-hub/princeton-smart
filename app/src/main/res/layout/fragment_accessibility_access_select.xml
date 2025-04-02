@@ -88,7 +88,7 @@
                     android:layout_height="40dp"
                     android:layout_marginStart="20dp"
                     android:layout_marginTop="12dp"
-                    android:background="@drawable/ic_iamge_layer_onboarding_app_icon"
+                    android:background="@drawable/logo_just_square_small"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toBottomOf="@+id/textView2" />
 
@@ -98,7 +98,7 @@
                     android:layout_height="40dp"
                     android:layout_marginStart="20dp"
                     android:layout_marginTop="10dp"
-                    android:background="@drawable/ic_iamge_layer_onboarding_app_icon"
+                    android:background="@drawable/logo_just_square_small"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toBottomOf="@+id/imageView3" />
 

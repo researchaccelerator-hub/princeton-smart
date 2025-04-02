@@ -19,6 +19,7 @@ import com.screenlake.data.repository.NativeLib
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
+import java.net.URL
 import java.util.*
 import java.util.concurrent.CountDownLatch
 
@@ -73,19 +74,26 @@ class Util {
      * @return The presigned URL as a string.
      */
     fun generates3ShareUrl(applicationContext: Context, path: String?, uploadPath:String): String {
-        val s3client: AmazonS3? = getS3Client(applicationContext)
-        val expiration = Date()
-        var msec = expiration.time
-        msec += 1000 * 60 * 60.toLong() // 1 hour.
-        expiration.time = msec
-        val overrideHeader = ResponseHeaderOverrides()
-        overrideHeader.contentType = getMimeType(path)
-        val generatePresignedUrlRequest = GeneratePresignedUrlRequest(BuildConfig.AMAZON_BUCKET_NAME, uploadPath, HttpMethod.PUT)
-        generatePresignedUrlRequest.method = HttpMethod.PUT // Default.
-        generatePresignedUrlRequest.expiration = expiration
-        generatePresignedUrlRequest.responseHeaders = overrideHeader
-        val url = s3client?.generatePresignedUrl(generatePresignedUrlRequest)
-        Timber.tag(TAG).d("Generated Url - ${url.toString()}")
+        val url: URL? = try {
+            val s3client: AmazonS3? = getS3Client(applicationContext)
+            val expiration = Date()
+            var msec = expiration.time
+            msec += 1000 * 60 * 60.toLong() // 1 hour.
+            expiration.time = msec
+            val overrideHeader = ResponseHeaderOverrides()
+            overrideHeader.contentType = getMimeType(path)
+            val generatePresignedUrlRequest = GeneratePresignedUrlRequest(BuildConfig.AMAZON_BUCKET_NAME, uploadPath, HttpMethod.PUT)
+            generatePresignedUrlRequest.method = HttpMethod.PUT // Default.
+            generatePresignedUrlRequest.expiration = expiration
+            generatePresignedUrlRequest.responseHeaders = overrideHeader
+            val url = s3client?.generatePresignedUrl(generatePresignedUrlRequest).toString()
+            Timber.tag(TAG).d("Generated Url - ${url.toString()}")
+            return url
+
+        } catch (e: Exception) {
+            Timber.d("Error generating presigned URL: $e")
+            return ""
+        }
         return url.toString()
     }
 

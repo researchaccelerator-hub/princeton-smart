@@ -76,7 +76,7 @@ class AccessibilityAccessSelectFragment : Fragment() {
         return MaterialAlertDialogBuilder(requireContext())
             .setTitle(getString(R.string.screenlake))
             .setMessage((message))
-            .setIcon(R.drawable.ic_launcher_foreground)
+            .setIcon(R.drawable.logo_just_square_small)
             .setPositiveButton(getString(R.string.agree)) { _, _ ->
 
                 val intent = Intent(action)

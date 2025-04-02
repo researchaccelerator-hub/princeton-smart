@@ -2,6 +2,7 @@ package com.screenlake.data.database.dao
 
 import androidx.room.*
 import com.screenlake.data.database.entity.ScreenshotEntity
+import com.screenlake.data.model.AppStat
 
 /**
  * Data Access Object (DAO) for interacting with the screenshot_table in the database.
@@ -50,8 +51,11 @@ interface ScreenshotDao {
      * @param offset The offset from which to start retrieving Screenshots.
      * @return A list of Screenshots.
      */
-    @Query("SELECT * FROM screenshot_table where isOcrComplete is 1 and appSegmentId is not NULL ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+    @Query("SELECT * FROM screenshot_table WHERE (isOcrComplete = 1 AND appSegmentId IS NOT NULL) OR isAppRestricted = 1 ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
     suspend fun getAllScreenshotsSortedByDateWhereOcrIsComplete(limit: Int, offset: Int): List<ScreenshotEntity>
+
+    @Query("SELECT DISTINCT sessionId FROM screenshot_table WHERE appSegmentId IS NULL ORDER BY timestamp DESC")
+    suspend fun getAllSessionsWithoutAppSegments(): List<String>
 
     /**
      * Retrieves a list of Screenshots where OCR is not complete, type is 'SCREENSHOT', and isAppRestricted is false, ordered by timestamp in descending order, limited by the specified number and offset.
@@ -127,8 +131,8 @@ interface ScreenshotDao {
      *
      * @return The count of Screenshots where OCR is complete.
      */
-    @Query("SELECT COUNT(id) FROM screenshot_table where isOcrComplete is 0")
-    suspend fun getCountWhereOcrIsComplete(): Int
+    @Query("SELECT COUNT(id) FROM screenshot_table WHERE isOcrComplete = 1 OR isAppRestricted = 1")
+    suspend fun getOcrCompleteOrRestrictedCount(): Int
 
     /**
      * Retrieves the total count of Screenshots.
@@ -146,4 +150,22 @@ interface ScreenshotDao {
      */
     @Query("SELECT * FROM screenshot_table where sessionId is :sessionId")
     suspend fun getScreenshotsBySessionId(sessionId: String) : List<ScreenshotEntity>
+
+    @Query("SELECT COUNT(*) FROM screenshot_table")
+    suspend fun getTotalCount(): Int
+
+    @Query("SELECT COUNT(*) FROM screenshot_table WHERE isAppRestricted = 1")
+    suspend fun getRestrictedCount(): Int
+
+    @Query("SELECT COUNT(*) FROM screenshot_table WHERE isAppRestricted = 0")
+    suspend fun getUnrestrictedCount(): Int
+
+    @Query("SELECT COUNT(*) FROM screenshot_table WHERE isOcrComplete = 1")
+    suspend fun getOcrCompleteCount(): Int
+
+    @Query("SELECT COUNT(*) FROM screenshot_table WHERE appSegmentId IS NULL")
+    suspend fun getNullAppSegmentCount(): Int
+
+    @Query("SELECT currentAppInUse as appPackage, COUNT(*) as count FROM screenshot_table GROUP BY currentAppInUse ORDER BY count DESC")
+    suspend fun getScreenshotCountsByApp(): List<AppStat>
 }

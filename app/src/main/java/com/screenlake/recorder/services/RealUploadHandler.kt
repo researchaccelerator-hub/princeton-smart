@@ -10,6 +10,7 @@ import com.screenlake.data.repository.GeneralOperationsRepository
 import com.screenlake.recorder.services.util.ScreenshotData
 import com.screenlake.recorder.upload.Util
 import com.screenlake.recorder.utilities.HardwareChecks
+import com.screenlake.recorder.viewmodels.WorkerProgressManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.RequestBody.Companion.asRequestBody
@@ -61,11 +62,13 @@ class RealUploadHandler @Inject constructor(
             }
         } catch (error: Exception) {
             // Log upload failure
+            if (file.extension != "csv") ScreenshotService.lastUploadSuccessful.postValue(false)
             generalOperationsRepository.saveLog(
                 ConstantSettings.UPLOAD_FAILED,
                 "Upload failed with message -> ${error.message} stacktrace -> ${ScreenshotData.ocrCleanUp(error.stackTraceToString())}."
             )
             Timber.tag(TAG).e(error, "Upload failed")
+            WorkerProgressManager.updateProgress("Upload failed -> ${error.message}")
         }
     }
 
@@ -178,12 +181,14 @@ class RealUploadHandler @Inject constructor(
             if (ext == "csv") {
                 "${testPath}log_events/${getBuildVersion()}/${UUID.randomUUID()}.csv"
             } else {
+                ScreenshotService.lastUploadTime.postValue(System.currentTimeMillis())
                 "${testPath}tenant/${user.tenantId}_${user.tenantName}/${getBuildVersion()}/${user.emailHash}/${file.name}.zip"
             }
         } else {
             if (ext == "csv") {
                 "${testPath}academia/log_events/${getBuildVersion()}/${UUID.randomUUID()}.csv"
             } else {
+                ScreenshotService.lastUploadTime.postValue(System.currentTimeMillis())
                 "${testPath}academia/tenant/${user?.tenantId}_${user?.tenantName}/panel/${user?.panelId}/${getBuildVersion()}/panelist/${user?.emailHash}/${file.name}.zip"
             }
         }
@@ -211,12 +216,14 @@ class RealUploadHandler @Inject constructor(
         if (result?.isSuccessful == true) {
             // Log successful upload
             generalOperationsRepository.saveLog("LAST_UPLOAD", result.message())
+            if (file.extension != "csv") ScreenshotService.lastUploadSuccessful.postValue(true)
             file.delete()
             entryId?.let { generalOperationsRepository.deleteZip(it) }
             if (test) UploadWorker.uploadFeedback.postValue("Upload succeeded -> $uploadPath")
             Timber.tag(TAG).d("Upload succeeded")
         } else {
             if (test) UploadWorker.uploadFeedback.postValue("Upload failed -> $uploadPath")
+            if (file.extension != "csv") ScreenshotService.lastUploadSuccessful.postValue(false)
             Timber.tag(TAG).d("Upload failed")
         }
     }

@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
+import com.amplifyframework.auth.AuthException
 import com.amplifyframework.core.Amplify
 import com.screenlake.MainActivity
 import com.screenlake.R
@@ -53,6 +54,18 @@ class RegisterConfirmEmailFragment : Fragment() {
             }
         }
 
+        binding.resendConfirmation.setOnClickListener {
+            lifecycleScope.launch {
+                handleUserNotConfirmed(amplifyRepository.email)
+
+                binding.resendConfirmation.text = "Code sent!"
+
+                delay(3000)
+
+                binding.resendConfirmation.text = "Resend confirmation code"
+            }
+        }
+
         isConfirmed.observe(viewLifecycleOwner) {
             if (it){
                 lifecycleScope.launch {
@@ -71,6 +84,15 @@ class RegisterConfirmEmailFragment : Fragment() {
             hideKeyboard()
             cloudAuthentication.clearUserAuth()
             findNavController().navigate(R.id.closeRegisterWindow)
+        }
+    }
+
+    private suspend fun handleUserNotConfirmed(email: String) {
+        try {
+            val result = com.amplifyframework.kotlin.core.Amplify.Auth.resendSignUpCode(email)
+            Timber.tag("AuthQuickstart").d("Code was sent again: $result.")
+        } catch (error: AuthException) {
+            Timber.tag("AuthQuickstart").e("Failed to resend code: $error")
         }
     }
 

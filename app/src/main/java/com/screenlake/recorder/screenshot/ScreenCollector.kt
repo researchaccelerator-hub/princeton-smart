@@ -10,7 +10,7 @@ import com.screenlake.data.database.entity.UserEntity
 import com.screenlake.data.repository.GeneralOperationsRepository
 import com.screenlake.recorder.constants.ConstantSettings
 import com.screenlake.recorder.constants.ConstantSettings.ZIPPING
-import com.screenlake.recorder.services.ScreenRecordService
+import com.screenlake.recorder.services.ScreenshotService
 import com.screenlake.recorder.services.util.ScreenshotData
 import com.screenlake.recorder.utilities.*
 import kotlinx.coroutines.*
@@ -199,7 +199,7 @@ class ScreenCollector @Inject constructor(
     private suspend fun notUploaded() {
         val zipCount = generalOperationsRepository.getZipCount()
         val screenshotCount = zipCount * ConstantSettings.getBatch()
-        ScreenRecordService.notUploaded.postValue(screenshotCount)
+        ScreenshotService.notUploaded.postValue(screenshotCount)
     }
 
     /**
@@ -227,8 +227,8 @@ class ScreenCollector @Inject constructor(
             uploadDaily.todayUploads += increment
             uploadTotal.totalUploaded += increment
 
-            ScreenRecordService.uploadedThisWeek.postValue(increment)
-            ScreenRecordService.uploadTotal.postValue(uploadTotal.totalUploaded)
+            ScreenshotService.uploadedThisWeek.postValue(increment)
+            ScreenshotService.uploadTotal.postValue(uploadTotal.totalUploaded)
 
             generalOperationsRepository.upsertDaily(uploadDaily)
             generalOperationsRepository.upsertHistory(uploadTotal)

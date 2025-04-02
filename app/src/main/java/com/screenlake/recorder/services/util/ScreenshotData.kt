@@ -4,8 +4,9 @@ import com.screenlake.recorder.constants.ConstantSettings
 import com.screenlake.data.model.AppInfo
 import com.screenlake.data.database.entity.ScreenshotEntity
 import com.screenlake.data.database.entity.UserEntity
-import com.screenlake.recorder.services.ScreenRecordService
-import com.screenlake.recorder.services.ScreenRecordService.Companion.appNameVsPackageName
+import com.screenlake.recorder.services.ScreenshotService
+import com.screenlake.recorder.services.ScreenshotService.Companion.appNameVsPackageName
+import com.screenlake.recorder.services.ScreenshotService.Companion.lastCaptureDate
 import com.screenlake.recorder.utilities.TimeUtility
 
 object ScreenshotData {
@@ -47,6 +48,8 @@ object ScreenshotData {
     ): ScreenshotEntity {
         val timestamp = TimeUtility.getCurrentTimestamp().toInstant()
 
+        lastCaptureDate = timestamp.toEpochMilli()
+
         // Extract the file ID (last part of the file path)
         val fileId = filename.substringAfterLast("/")
 
@@ -62,7 +65,7 @@ object ScreenshotData {
             this.localTimeStamp = TimeUtility.getCurrentTimestampDefaultTimezoneString()
             this.filePath = filename
             this.fileName = fileId
-            this.sessionDepth = ScreenRecordService.lastUnlockTime?.let { timestamp.epochSecond.minus(it) }
+            this.sessionDepth = ScreenshotService.lastUnlockTime?.let { timestamp.epochSecond.minus(it) }
         }
     }
 }

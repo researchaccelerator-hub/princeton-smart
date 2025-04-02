@@ -31,8 +31,9 @@ import com.screenlake.data.database.entity.UploadHistoryEntity
 import com.screenlake.data.database.entity.UserEntity
 import com.screenlake.recorder.authentication.CloudAuthentication
 import com.screenlake.recorder.constants.ConstantSettings
+import com.screenlake.recorder.constants.ConstantSettings.SCREENSHOT_MAPPING
 import com.screenlake.recorder.screenshot.DataTransformation
-import com.screenlake.recorder.services.ScreenRecordService
+import com.screenlake.recorder.services.ScreenshotService
 import com.screenlake.recorder.utilities.TimeUtility
 import com.screenlake.recorder.utilities.silence
 import kotlinx.coroutines.CoroutineScope
@@ -69,7 +70,7 @@ class GeneralOperationsRepository @Inject constructor(
 
     var currentSession = SessionTempEntity()
     private var lastActiveTime: Long? = null
-    private val framesPerSecondConst: Double = ScreenRecordService.framesPerSecondConst
+    private val framesPerSecondConst: Double = ScreenshotService.framesPerSecondConst
 
     suspend fun clearPhone() {
         val path = context.filesDir?.path
@@ -112,33 +113,30 @@ class GeneralOperationsRepository @Inject constructor(
 
         deleteAllAccessibilityEvents()
 
-        ScreenRecordService.postInitialValues()
+        ScreenshotService.postInitialValues()
 
         saveLog(ConstantSettings.LOGGED_OUT)
     }
 
     suspend fun saveAllSessionSegments() {
-        buildCurrentSession(framesPerSecondConst)
+        val sessionIds = getAllSessionsWithoutAppSegments()
 
-        CoroutineScope(Dispatchers.IO).launch { saveSession(currentSession) }
-
-        if (!currentSession.sessionId.isNullOrEmpty()) {
-            val screenshots = getScreenshotsBySessionId(currentSession.sessionId!!)
-            DataTransformation.getAppSegmentData(screenshots).takeIf {
-                it?.appSegments?.isNotEmpty() == true
-            }.apply {
-                this?.let { saveAppSegments(it.appSegments) }
-                this?.let { saveScreenshots(it.screenshots) }
+        for (sessionId in sessionIds) {
+            if (sessionId.isNotEmpty()) {
+                val screenshots = getScreenshotsBySessionId(sessionId)
+                DataTransformation.getAppSegmentData(screenshots).takeIf {
+                    it?.appSegments?.isNotEmpty() == true
+                }.apply {
+                    this?.let { saveAppSegments(it.appSegments) }
+                    this?.let { saveScreenshots(it.screenshots) }
+                }
             }
         }
 
-        // Create a new session.
-        ScreenRecordService.sessionId = UUID.randomUUID().toString()
-
-        ScreenRecordService.screenshotInterval.postValue(ConstantSettings.SCREENSHOT_MAPPING[ScreenRecordService.framesPerSecond])
+        ScreenshotService.screenshotInterval.postValue(ConstantSettings.SCREENSHOT_MAPPING[ScreenshotService.framesPerSecond])
     }
 
-    private suspend fun buildCurrentSession(localFPS: Double) {
+    suspend fun buildCurrentSession(localFPS: Double) {
         val lastActiveTime1 = getLastTimeSessionActive()
         val time = TimeUtility.getCurrentTimestamp()
         currentSession.user = null
@@ -150,12 +148,12 @@ class GeneralOperationsRepository @Inject constructor(
 
         if((currentSession.secondsSinceLastActive ?: 0L) <= 0L) currentSession.secondsSinceLastActive = 0L
 
-        currentSession.sessionId = ScreenRecordService.sessionId
+        currentSession.sessionId = ScreenshotService.sessionId
         currentSession.tenantId = UserEntity.TENANT_ID
         currentSession.panelId = UserEntity.PANEL_ID
-        currentSession.fps = localFPS
+        currentSession.fps = SCREENSHOT_MAPPING[ScreenshotService.Companion.framesPerSecond]!!.toDouble()
         if (currentSession.sessionId.isNullOrEmpty()) {
-            currentSession.sessionId = ScreenRecordService.sessionId
+            currentSession.sessionId = ScreenshotService.sessionId
         }
 
         this.lastActiveTime = currentSession.sessionEnd?.toEpochMilli()
@@ -195,7 +193,7 @@ class GeneralOperationsRepository @Inject constructor(
         screenshotDao.setOcrComplete(
             screenshot.id!!,
             true,
-            screenshot.text!!
+            screenshot.text ?: ""
         )
     }
 
@@ -273,7 +271,7 @@ class GeneralOperationsRepository @Inject constructor(
        }
     }
 
-    private suspend fun saveSession(sessionTemp: SessionTempEntity) {
+    suspend fun saveSession(sessionTemp: SessionTempEntity) {
         sessionDao.saveSession(sessionTemp.toSession())
     }
 
@@ -359,7 +357,7 @@ class GeneralOperationsRepository @Inject constructor(
     }
 
     suspend fun getScreenshotCount(): Int {
-        return screenshotDao.getCountWhereOcrIsComplete()
+        return screenshotDao.getOcrCompleteOrRestrictedCount()
     }
 
     suspend fun getScreenshotsToOcr(limit: Int): List<ScreenshotEntity> {
@@ -374,6 +372,10 @@ class GeneralOperationsRepository @Inject constructor(
             limit = limit,
             offset = offset
         )
+    }
+
+    suspend fun getAllSessionsWithoutAppSegments(): List<String> {
+        return screenshotDao.getAllSessionsWithoutAppSegments()
     }
 
     suspend fun getLogs(limit: Int, offset: Int): List<LogEventEntity> {

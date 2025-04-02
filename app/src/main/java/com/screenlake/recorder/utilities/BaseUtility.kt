@@ -26,6 +26,10 @@ import java.io.ByteArrayOutputStream
 import java.util.*
 
 object BaseUtility {
+    fun isAndroidFifteen() : Boolean {
+        return Build.VERSION.SDK_INT > Build.VERSION_CODES.UPSIDE_DOWN_CAKE
+    }
+
     fun getInstalledApps(context: Context): List<ApplicationInfo> {
         val pm: PackageManager = context.packageManager
         return pm.getInstalledApplications(0)
@@ -57,7 +61,7 @@ object BaseUtility {
         return appInfo
     }
 
-    private fun getAppNameFromPackage(context: Context, packageName: String): String {
+    fun getAppNameFromPackage(context: Context, packageName: String): String {
         val packageManager = context.packageManager
         val applicationInfo = packageManager.getApplicationInfo(packageName, 0)
 
@@ -131,5 +135,13 @@ inline fun silence(body: () -> Unit) {
         body()
     } catch (e: Exception) {
         FirebaseCrashlytics.getInstance().recordException(e)
+    }
+}
+
+fun Exception.record() {
+    try {
+        FirebaseCrashlytics.getInstance().recordException(this)
+    } catch (ex: Exception) {
+
     }
 }

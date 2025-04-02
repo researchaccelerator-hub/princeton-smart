@@ -30,7 +30,6 @@ object ConstantSettings {
     val SCREENSHOT_MAPPING = mutableMapOf(
         0.1 to 10000L,
         0.2 to 5000L,
-        // Below is not FPS, floored for cleanliness.
         0.3 to 3000L,
         0.4 to 2500L,
         0.5 to 2000L,
@@ -56,7 +55,7 @@ object ConstantSettings {
 
     // TODO: Rethink these intervals
     // Do not change!
-    private const val BATCH_SIZE = 100
+    private const val BATCH_SIZE = 10
     private const val METRIC_INTERVAL = 360000L
     private const val CHECK_CREDENTIAL = 10800000
     private const val PERCENT_USED_LIMIT = 95.0

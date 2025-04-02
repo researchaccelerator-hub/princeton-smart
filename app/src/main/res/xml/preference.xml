@@ -65,7 +65,7 @@
             />
 
         <Preference
-            android:title="Logout of Screenlake"
+            android:title="Logout of SRK"
             android:key="@string/logout"
             />
 </PreferenceScreen>

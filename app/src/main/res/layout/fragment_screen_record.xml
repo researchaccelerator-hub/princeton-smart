@@ -276,7 +276,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/inter_extrabold"
                     android:gravity="center"
-                    android:text="This app requests that you grant the &quot;Accessibility API permission&quot;. This permission enables the app to capture three specific pieces of information, improving its function as an academic research tool: (1) URLs you visit, (2) buttons you tap on, and (3) text you've seen on-screen. In line with the research participation plan made with the relevant university, and the consent form provided to you, this data is used strictly for scientific analysis. This app never captures any audio data nor camera data from your device."
+                    android:text="The recording button below controls visual screen-recording only. Separate ongoing recording of all text on-screen (accessibility permissions) and apps (app usage permission) continue, and can be turned off by revoking the Accessibility permission and App Usage permission in your device’s settings menu."
                     android:textSize="14sp" />
             </LinearLayout>
         </LinearLayout>
@@ -296,7 +296,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Test Upload"
-            android:visibility="visible"
+            android:visibility="gone"
             app:layout_constraintBottom_toTopOf="@+id/tvUpdates"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"

@@ -19,7 +19,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_margin="5dp"
-        android:text="Switched-on apps (green) are being screen-recorded by Screenlake."
+        android:text="Switched-on apps (green) are being screen-recorded by SRK."
         android:textSize="20sp" />
 
     <androidx.recyclerview.widget.RecyclerView

@@ -50,7 +50,7 @@ class UsageAccessSelectFragment : Fragment() {
                 }
 
                 hasPackageUsageStatsPermissions() -> {
-                    findNavController().navigate(R.id.accessibilityAccessSelectFragment)
+                    findNavController().navigate(R.id.powerAccessFragment)
                 }
 
                 else -> {
@@ -95,7 +95,7 @@ class UsageAccessSelectFragment : Fragment() {
         return MaterialAlertDialogBuilder(requireContext())
             .setTitle(getString(R.string.screenlake))
             .setMessage((message))
-            .setIcon(R.drawable.ic_launcher_foreground)
+            .setIcon(com.screenlake.R.drawable.logo_just_square_small)
             .setPositiveButton(getString(R.string.ok)) { _, _ ->
                 val intent = Intent(action)
                 startActivity(intent)

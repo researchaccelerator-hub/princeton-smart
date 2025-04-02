@@ -9,10 +9,7 @@ import android.os.BatteryManager
 import android.os.Environment
 import android.os.StatFs
 import com.screenlake.MainActivity
-import com.screenlake.data.repository.GeneralOperationsRepository
-import com.screenlake.recorder.constants.ConstantSettings
-import com.screenlake.recorder.services.NotificationHelper
-import com.screenlake.recorder.services.ScreenRecordService
+import com.screenlake.recorder.services.ScreenshotService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -37,7 +34,7 @@ object HardwareChecks {
                 plugged == BatteryManager.BATTERY_PLUGGED_USB ||
                 plugged == BatteryManager.BATTERY_PLUGGED_WIRELESS
 
-        ScreenRecordService.isPowerConnected.postValue(result)
+        ScreenshotService.isPowerConnected.postValue(result)
         return result
     }
 

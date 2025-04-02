@@ -28,7 +28,7 @@
                 android:id="@+id/media_image"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
-                android:background="@drawable/screenlake_logo_toolbar"
+                android:background="@drawable/logo_just_square_small"
                 android:visibility="visible" />
         </LinearLayout>
     </androidx.appcompat.widget.Toolbar>
@@ -59,7 +59,7 @@
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottomNav"
         android:layout_width="match_parent"
-        android:layout_height="60dp"
+        android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:scrollIndicators="left"
         app:layout_constraintBottom_toBottomOf="parent"

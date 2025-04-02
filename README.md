@@ -58,9 +58,9 @@ In its original form, this repository does not include a default/hard-coded clou
 In its orignal form, this app is not capable of accessing the microphone, camera, speakers, or location services of the smartphone.
 
 ### Setup Walkthrough videos
-- [SRK Build Tutorial pt1: Setup and Build](https://youtube.com/video/XDHoJhoESPc/edit) (illustrates [Section 3](#build-and-distribute-the-app-using-android-studio-and-firebase))
-- [SRK Build Tutorial pt2: The App](https://youtube.com/video/SbhaQb0CChE/edit) (illustrates [Section 4](#build-and-distribute-the-app-using-android-studio-and-firebase))
-- [SRK Build Tutorial pt3: Scripts](https://youtube.com/video/oFH0MieGgUY/edit) (illustrates [Section 5](#unzipping-and-consolidation-of-zip-files-in-the-cloud))
+- [SRK Build Tutorial pt1: Setup and Build](https://youtube.com/video/XDHoJhoESPc) (illustrates [Section 3](#build-and-distribute-the-app-using-android-studio-and-firebase))
+- [SRK Build Tutorial pt2: The App](https://youtube.com/video/SbhaQb0CChE) (illustrates [Section 4](#build-and-distribute-the-app-using-android-studio-and-firebase))
+- [SRK Build Tutorial pt3: Scripts](https://youtube.com/video/oFH0MieGgUY) (illustrates [Section 5](#unzipping-and-consolidation-of-zip-files-in-the-cloud))
 
 
 ## Preparing Connections for the Application

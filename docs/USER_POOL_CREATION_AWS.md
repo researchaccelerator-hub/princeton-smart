@@ -47,9 +47,6 @@ In this tutorial, we'll walk through the steps to create an AWS Cognito User Poo
         - **ALLOW_USER_AUTH**
         - **ALLOW_ADMIN_USER_AUTH**
 
-![alt text](<images/user_pool_final_configs.png>)
-
-
 4. **Complete the App Client's Initial Setup**:
     - Scroll down and click **"Save Changes"**.
 

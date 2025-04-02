@@ -245,6 +245,7 @@ NOTES:
    - Choosing to use an ec2 versus a local laptop, as the laptop is more prone to interruptions
 - The script is idempotent, meaning that even it gets stuck or hung up, you can just cancel the run midway and re-run it with no harm done and no duplicated data in your output.
 
+Check out the readme file inside of the **scripts** folder as well.
 [Watch a visual valkthrough here.](https://youtu.be/oFH0MieGgUY).
 
 

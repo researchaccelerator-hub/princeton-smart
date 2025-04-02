@@ -2,25 +2,48 @@
 
 This script automates the process of downloading, processing, and combining data from AWS S3 buckets. It is designed to filter files based on a date range, process zipped data, detect and redact faces in images, and consolidate CSV files.
 
+
 ---
+
+
+When participants' data lands in the cloud, it's in zipped-format. Use the python script in the **scripts** folder to unpack and organize all of that data.
+
+NOTES:
+- Whereever you run the script from, participant data be be downloaded to temporarily. So, make sure that you run that script from an approved machine which participant data can safely be stored. An AWS ec2 is likely your best option, as it falls under the same security and institutional approval umbrella as the AWS cloud storage you're using.
+- The script can run for a long time if you've got a lot of data collected and process it all at once. The script will stop/hang if its connection is interrupted, (e.g.) if your laptop falls-asleep midway. You can mitigate this by:
+    - Running processing in date-bounded batches (super easy thanks to the script)
+    - Making sure that there are no internet disruptions during the script's run
+    - Choosing to use an ec2 versus a local laptop, as the laptop is more prone to interruptions
+- The script is idempotent, meaning that even it gets stuck or hung up, you can just cancel the run midway and re-run it with no harm done and no duplicated data in your output.
+
+[Watch a visual valkthrough here.](https://youtu.be/oFH0MieGgUY).
+
+
+To understand the final output data, read through the explainer doc.
+[Screenlake Research Kit: A Practical Guide](https://docs.google.com/document/d/1TMU9V169so5C-JHJscVokS_iKi2IjCiabze07KnQ41E/edit?usp=sharing)
+
+
+
+---
+
 
 ## Features
 1. **AWS S3 Integration**:
-   - Connects to AWS S3 and lists files and folders within specified paths.
-   - Filters objects by a user-defined date range.
+    - Connects to AWS S3 and lists files and folders within specified paths.
+    - Filters objects by a user-defined date range.
 
 2. **Batch Processing**:
-   - Downloads files in batches using multiprocessing for efficiency.
-   - Supports large-scale data processing workflows.
+    - Downloads files in batches using multiprocessing for efficiency.
+    - Supports large-scale data processing workflows.
 
 3. **Unzipping and Processing**:
-   - Extracts ZIP files, processes their contents, and handles images by detecting and redacting faces.
+    - Extracts ZIP files, processes their contents, and handles images by detecting and redacting faces.
 
 4. **CSV Consolidation**:
-   - Combines multiple CSV files grouped by specific prefixes into consolidated CSV files.
+    - Combines multiple CSV files grouped by specific prefixes into consolidated CSV files.
 
 5. **Cleanup**:
-   - Deletes intermediate directories and files after processing to save space.
+    - Deletes intermediate directories and files after processing to save space.
 
 ---
 
@@ -113,10 +136,10 @@ Temporary files and folders are automatically deleted after processing. The cons
    python script_name.py
    ```
 2. **Follow the Prompts**:
-   - Select the S3 bucket and path.
-   - Specify the date range and processing parameters.
+    - Select the S3 bucket and path.
+    - Specify the date range and processing parameters.
 3. **Output**:
-   - Consolidated CSV files and processed images will be available in the `<query_id>/combined` directory.
+    - Consolidated CSV files and processed images will be available in the `<query_id>/combined` directory.
 
 ---
 

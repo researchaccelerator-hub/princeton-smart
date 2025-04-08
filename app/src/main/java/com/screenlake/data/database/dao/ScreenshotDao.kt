@@ -168,4 +168,39 @@ interface ScreenshotDao {
 
     @Query("SELECT currentAppInUse as appPackage, COUNT(*) as count FROM screenshot_table GROUP BY currentAppInUse ORDER BY count DESC")
     suspend fun getScreenshotCountsByApp(): List<AppStat>
+
+    /**
+     * Gets the first batch of screenshots created after the given timestamp,
+     * ordered by id in ascending order.
+     *
+     * @param startTime The timestamp to start from
+     * @param limit Maximum number of records to return
+     * @return List of screenshots
+     */
+    @Query("""
+        SELECT * FROM screenshot_table
+         WHERE ((isOcrComplete = 1 AND appSegmentId IS NOT NULL) OR (isAppRestricted = 1 AND appSegmentId IS NOT NULL)) and timestamp >= :startTime 
+        ORDER BY id ASC 
+        LIMIT :limit
+    """)
+    fun getScreenshotsBatchByTime(startTime: Long, limit: Int): List<ScreenshotEntity>
+
+    /**
+     * Gets the next batch of screenshots created after the given timestamp
+     * with ids greater than the last processed id,
+     * ordered by id in ascending order.
+     *
+     * @param startTime The timestamp to start from
+     * @param lastId The id of the last processed screenshot
+     * @param limit Maximum number of records to return
+     * @return List of screenshots
+     */
+    @Query("""
+        SELECT * FROM screenshot_table 
+        WHERE ((isOcrComplete = 1 AND appSegmentId IS NOT NULL) OR (isAppRestricted = 1 AND appSegmentId IS NOT NULL)) and timestamp >= :startTime 
+        AND id > :lastId 
+        ORDER BY id ASC 
+        LIMIT :limit
+    """)
+    fun getScreenshotsBatchByTimeAndId(startTime: Long, lastId: Int, limit: Int): List<ScreenshotEntity>
 }

@@ -42,16 +42,15 @@ class WorkerStarter @Inject constructor(
         initUploadWorker()
         initZipFileWorker()
         scheduleMetricWorker()
-
     }
 
-//    fun scheduleImmediateWork() {
-//        Timber.tag("Artemis").e("**** Creating a one-time work request ****")
-//        // val workRequest1 = OneTimeWorkRequest.Builder(WeeklyAppUsageDataReceiver::class.java).build()
-//        val workRequest2 = OneTimeWorkRequest.Builder(MetricWorker::class.java).build()
-//        // workManager.enqueue(workRequest1)
-//        workManager.enqueue(workRequest2)
-//    }
+    fun scheduleImmediateWork() {
+        Timber.tag("Artemis").e("**** Creating a one-time work request ****")
+        // val workRequest1 = OneTimeWorkRequest.Builder(WeeklyAppUsageDataReceiver::class.java).build()
+        val workRequest2 = OneTimeWorkRequest.Builder(MetricWorker::class.java).build()
+        // workManager.enqueue(workRequest1)
+        workManager.enqueue(workRequest2)
+    }
 
     private fun initUploadWorker() {
         workManager.enqueueUniquePeriodicWork(

@@ -6,7 +6,7 @@ import com.screenlake.data.database.entity.ScreenshotEntity
 import com.screenlake.data.database.entity.UserEntity
 import com.screenlake.recorder.services.ScreenshotService
 import com.screenlake.recorder.services.ScreenshotService.Companion.appNameVsPackageName
-import com.screenlake.recorder.services.ScreenshotService.Companion.lastCaptureDate
+import com.screenlake.recorder.services.ScreenshotService.Companion.lastCaptureTime
 import com.screenlake.recorder.utilities.TimeUtility
 
 object ScreenshotData {
@@ -48,7 +48,7 @@ object ScreenshotData {
     ): ScreenshotEntity {
         val timestamp = TimeUtility.getCurrentTimestamp().toInstant()
 
-        lastCaptureDate = timestamp.toEpochMilli()
+        lastCaptureTime = timestamp.toEpochMilli()
 
         // Extract the file ID (last part of the file path)
         val fileId = filename.substringAfterLast("/")
@@ -61,7 +61,7 @@ object ScreenshotData {
             this.isAppRestricted = ConstantSettings.RESTRICTED_APPS.contains(currentAppInUse.apk)
             this.type = "SCREENSHOT"
             this.currentAppInUse = currentAppInUse.apk
-            this.currentAppRealNameInUse = appNameVsPackageName.getOrDefault(currentAppInUse.apk, "")
+            this.currentAppRealNameInUse = currentAppInUse.name
             this.localTimeStamp = TimeUtility.getCurrentTimestampDefaultTimezoneString()
             this.filePath = filename
             this.fileName = fileId

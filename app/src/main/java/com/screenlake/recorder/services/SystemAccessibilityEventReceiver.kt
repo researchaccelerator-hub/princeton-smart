@@ -109,7 +109,7 @@ class SystemAccessibilityEventReceiver(private val mContext: Context? = null) : 
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val event = AccessibilityEventEntity(
-                    user = TouchAccessibilityService.user?.emailHash,
+                    user = ScreenshotService.user.emailHash,
                     eventTime = eventTime,
                     eventType = eventType,
                     appIntervalId = TouchAccessibilityService.appIntervalId,

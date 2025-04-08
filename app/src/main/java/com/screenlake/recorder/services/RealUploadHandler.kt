@@ -179,17 +179,17 @@ class RealUploadHandler @Inject constructor(
 
         return if (user?.uploadImages == false) {
             if (ext == "csv") {
-                "${testPath}log_events/${getBuildVersion()}/${UUID.randomUUID()}.csv"
+                "${testPath}log_events_v2/${user.emailHash}/${getBuildVersion()}/${UUID.randomUUID()}.csv"
             } else {
                 ScreenshotService.lastUploadTime.postValue(System.currentTimeMillis())
-                "${testPath}tenant/${user.tenantId}_${user.tenantName}/${getBuildVersion()}/${user.emailHash}/${file.name}.zip"
+                "${testPath}tenant/${user.tenantId}_${user.tenantName}/${getBuildVersion()}/${user.emailHash}/${file.name}"
             }
         } else {
             if (ext == "csv") {
-                "${testPath}academia/log_events/${getBuildVersion()}/${UUID.randomUUID()}.csv"
+                "${testPath}academia/log_events_v2/${user?.emailHash}/${getBuildVersion()}/${UUID.randomUUID()}.csv"
             } else {
                 ScreenshotService.lastUploadTime.postValue(System.currentTimeMillis())
-                "${testPath}academia/tenant/${user?.tenantId}_${user?.tenantName}/panel/${user?.panelId}/${getBuildVersion()}/panelist/${user?.emailHash}/${file.name}.zip"
+                "${testPath}academia/tenant/${user?.tenantId}_${user?.tenantName}/panel/${user?.panelId}/${getBuildVersion()}/panelist/${user?.emailHash}/${file.name}"
             }
         }
     }

@@ -7,6 +7,7 @@ import com.screenlake.recorder.constants.ConstantSettings
 import com.screenlake.data.database.entity.AccessibilityEventEntity
 import com.screenlake.data.enums.BehavioralEvents
 import com.screenlake.data.repository.GeneralOperationsRepository
+import com.screenlake.recorder.services.ScreenshotService
 import com.screenlake.recorder.services.util.ScreenshotData
 import com.screenlake.recorder.services.TouchAccessibilityService
 import com.screenlake.recorder.utilities.TimeUtility
@@ -85,11 +86,11 @@ class AllTextHandler @Inject constructor(
     ) {
         val joinedText = resultText.joinToString()
 
-        if (resultText.isNotEmpty() && resultText.joinToString() != previousKey) {
+        if (resultText.isNotEmpty()) {
             previousKey = joinedText
             save(
                 AccessibilityEventEntity(
-                    user = TouchAccessibilityService.user?.emailHash,
+                    user = ScreenshotService.user.emailHash,
                     packageName = packageName,
                     appIntervalId = TouchAccessibilityService.appIntervalId,
                     text = ScreenshotData.ocrCleanUp(joinedText),
@@ -115,7 +116,7 @@ class AllTextHandler @Inject constructor(
                     if (currentUrl != TouchAccessibilityService.prevUrl && URLUtil.isValidUrl("http://" + currentUrl)){
                         save(
                             AccessibilityEventEntity(
-                                user = TouchAccessibilityService.user?.emailHash,
+                                user = ScreenshotService.user.emailHash,
                                 eventType = "URL",
                                 text = currentUrl,
                                 eventTime = currentTime,
@@ -139,7 +140,7 @@ class AllTextHandler @Inject constructor(
                     if (node.className?.contains("android.widget.Image") == true){
                         if (TouchAccessibilityService.prevMeta != text.toString()){
                             result.add(AccessibilityEventEntity().apply {
-                                this.user = TouchAccessibilityService.user?.emailHash
+                                this.user = ScreenshotService.user.emailHash
                                 this.eventType = "IMAGE_METADATA"
                                 this.text = text.toString()
                                 this.eventTime = currentTime

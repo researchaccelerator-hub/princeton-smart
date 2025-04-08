@@ -15,7 +15,7 @@ interface UserDao {
     @Query("SELECT * FROM user_table LIMIT 1")
     suspend fun getUser(): UserEntity
 
-    @Query("SELECT * FROM user_table LIMIT 1")
+    @Query("SELECT * FROM user_table Where email_hash is not null LIMIT 1")
     fun getUserSynchronously(): UserEntity
 
     @Query("UPDATE user_table SET panel_id = :panelId WHERE id = :id")

@@ -14,6 +14,7 @@ import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
@@ -43,6 +44,8 @@ class UploadWorker @AssistedInject constructor(
     companion object {
         private const val TAG = "UploadWorker"
         val uploadFeedback = MutableLiveData<String>()
+        val mutex = Mutex()
+        var isRunning = false
     }
 
     /**
@@ -55,25 +58,40 @@ class UploadWorker @AssistedInject constructor(
      */
     override suspend fun doWork(): Result {
         Timber.tag(TAG).d("Upload Worker has started.")
+
+        if (!mutex.tryLock()) {
+            Timber.tag(TAG).w("Upload already in progress. Skipping this worker.")
+            return Result.failure()
+        }
+
         return try {
+            if (isRunning) {
+                generalOperationsRepository.saveLog("uploadZipFilesAsync","uploadZipFilesAsync already running.")
+                Timber.tag(TAG).w("uploadZipFilesAsync already running.")
+                Result.failure()
+            } else {
+                isRunning = true
 
-            if (!uploadHandler.isNetworkConnected()) {
-                Timber.tag(TAG).d("No network connection. Upload Worker has finished.")
-                return Result.failure()
+                if (!uploadHandler.isNetworkConnected()) {
+                    Timber.tag(TAG).d("No network connection. Upload Worker has finished.")
+                    return Result.failure()
+                }
+
+                generalOperationsRepository.saveLog("UPLOAD_SERVICE_RUN", "")
+
+                uploadZipFilesAsync()
+
+                Timber.tag(TAG).d("Upload Worker has finished.")
+                WorkerProgressManager.updateProgress("Upload has finished.")
+                Result.success()
             }
-            // Log the start of the upload service
-            generalOperationsRepository.saveLog("UPLOAD_SERVICE_RUN", "")
-
-            uploadZipFilesAsync()
-
-            Timber.tag(TAG).d("Upload Worker has finished.")
-            WorkerProgressManager.updateProgress("Upload has finished.")
-            Result.success()
         } catch (ex: Exception) {
-            // Log the failure of the upload service
             generalOperationsRepository.saveLog("UPLOAD_SERVICE_RUN_FAIL", ex.stackTraceToString())
             Timber.tag(TAG).e(ex, "Upload Worker failed.")
             Result.failure()
+        } finally {
+            isRunning = false
+            mutex.unlock()
         }
     }
 

@@ -40,7 +40,6 @@ import com.screenlake.data.repository.GeneralOperationsRepository
 import com.screenlake.recorder.constants.ConstantSettings.ACTION_PAUSE_SERVICE
 import com.screenlake.recorder.constants.ConstantSettings.ACTION_STOP_SERVICE
 import com.screenlake.recorder.constants.ConstantSettings.RESTRICTED_APPS
-import com.screenlake.recorder.constants.ConstantSettings.SCREENSHOT_IMAGE_QUALITY
 import com.screenlake.recorder.constants.ConstantSettings.SCREENSHOT_MAPPING
 import com.screenlake.recorder.ocr.Assets
 import com.screenlake.recorder.ocr.Recognize
@@ -68,7 +67,6 @@ import timber.log.Timber
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import java.nio.ByteBuffer
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.HashSet
@@ -77,8 +75,6 @@ import java.util.UUID
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
-import androidx.core.graphics.createBitmap
-import androidx.work.await
 import com.screenlake.recorder.services.util.SharedPreferencesUtil
 import com.screenlake.recorder.utilities.silence
 import kotlinx.coroutines.TimeoutCancellationException
@@ -89,9 +85,12 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
     companion object {
         var lastOcrTime = 0L
         var manualOcr = MutableLiveData<Boolean>()
+        var screenshotZipDuplicateTracker = HashSet<String>()
         var optimizeUploads = MutableLiveData<Boolean>()
         var isActionScreenOff = MutableLiveData<Boolean>()
-        var lastCaptureDate = 0L
+        var lastCaptureTime = 0L
+        var lastIsAliveTime = 0L
+        var lastReEnableNotificationSent = 0L
         private var imagesProduced = 0
         val isScreenOn = MutableLiveData<Boolean>()
         val isRecording = MutableLiveData<Boolean>()
@@ -121,7 +120,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
 
         var isMediaProjectionValid = MutableLiveData<Boolean>()
 
-        const val framesPerSecondConst: Double = 0.5
+        const val framesPerSecondConst: Double = 0.2
         var framesPerSecond: Double = framesPerSecondConst
         val notUploaded = MutableLiveData<Int>()
         var sessionId = UUID.randomUUID().toString()
@@ -206,7 +205,6 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
     @Inject
     lateinit var recognize: Recognize
 
-    var user = UserEntity()
     var currentAppInUse = AppInfo()
 
     // Store media projection data for later restart
@@ -558,6 +556,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                             if (!isScreenLocked.get()) {
                                 try {
                                     withTimeout(SCREENSHOT_TIMEOUT_MS){
+                                        lastIsAliveTime = System.currentTimeMillis()
                                         takeScreenshot()
                                     }
 
@@ -899,9 +898,9 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
     override fun onScreenOff() {
         Timber.d("Screen turned off")
         isScreenLocked.set(true)
-        saveSessionSegmentsInBackground()
 
         CoroutineScope(Dispatchers.IO).launch {
+            saveSessionSegmentsInBackground()
             generalOperationsRepository.buildCurrentSession(framesPerSecondConst)
             generalOperationsRepository.saveSession(generalOperationsRepository.currentSession)
             // Create a new session.
@@ -950,9 +949,6 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         val screenshots = generalOperationsRepository.getScreenshotsToOcr(1000)
         Timber.tag(TAG).d("Starting OCR: Processing ${screenshots.size} images.")
         processedCount = 0
-        withContext(Dispatchers.IO) {
-            generalOperationsRepository.saveAllSessionSegments()
-        }
 
         // Only proceed if there are enough images to process
         if ((screenshots.size >= OCR_IMAGE_THRESHOLD && isOlderThanTwoHours(lastOcrTime)) || manualOcr.value == true) {
@@ -961,7 +957,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
             WorkerProgressManager.clear()
             try {
                 initializeTesseract()  // Initialize Tesseract for OCR
-                delay(5000)
+                delay(3000)
 
                 screenshots.chunked(50).forEachIndexed { batchIndex, imagesToOcr ->
                     WorkerProgressManager.updateProgress("Starting OCR batch ${batchIndex + 1}")
@@ -970,28 +966,32 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                         recognizeImages(imagesToOcr, screenshots.size)  // Process the images in batches
                     }
 
-                    val firstWorkRequest = OneTimeWorkRequestBuilder<ZipFileWorker>()
-                        .setBackoffCriteria(BackoffPolicy.LINEAR, 0, TimeUnit.SECONDS)
-                        .build()
+                    if (isScreenLocked.get() || manualOcr.value == true) {
+                        val firstWorkRequest = OneTimeWorkRequestBuilder<ZipFileWorker>()
+                            .setBackoffCriteria(BackoffPolicy.LINEAR, 0, TimeUnit.SECONDS)
+                            .build()
 
-                    val secondWorkRequest = OneTimeWorkRequestBuilder<UploadWorker>()
-                        .setBackoffCriteria(BackoffPolicy.LINEAR, 0, TimeUnit.SECONDS)
-                        .build()
+                        val secondWorkRequest = OneTimeWorkRequestBuilder<UploadWorker>()
+                            .setBackoffCriteria(BackoffPolicy.LINEAR, 0, TimeUnit.SECONDS)
+                            .build()
 
-                    // Chain the work requests to run sequentially
-                    val workContinuation = WorkManager.getInstance(this@ScreenshotService)
-                        .beginWith(firstWorkRequest)
-                        .then(secondWorkRequest)
-                        .enqueue()
+                        // Chain the work requests to run sequentially
+                        val workContinuation = WorkManager.getInstance(this@ScreenshotService)
+                            .beginWith(firstWorkRequest)
+                            .then(secondWorkRequest)
+                            .enqueue()
 
-                    try {
-                        // Wait for the operation to complete
-                        workContinuation.result.await()
-                        // Operation completed successfully
-                        Timber.d("ScreenshotService: Work operation completed successfully")
-                    } catch (e: Exception) {
-                        // Operation failed
-                        Timber.e(e, "ScreenshotService: Work operation failed")
+                        try {
+                            // Wait for the operation to complete
+                            workContinuation.result.await()
+                            // Operation completed successfully
+                            Timber.d("ScreenshotService: Work operation completed successfully")
+                        } catch (e: Exception) {
+                            // Operation failed
+                            Timber.e(e, "ScreenshotService: Work operation failed")
+                        }
+                    }else{
+                        return@launch
                     }
                 }
 
@@ -1000,6 +1000,8 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                 Timber.tag(TAG).d("Ending OCR.")
             } catch (ex: Exception) {
                 // handleOcrException(ex)
+                generalOperationsRepository.saveLog("OCR_ERROR", "OCR failed: ${ex.stackTraceToString()}")
+                ex.record()
                 ocrSubmitted = false
                 manualOcr.postValue(false)
             } finally {
@@ -1063,8 +1065,8 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
     /**
      * Launches a coroutine to save all session segments in the background.
      */
-    private fun saveSessionSegmentsInBackground() {
-        CoroutineScope(Dispatchers.IO).launch {
+    private suspend fun saveSessionSegmentsInBackground() {
+        withContext(Dispatchers.IO) {
             generalOperationsRepository.saveAllSessionSegments()
         }
     }

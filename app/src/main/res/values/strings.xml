@@ -278,7 +278,7 @@
     <string name="password_must_include_a_number">Password must include a number</string>
     <string name="password_must_include_a_special_character">Password must include a special character</string>
     <string name="password_must_be_8_characters_long">Password must be 8 characters long</string>
-    <string name="for_screenlake_to_work_properly_we_need_you_to_accept_accessibility_settings">For SRK to work properly, we need you to accept Accessibility Settings.</string>
+    <string name="for_screenlake_to_work_properly_we_need_you_to_accept_accessibility_settings">For SRK to work properly, we need you to grant Accessibility Settings.</string>
     <string name="screenlake">SRK</string>
     <string name="agree">Agree</string>
     <string name="are_you_sure_you_want_to_log_out_of_screenlake_this_will_delete_all_user_data_from_the_phone">Are you sure you want to log out of SRK? This will delete all user data from the phone.</string>
@@ -287,7 +287,7 @@
     <string name="login">Login</string>
     <string name="your_login_was_incorrect">Your login was incorrect.</string>
     <string name="logging_in">Logging in...</string>
-    <string name="for_screenlake_to_work_properly_you_must_manually_permit_usage_access_this_is_so_we_can_stop_recording_data_sensitive_apps_for_privacy_reasons">For SRK to work properly, you must manually permit Usage Access. \n This is so we can stop recording data sensitive apps for privacy reasons.,</string>
+    <string name="for_screenlake_to_work_properly_you_must_manually_permit_usage_access_this_is_so_we_can_stop_recording_data_sensitive_apps_for_privacy_reasons">For SRK to work properly, you must manually permit Usage Access. \n This is so we can stop recording data sensitive apps for privacy reasons.</string>
     <string name="privacy_url">https://screenlake.com/privacy-policy</string>
     <string name="sending">Sending...</string>
     <string name="invalid_code_please_enter_a_4_digit_code_between_0000_and_9999">Invalid code. Please enter a 4-digit code between 0000 and 9999.</string>

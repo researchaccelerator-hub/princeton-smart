@@ -26,6 +26,9 @@ interface SessionDao {
     @Query("delete from session_table where id in (:idList)")
     fun deleteSessions(idList: List<String>)
 
+    @Query("delete from session_table where id in (:idList)")
+    fun deleteSessionsId(idList: List<Int>)
+
     /**
      * Get Session object
      */

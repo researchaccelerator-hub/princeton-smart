@@ -3,6 +3,7 @@ package com.screenlake.recorder.services
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.screenlake.recorder.services.ScreenshotService.Companion.lastReEnableNotificationSent
 
 class MetricWorker(
     context: Context,
@@ -13,14 +14,15 @@ class MetricWorker(
         val context = this@MetricWorker.applicationContext
         var notificationID = 2
 
-//        // Check if accessibility service is enabled
-        if (isOlderThanThirtyMinutes(ScreenshotService.lastCaptureDate) && ScreenshotService.isRunning.value == false) {
+        if (isOlderThanThirtyMinutes(ScreenshotService.lastIsAliveTime)) {
             val notiManager = NotificationHelper(context)
             notiManager.createNotificationChannel()
+
+            lastReEnableNotificationSent = System.currentTimeMillis()
+
             NotificationHelper(context).showNotification("Screenlake", "Please re-enable screen recording.", notificationID)
         }
 
-        // Indicate success
         return Result.success()
     }
 

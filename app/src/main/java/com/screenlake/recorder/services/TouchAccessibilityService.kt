@@ -21,12 +21,14 @@ import com.screenlake.recorder.constants.ConstantSettings
 import com.screenlake.data.database.entity.UserEntity
 import com.screenlake.data.enums.BehavioralEvents
 import com.screenlake.data.repository.GeneralOperationsRepository
+import com.screenlake.recorder.constants.ConstantSettings.RESTRICTED_APPS
 import com.screenlake.recorder.services.AccessibilityServiceDependencies.context
 import com.screenlake.recorder.services.AccessibilityServiceDependencies.eventHandler
 import com.screenlake.recorder.services.AccessibilityServiceDependencies.ioDispatcher
 import com.screenlake.recorder.services.ScreenshotService.Companion.isRunning
 import com.screenlake.recorder.services.util.AccessibilityEventUtils
 import com.screenlake.recorder.services.util.CustomObserver
+import com.screenlake.recorder.utilities.BaseUtility
 import com.screenlake.recorder.utilities.TimeUtility
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
@@ -132,6 +134,8 @@ class TouchAccessibilityService() : AccessibilityService() {
         // Set initial screen state to on
         isScreenOn.postValue(true)
 
+        ioDispatcher = Dispatchers.IO
+
         super.onServiceConnected()
     }
 
@@ -176,7 +180,7 @@ class TouchAccessibilityService() : AccessibilityService() {
         user = getUser()
         saveEvent(
             AccessibilityEventEntity(
-                user = user?.emailHash,
+                user = ScreenshotService.user.emailHash,
                 eventTime = Instant.now().epochSecond,
                 eventType = "SESSION_START",
                 appIntervalId = appIntervalId,
@@ -208,6 +212,7 @@ class TouchAccessibilityService() : AccessibilityService() {
                 if (screenOffDetected) {
                     trackingManager.handleAccessibilityEvent(
                         AccessibilityEventEntity().apply {
+                            user = Companion.user?.emailHash
                             behavorType = BehavioralEvents.SESSION_OVER
                         }
                     )
@@ -220,6 +225,23 @@ class TouchAccessibilityService() : AccessibilityService() {
             // Reset detection for screen-off events if screen is on
             screenOffDetected = true
 
+            val packageName = rootInActiveWindow?.packageName
+            val moveForward = !(RESTRICTED_APPS.contains(packageName))
+
+            if (!moveForward) {
+                saveEvent(
+                    AccessibilityEventEntity(
+                        user = ScreenshotService.user.emailHash,
+                        eventTime = Instant.now().epochSecond,
+                        eventType = "APP_RESTRICTED",
+                        appIntervalId = appIntervalId,
+                        accessibilitySessionId = appAccessibilitySessionId,
+                        packageName = packageName.toString()
+                    )
+                )
+                continue
+            }
+
             // Process the active root node if available
             rootInActiveWindow?.let { rootNode ->
                 Timber.d("Processing Accessibility Node at ${TimeUtility.getCurrentTimestamp()}")
@@ -229,14 +251,10 @@ class TouchAccessibilityService() : AccessibilityService() {
     }
 
     private suspend fun saveEvent(event: AccessibilityEventEntity) {
-        ioDispatcher?.let {
-            accessibilityEventDao.save(event)
-        }
+        accessibilityEventDao.save(event)
     }
 
     private suspend fun getUser(): UserEntity? {
-        return ioDispatcher?.let {
-            generalOperationsRepository.getUser()
-        }
+        return generalOperationsRepository.getUser()
     }
 }

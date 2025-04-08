@@ -139,7 +139,7 @@ class GeneralOperationsRepository @Inject constructor(
     suspend fun buildCurrentSession(localFPS: Double) {
         val lastActiveTime1 = getLastTimeSessionActive()
         val time = TimeUtility.getCurrentTimestamp()
-        currentSession.user = null
+        currentSession.user = ScreenshotService.user.emailHash
         currentSession.sessionEnd = time.toInstant()
         currentSession.sessionCountPerDay = getScreenshotCount(TimeUtility.getCurrentTimestampDefaultTimezone()) + 1
         currentSession.secondsSinceLastActive =
@@ -316,6 +316,10 @@ class GeneralOperationsRepository @Inject constructor(
         sessionDao.deleteSessions(screenshots)
     }
 
+    fun deleteSessionsId(screenshots: List<Int>) {
+        sessionDao.deleteSessionsId(screenshots)
+    }
+
     fun deleteAppSegments(appSegmentIds: List<String>) {
         appSegmentDao.deleteAppSegments(appSegmentIds)
     }
@@ -393,4 +397,14 @@ class GeneralOperationsRepository @Inject constructor(
         return screenshotDao.getScreenshotsBySessionId(sessionId)
     }
 
+    fun getPaginateScreenshotsById(start: Long, lastId: Int?, limit: Int): List<ScreenshotEntity> {
+        // Instead of using OFFSET, use a WHERE clause with the last ID
+        return if (lastId == null) {
+            // First query - get the first batch
+            screenshotDao.getScreenshotsBatchByTime(start, limit)
+        } else {
+            // Subsequent queries - get records with ID > lastId
+            screenshotDao.getScreenshotsBatchByTimeAndId(start, lastId, limit)
+        }
+    }
 }

@@ -12,10 +12,15 @@ import com.screenlake.data.repository.GeneralOperationsRepository
 import com.screenlake.recorder.screenshot.DataTransformation
 import com.screenlake.recorder.utilities.TimeUtility
 import com.screenlake.recorder.utilities.ZipFile
+import com.screenlake.recorder.utilities.silence
+import com.screenlake.recorder.utilities.withLogging
 import com.screenlake.recorder.viewmodels.WorkerProgressManager
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
@@ -36,9 +41,12 @@ class ZipFileWorker @AssistedInject constructor(
 ) : CoroutineWorker(context, workerParams) {
 
     private var userObj: UserEntity? = null
+    private var runId = ""
 
     companion object {
         private const val TAG = "ZipFileWorker"
+        val mutex = Mutex()
+        var isRunning = false
     }
 
     /**
@@ -48,14 +56,35 @@ class ZipFileWorker @AssistedInject constructor(
      */
     override suspend fun doWork(): Result {
         Timber.tag(TAG).d("Zip Worker has started.")
+
+        if (!mutex.tryLock()) {
+            Timber.tag(TAG).w("Another zipUpScreenshots is already running.")
+            generalOperationsRepository.saveLog("Another zipUpScreenshots is already running.", "")
+            return Result.success()
+        }
+
         return try {
-            zipUpScreenshots(0, 100)
-            Timber.tag(TAG).d("Zip Worker has finished.")
-            WorkerProgressManager.updateProgress("Finished zipping up screenshots.")
-            Result.success()
+            runId = UUID.randomUUID().toString()
+            if (isRunning) {
+                Timber.tag(TAG).w("zipUpScreenshots already running.")
+                generalOperationsRepository.saveLog("runId $runId","zipUpScreenshots already running.")
+                Result.success()
+            } else {
+                isRunning = true
+                Timber.tag(TAG).d("Zip Worker has started.")
+                zipUpScreenshots(50)
+                Timber.tag(TAG).d("Zip Worker has finished.")
+                generalOperationsRepository.saveLog("ZIP_WORKER_RUN_${System.currentTimeMillis()}", runId)
+                WorkerProgressManager.updateProgress("Finished zipping up screenshots.")
+                Result.success()
+            }
         } catch (ex: Exception) {
+            generalOperationsRepository.saveLog("FAILED_ZIP_WORKER $runId", ex.stackTraceToString())
             Timber.tag(TAG).e(ex, "Zip Worker failed.")
             Result.failure()
+        } finally {
+            isRunning = false
+            mutex.unlock()
         }
     }
 
@@ -72,7 +101,6 @@ class ZipFileWorker @AssistedInject constructor(
      * @param file Optional file for testing purposes.
      */
     private suspend fun zipUpScreenshots(
-        offset: Int,
         limit: Int,
         screenshotsStart: List<ScreenshotEntity> = emptyList(),
         testing: Boolean = false,
@@ -81,15 +109,11 @@ class ZipFileWorker @AssistedInject constructor(
         val screenshotCount = withContext(Dispatchers.IO) { generalOperationsRepository.getScreenshotCount() }
         Timber.tag(TAG).d("Found $screenshotCount to zip. Batch is set to ${ConstantSettings.getBatch()}")
 
-        withContext(Dispatchers.IO) {
-            generalOperationsRepository.saveAllSessionSegments()
-        }
-
         val path = (if (testing) file?.path else applicationContext.filesDir?.path) ?: ""
         writeLogsToCsv(path)
 
         // Initial offset and count tracking
-        var currentOffset = 0
+        var lastProcessedId: Int? = null
 
         if (screenshotCount > 0) {
             userObj = userObj ?: withContext(Dispatchers.IO) { generalOperationsRepository.getUser() }
@@ -100,10 +124,16 @@ class ZipFileWorker @AssistedInject constructor(
                 val zipFileId = UUID.randomUUID() // New UUID for each batch
                 val toZip = mutableListOf<File>()
 
-                val screenshots = getScreenshots(screenshotsStart, currentOffset, limit)
+                val screenshots = generalOperationsRepository.getPaginateScreenshotsById(0L, lastProcessedId, limit)
+
+                generalOperationsRepository.saveLog("<< $runId >>Zip file id: $zipFileId, files [${screenshots.map { id }.joinToString(separator = ", ")}]", "")
 
                 if (screenshots.isNotEmpty()) {
-                    Timber.tag(TAG).d("Processing batch of ${screenshots.size} screenshots (offset: $currentOffset)")
+                    val log1 = "<< $runId >>Zip file id: $zipFileId, Processing batch of ${screenshots.size} screenshots (lastId: ${lastProcessedId ?: "null"})"
+                    generalOperationsRepository.saveLog(log1)
+                    Timber.tag(TAG).d(log1)
+
+                    findDuplicates(screenshots, zipFileId)
 
                     processAccessibilityEvents(screenshots, path, zipFileId, toZip)
                     processScreenshots(screenshots, path, zipFileId, toZip)
@@ -113,8 +143,8 @@ class ZipFileWorker @AssistedInject constructor(
                     // Create zip file for this batch
                     createZipFile(toZip, path, zipFileId, screenshots.size, screenshots.mapNotNull { it.id })
 
-                    // Update offset for next batch
-                    currentOffset += limit
+                    // Update lastProcessedId for next batch instead of using offset
+                    lastProcessedId = screenshots.lastOrNull()?.id
 
                     // Check if we've reached the end
                     if (screenshots.size < limit) {
@@ -127,6 +157,17 @@ class ZipFileWorker @AssistedInject constructor(
             }
         } else {
             Timber.tag(TAG).w("Found $screenshotCount screenshots which is less than ${ConstantSettings.getBatch()}, skipping...")
+        }
+    }
+
+    fun findDuplicates(screenshots: List<ScreenshotEntity>, zipFileId: UUID) {
+        for (screenshot in screenshots) {
+            if (screenshot.fileName.toString().isEmpty()) return
+            if (ScreenshotService.screenshotZipDuplicateTracker.contains(screenshot.fileName.toString())) {
+                CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("<< $runId >>Zip file id: $zipFileId: Duplicate screenshot found: ${screenshot.fileName}") }
+            } else {
+                ScreenshotService.screenshotZipDuplicateTracker.add(screenshot.fileName.toString())
+            }
         }
     }
 
@@ -205,7 +246,7 @@ class ZipFileWorker @AssistedInject constructor(
         val screenshotCsv = DataTransformation.createScreenshotCsv(screenshots)
         val screenshotCSVFile = "screenshot_data_csv_${zipFileId}.csv"
         writeFileOnInternalStorage(screenshotCSVFile, screenshotCsv, path)
-        toZip.add(File(path, screenshotCSVFile))
+        toZip.add(File(path, screenshotCSVFile) )
 
         if (userObj?.uploadImages == true) {
             for (screenshot in screenshots) {
@@ -217,6 +258,8 @@ class ZipFileWorker @AssistedInject constructor(
                 }
             }
         }
+
+        generalOperationsRepository.deleteScreenshots(screenshots.mapNotNull { it.id }.toList())
     }
 
     /**
@@ -240,6 +283,7 @@ class ZipFileWorker @AssistedInject constructor(
             val sessionCSVFile = "session_data_csv_${zipFileId}.csv"
             writeFileOnInternalStorage(sessionCSVFile, sessionCsv, path)
             toZip.add(File(path, sessionCSVFile))
+            generalOperationsRepository.deleteSessionsId(sessions.mapNotNull { it.id }.toList())
         }
     }
 
@@ -291,9 +335,8 @@ class ZipFileWorker @AssistedInject constructor(
         }
 
         generalOperationsRepository.insertScreenshotZip(zipObj)
-        generalOperationsRepository.deleteScreenshots(screenshots)
 //
-        toZip.forEach { it.delete() }
+        toZip.forEach { it.withLogging("Zip Worker", "Delete") { file -> file.delete() } }
         Timber.tag(TAG).d("Zip file created with ${toZip.size} files.")
     }
 

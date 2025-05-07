@@ -1,7 +1,7 @@
-# Screenlake Research Kit
+# Princeton Screenlake Mobile Analytics & Recording Tool (SMART)
 
 ## Explanatory Research Guide for Faculty, PIs, ICs, and Researchers
-- [Screenlake Research Kit: A Practical Guide](https://docs.google.com/document/d/1TMU9V169so5C-JHJscVokS_iKi2IjCiabze07KnQ41E/edit?usp=sharing)
+- [Princeton SMART: A Practical Guide](https://docs.google.com/document/d/1TMU9V169so5C-JHJscVokS_iKi2IjCiabze07KnQ41E/edit?usp=sharing)
 
 
 ## Table of Contents
@@ -11,7 +11,7 @@
 4. [Using the App on your phone](#using-the-app-on-your-phone)
 5. [Unzipping and consolidation of zip files in the cloud](#unzipping-and-consolidation-of-zip-files-in-the-cloud)
 6. [Configurable Resources](#configurable-resources)
-7. [How to Cite the Screenlake Research Kit](#how-to-cite-the-screenlake-research-kit)
+7. [How to Cite the Princeton SMART](#how-to-cite-princeton-smart)
 
 ## High Level Information
 
@@ -250,13 +250,13 @@ Check out the readme file inside of the **scripts** folder as well.
 
 
 To understand the final output data, read through the explainer doc.
-[Screenlake Research Kit: A Practical Guide](https://docs.google.com/document/d/1TMU9V169so5C-JHJscVokS_iKi2IjCiabze07KnQ41E/edit?usp=sharing)
+[Princeton SMART: A Practical Guide](https://docs.google.com/document/d/1TMU9V169so5C-JHJscVokS_iKi2IjCiabze07KnQ41E/edit?usp=sharing)
 
 
 
 ## Configurable Resources
 
-Before using Screenlake Research Kit for your research, you'll want (or need) to configure some resources to reflect your particular research project. That means adding your app's privacy policy link, your app's terms of service link, editing the text on screen, filling-in the right logo and university name, confirming authentication setup, and so on.
+Before using Princeton SMART for your research, you'll want (or need) to configure some resources to reflect your particular research project. That means adding your app's privacy policy link, your app's terms of service link, editing the text on screen, filling-in the right logo and university name, confirming authentication setup, and so on.
 
 
 ### Authentication
@@ -420,7 +420,7 @@ To run tests, follow these steps:
 Regularly running and reviewing your tests ensures that your app remains reliable and performant as you continue to develop and refine it.
 
 
-## How to Cite the Screenlake Research Kit
+## How to Cite Princeton SMART
 
 Cornelius, Justin & Muise, Daniel (2025). Screenlake Research Kit, maintained by the Accelerator at Princeton University \[Software\]. GitHub. |add link to repo branch|
 

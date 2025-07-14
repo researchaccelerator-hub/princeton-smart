@@ -41,9 +41,9 @@ This step-by-step guide is made to match the following tools, including click-by
 - Familiarity with [**Google Play**](https://play.google.com/console/about/topics/get-started/) in case you'd like to make your app publically accessible to potential research participants. The tutorial will only show you how to use Firebase for targetted distribution of the app, i.e., direct-send of an app to someone's email address. Either method of distribution has its advantages, but getting an app onto the Google Play store is a bit more involved.
 
 ### Overview of App Technical Capacities
-The contents of this repository enable you (a researcher) to create an Android application. The Android application is designed to efficiently, continuously, & passively take screenshots of the smartphone device it is installed on, every 3 seconds until manually interrupted, and also perform Optical Character Recognition (OCR) to extract text from the captured images. Additionally, the app collects a variety of data related to the smartphone device and the apps running on it (listed below):
+The contents of this repository enable you (a researcher) to create an Android application. The Android application is designed to efficiently, continuously, & passively take screenshots of the smartphone device it is installed on, every 5 seconds until manually interrupted, and also perform Optical Character Recognition (OCR) to extract text from the captured images. Additionally, the app collects a variety of data related to the smartphone device and the apps running on it (listed below):
 
-- **Screenshots & OCR Processing:** Captures a full-screen screenshot every 3 seconds, and uses OCR to extract text from the screenshots.
+- **Screenshots & OCR Processing:** Captures a full-screen screenshot every 5 seconds, and uses OCR to extract text from the screenshots.
 - **App Log Data:** Records metadata such as app names and timestamps at the time of each screenshot.
 - **App Usage Data:** Collects detailed usage data from the device, including which apps are running and how long they’ve been used.
 - **App Segment Data:** Tracks and logs data showing the last five apps that were on the screen before the current one.

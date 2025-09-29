@@ -1,0 +1,20 @@
+name: Build
+on:
+  push:
+    branches:
+      - feature/**
+      - release/**
+      - main
+      - dev
+  # Handles release branch creation without push, avoids duplicate runs by restricting to open events
+  pull_request:
+    types:
+      - opened
+    branches:
+      - main
+jobs:
+  trigger-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "Hello World"

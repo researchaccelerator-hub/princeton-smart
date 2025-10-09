@@ -6,6 +6,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.screenlake.data.DataHelper
 import com.screenlake.data.database.entity.ScreenshotEntity
+import com.screenlake.data.repository.GeneralOperationsRepository
 import com.screenlake.di.DatabaseModule
 import com.screenlake.recorder.ocr.Recognize
 import kotlinx.coroutines.runBlocking
@@ -15,6 +16,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import timber.log.Timber
 import java.io.File
+import io.mockk.mockk
 
 /**
  * Instrumented test class for testing the Recognize OCR functionality.
@@ -28,6 +30,7 @@ class RecognizeInstrumentedTest {
     private lateinit var recognize: Recognize
     private lateinit var appContext: Context
     private lateinit var tessDataDir: String
+    private lateinit var genOp: GeneralOperationsRepository
 
     /**
      * Sets up the test environment.
@@ -40,6 +43,8 @@ class RecognizeInstrumentedTest {
         // Initialize the Timber logger for debug output
         Timber.plant(Timber.DebugTree())
 
+        genOp = mockk(relaxed = true)
+
         // Get the application context
         appContext = InstrumentationRegistry.getInstrumentation().targetContext
 
@@ -48,7 +53,7 @@ class RecognizeInstrumentedTest {
         DataHelper.copyAssetToInternalStorage(appContext, "img.png")
 
         // Initialize the Recognize class
-        recognize = Recognize(DatabaseModule.provideDatabase(appContext).getUserDao())
+        recognize = Recognize(DatabaseModule.provideDatabase(appContext).getUserDao(), genOp)
     }
 
     /**

@@ -78,24 +78,26 @@ class RecognizeInstrumentedTest {
      * The test also ensures that the `isOcrComplete` flag in the `Screenshot` object is set to true.
      */
     @Test
-    fun testProcessImage() = runBlocking {
-        // Create a temporary image file for testing
-        val tempImageFile = File(appContext.filesDir, "img.png")
+    fun testProcessImage() {
+        runBlocking {
+            // Create a temporary image file for testing
+            val tempImageFile = File(appContext.filesDir, "img.png")
 
-        // Create a screenshot object with the path to the temporary image
-        val screenshot = ScreenshotEntity(filePath = tempImageFile.absolutePath)
+            // Create a screenshot object with the path to the temporary image
+            val screenshot = ScreenshotEntity(filePath = tempImageFile.absolutePath)
 
-        // Process the image using Tesseract OCR
-        val result = recognize.processImage(screenshot)
+            // Process the image using Tesseract OCR
+            val result = recognize.processImage(screenshot)
 
-        // Assert that the image processing was successful
-        assert(result) { "Image processing should return true" }
+            // Assert that the image processing was successful
+            assert(result) { "Image processing should return true" }
 
-        // Assert that the OCR process is marked as complete in the screenshot object
-        assert(screenshot.isOcrComplete) { "OCR should be marked complete" }
+            // Assert that the OCR process is marked as complete in the screenshot object
+            assert(screenshot.isOcrComplete) { "OCR should be marked complete" }
 
-        // Clean up the temporary file
-        tempImageFile.delete()
+            // Clean up the temporary file
+            tempImageFile.delete()
+        }
     }
 
     /**

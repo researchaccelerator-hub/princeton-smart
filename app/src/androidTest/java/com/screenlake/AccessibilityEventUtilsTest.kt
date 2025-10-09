@@ -25,7 +25,7 @@ class AccessibilityEventUtilsTest {
     @Test
     fun convertEventToString_shouldCorrectlyConvertAccessibilityEventToJsonString() {
         // Create a sample AccessibilityEvent
-        val event = AccessibilityEvent()
+        val event = AccessibilityEvent.obtain()
         event.eventType = AccessibilityEvent.TYPE_VIEW_CLICKED
         event.className = "android.widget.Button"
         event.text.add("Click Me")

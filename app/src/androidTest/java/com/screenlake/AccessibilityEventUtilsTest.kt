@@ -35,7 +35,7 @@ class AccessibilityEventUtilsTest {
         val jsonString = AccessibilityEventUtils.convertEventToString(event)
 
         // Expected JSON structure (keys may vary based on your implementation)
-        val expectedJson = """{"EventType":"TYPE_VIEW_CLICKED","EventTime":"0","PackageName":"com.example.app","MovementGranularity":"0","Action":"0","ContentChangeTypes":"[]","Text":"[Click Me]","ContentDescription":"null","ItemCount":"-1","CurrentItemIndex":"-1","Enabled":"false","Password":"false","Checked":"false","FullScreen":"false","Scrollable":"false","ImportantForAccessibility":"false","AccessibilityDataSensitive":"false","BeforeText":"null","FromIndex":"-1","ToIndex":"-1","ScrollX":"0","ScrollY":"0","MaxScrollX":"0","MaxScrollY":"0","ScrollDeltaX":"-1","ScrollDeltaY":"-1","AddedCount":"-1","RemovedCount":"-1","ParcelableData":"null","DisplayId":"-1","recordCount":"0"}"""
+        val expectedJson = """{"EventType":"TYPE_VIEW_CLICKED","EventTime":"0","PackageName":"com.example.app","MovementGranularity":"0","Action":"0","ContentChangeTypes":"[]","Text":"[Click Me]","ContentDescription":"null","ItemCount":"-1","CurrentItemIndex":"-1","Enabled":"false","Password":"false","Checked":"false","FullScreen":"false","Scrollable":"false","ImportantForAccessibility":"false","AccessibilityDataSensitive":"false","BeforeText":"null","FromIndex":"-1","ToIndex":"-1","ScrollX":"-1","ScrollY":"-1","MaxScrollX":"-1","MaxScrollY":"-1","ScrollDeltaX":"-1","ScrollDeltaY":"-1","AddedCount":"-1","RemovedCount":"-1","ParcelableData":"null","DisplayId":"-1","recordCount":"0"}"""
 
         // Assert that the JSON string matches the expected value
         assertEquals(expectedJson, jsonString)

@@ -1,5 +1,7 @@
 package com.screenlake
 
+import android.util.Log // REMOVE LATER
+import com.screenlake.data.database.entity.UserEntity // ADDED BY ME
 import android.content.Context
 import androidx.room.Database
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -51,7 +53,17 @@ class RecognizeInstrumentedTest {
         // Copy Tesseract trained data and test image to internal storage
         tessDataDir = DataHelper.copyAssetToInternalStorage(appContext, "eng.traineddata")
         DataHelper.copyAssetToInternalStorage(appContext, "img.png")
-
+        
+        // ADDED BY ME
+        // val user = UserEntity(emailHash = "userhash")
+        var user = UserEntity()
+        
+        // runBlocking {
+        //     userDao.insertUserObj(user)
+        // }
+        runBlocking {
+            DatabaseModule.provideDatabase(appContext).getUserDao().insertUserObj(user)
+        }
         // Initialize the Recognize class
         recognize = Recognize(DatabaseModule.provideDatabase(appContext).getUserDao(), genOp)
     }
@@ -80,14 +92,27 @@ class RecognizeInstrumentedTest {
     @Test
     fun testProcessImage() {
         runBlocking {
+
+            Log.i("testProcessImage", "Creating file at: $appContext.filesDir")
+
             // Create a temporary image file for testing
             val tempImageFile = File(appContext.filesDir, "img.png")
 
+            Log.i("testProcessImage", "tempImageFile: $tempImageFile")
             // Create a screenshot object with the path to the temporary image
+            //val screenshot = ScreenshotEntity(filePath = tempImageFile.absolutePath)
+            Log.i("testProcessImage", "Screenshot location: $tempImageFile")
             val screenshot = ScreenshotEntity(filePath = tempImageFile.absolutePath)
+            Log.i("testProcessImage", "ABS Path: $tempImageFile")
+            Log.i("testProcessImage", "Screenshot image: $screenshot")
+            val absPath = tempImageFile.absolutePath
+            Log.i("testProcessImage", "ABS Path: $absPath")
+
 
             // Process the image using Tesseract OCR
             val result = recognize.processImage(screenshot)
+
+            Log.i("testProcessImage", "result: $result")
 
             // Assert that the image processing was successful
             assert(result) { "Image processing should return true" }

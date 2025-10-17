@@ -1,5 +1,6 @@
 package com.screenlake
 
+import android.util.Log // REMOVE LATER
 import android.content.Context
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -113,6 +114,9 @@ class AppSegmentInstrumentedTest {
         }
 
         val appSegmentData = DataTransformation.getAppSegmentData(screenshotsBySession)
+
+        Log.i("appSegmentDemo", "segment size: $appSegmentData?.appSegments?.size")
+        Log.i("appSegmentDemo", "session id: $screenshots.first().sessionId?")
         assert(appSegmentData?.appSegments?.size == 2)
     }
 

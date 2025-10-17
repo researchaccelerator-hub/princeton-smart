@@ -27,7 +27,7 @@ class AccessibilityEventUtilsTest {
     @Test
     fun convertEventToString_shouldCorrectlyConvertAccessibilityEventToJsonString() {
 
-        val event = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        val event = if (Build.VERSION.SDK_INT >= 33) {
             AccessibilityEvent()
         } else {
             AccessibilityEvent.obtain()
@@ -49,11 +49,8 @@ class AccessibilityEventUtilsTest {
             Build.VERSION.SDK_INT >= 30 -> {
                 """{"EventType":"TYPE_VIEW_CLICKED","EventTime":"0","PackageName":"com.example.app","MovementGranularity":"0","Action":"0","ContentChangeTypes":"[]","Text":"[Click Me]","ContentDescription":"null","ItemCount":"-1","CurrentItemIndex":"-1","Enabled":"false","Password":"false","Checked":"false","FullScreen":"false","Scrollable":"false","BeforeText":"null","FromIndex":"-1","ToIndex":"-1","ScrollX":"0","ScrollY":"0","MaxScrollX":"0","MaxScrollY":"0","ScrollDeltaX":"-1","ScrollDeltaY":"-1","AddedCount":"-1","RemovedCount":"-1","ParcelableData":"null ]","recordCount":"0"}"""
             }
-            Build.VERSION.SDK_INT == 29 -> {
-                """{"EventType":"TYPE_VIEW_CLICKED","EventTime":"0","PackageName":"com.example.app","MovementGranularity":"0","Action":"0","ContentChangeTypes":"[]","Text":"[Click Me]","ContentDescription":"null","ItemCount":"-1","CurrentItemIndex":"-1","Enabled":"false","Password":"false","Checked":"false","FullScreen":"false","Scrollable":"false","BeforeText":"null","FromIndex":"-1","ToIndex":"-1","ScrollX":"-1","ScrollY":"-1","MaxScrollX":"-1","MaxScrollY":"-1","AddedCount":"-1","RemovedCount":"-1","ParcelableData":"null ]","recordCount":"0"}"""
-            }
             else -> {
-                """{"EventType":"TYPE_VIEW_CLICKED","EventTime":"0","PackageName":"com.example.app","MovementGranularity":"0","Action":"0","ContentChangeTypes":"[]","Text":"[Click Me]","ContentDescription":"null","ItemCount":"-1","CurrentItemIndex":"-1","Enabled":"false","Password":"false","Checked":"false","FullScreen":"false","Scrollable":"false","ImportantForAccessibility":"false","AccessibilityDataSensitive":"false","BeforeText":"null","FromIndex":"-1","ToIndex":"-1","ScrollX":"0","ScrollY":"0","MaxScrollX":"0","MaxScrollY":"0","ScrollDeltaX":"-1","ScrollDeltaY":"-1","AddedCount":"-1","RemovedCount":"-1","ParcelableData":"null","DisplayId":"-1 ]","recordCount":"0"}"""
+                """{"EventType":"TYPE_VIEW_CLICKED","EventTime":"0","PackageName":"com.example.app","MovementGranularity":"0","Action":"0","ContentChangeTypes":"[]","Text":"[Click Me]","ContentDescription":"null","ItemCount":"-1","CurrentItemIndex":"-1","Enabled":"false","Password":"false","Checked":"false","FullScreen":"false","Scrollable":"false","BeforeText":"null","FromIndex":"-1","ToIndex":"-1","ScrollX":"-1","ScrollY":"-1","MaxScrollX":"-1","MaxScrollY":"-1","AddedCount":"-1","RemovedCount":"-1","ParcelableData":"null ]","recordCount":"0"}"""
             }
         }
 

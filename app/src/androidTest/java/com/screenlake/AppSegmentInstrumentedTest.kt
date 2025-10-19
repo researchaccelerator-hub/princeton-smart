@@ -107,7 +107,13 @@ class AppSegmentInstrumentedTest {
     @Test
     fun appSegmentDemo() = runBlocking {
         val screenshots = ScreenshotData.screenshotList
-        screenshots.forEach { daoScreenshot.insertScreenshot(it) }
+
+        // transaction avoids potential race condition on clean emulator
+        database.runInTransaction {
+            runBlocking {
+                screenshots.forEach { daoScreenshot.insertScreenshot(it) }
+            }
+        }
 
         val screenshotsBySession = screenshots.first().sessionId?.let {
             daoScreenshot.getScreenshotsBySessionId(it)
@@ -115,11 +121,13 @@ class AppSegmentInstrumentedTest {
 
         val appSegmentData = DataTransformation.getAppSegmentData(screenshotsBySession)
 
-        val screenshotsSize = screenshots.size
+        // val screenshotsSize = screenshots.size
         val segmentSize = appSegmentData?.appSegments?.size
         val sessionId = screenshots.first().sessionId
 
-        Log.i("appSegmentDemo", "screenshot size: $screenshotsSize")
+        Log.i("appSegmentDemo", "screenshots by session: $screenshotsBySession")
+        Log.i("appSegmentDemo", "app segment data: $appSegmentData")
+        // Log.i("appSegmentDemo", "screenshot size: $screenshotsSize")
         Log.i("appSegmentDemo", "segment size: $segmentSize")
         Log.i("appSegmentDemo", "session id: $sessionId")
 

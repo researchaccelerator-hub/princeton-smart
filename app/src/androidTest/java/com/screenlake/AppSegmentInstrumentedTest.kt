@@ -2,6 +2,7 @@ package com.screenlake
 
 import android.util.Log // REMOVE LATER
 import android.content.Context
+import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.screenlake.data.database.ScreenshotDatabase
@@ -108,11 +109,20 @@ class AppSegmentInstrumentedTest {
     fun appSegmentDemo() = runBlocking {
         val screenshots = ScreenshotData.screenshotList
 
-        // transaction avoids potential race condition on clean emulator
-        database.runInTransaction {
-            runBlocking {
-                screenshots.forEach { daoScreenshot.insertScreenshot(it) }
+        // transaction avoids potential race condition on clean
+        val insertedScreenshots = mutableListOf<ScreenshotEntity>()
+        try {
+            database.runInTransaction {
+                runBlocking {
+                    screenshots.forEach { 
+                        daoScreenshot.insertScreenshot(it)
+                        insertedScreenshots.add(it)
+                    }
+                }
             }
+            Log.i("appSegmentDemo", "Inserted ${insertedScreenshots.size} screenshots: $insertedScreenshots")
+        } catch (e: Exception ) {
+            Log.e("appSegmentDemo", "Transaction failed: ${e.message}", e)
         }
 
         val screenshotsBySession = screenshots.first().sessionId?.let {

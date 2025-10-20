@@ -2,6 +2,7 @@
 version: v1.25.0
 language-settings:
   java: "17"
+  python: "3.10"
 ignore:
   'SNYK-JAVA-ANDROID-3b4542ab-4a6f-473d-b8eb-1f843f6d01ac':
     - '*':

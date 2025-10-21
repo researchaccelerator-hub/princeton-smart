@@ -110,26 +110,35 @@ class AppSegmentInstrumentedTest {
         val screenshots = ScreenshotData.screenshotList
 
         // transaction avoids potential race condition on clean
-        val insertedScreenshots = mutableListOf<ScreenshotEntity>()
-        try {
-            database.runInTransaction {
-                runBlocking {
-                    screenshots.forEach { 
-                        daoScreenshot.insertScreenshot(it)
-                        insertedScreenshots.add(it)
-                    }
-                }
-            }
-            Log.i("appSegmentDemo", "Inserted ${insertedScreenshots.size} screenshots: $insertedScreenshots")
-        } catch (e: Exception ) {
-            Log.e("appSegmentDemo", "Transaction failed: ${e.message}", e)
-        }
+        // val insertedScreenshots = mutableListOf<ScreenshotEntity>()
+        // try {
+        //     database.runInTransaction {
+        //         runBlocking {
+        //             screenshots.forEach { 
+        //                 daoScreenshot.insertScreenshot(it)
+        //                 insertedScreenshots.add(it)
+        //             }
+        //         }
+        //     }
+        //     Log.i("appSegmentDemo", "Inserted ${insertedScreenshots.size} screenshots: $insertedScreenshots")
+        // } catch (e: Exception ) {
+        //     Log.e("appSegmentDemo", "Transaction failed: ${e.message}", e)
+        // }
 
+        // screenshots.forEach { daoScreenshot.insertScreenshot(it)}
+        daoScreenshot.insertScreenshots(screenshots)
         val screenshotsBySession = screenshots.first().sessionId?.let {
             daoScreenshot.getScreenshotsBySessionId(it)
         }
 
+        val screenshotsBySessionSize = screenshotsBySession?.size
+
+        Log.i("appSegmentDemo", "screenshots by session size: $screenshotsBySessionSize")
+
         val appSegmentData = DataTransformation.getAppSegmentData(screenshotsBySession)
+
+        val appSegmentDataScreenshotsSize = appSegmentData?.screenshots?.size
+        Log.i("appSegmentDemo", "appSegmentDataScreenshotsSize: $appSegmentDataScreenshotsSize")
 
         // val screenshotsSize = screenshots.size
         val segmentSize = appSegmentData?.appSegments?.size

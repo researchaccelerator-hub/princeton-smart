@@ -1,5 +1,6 @@
 package com.screenlake.recorder.screenshot
 
+import android.util.Log // REMOVE LATER
 import com.screenlake.data.model.AppSegmentResult
 import com.screenlake.data.database.entity.AccessibilityEventEntity
 import com.screenlake.data.database.entity.AppSegmentEntity
@@ -268,7 +269,12 @@ object DataTransformation {
     }
 
     fun getAppSegmentData(dataList: List<ScreenshotEntity>?) : AppSegmentResult? {
+        Log.i("appSegmentDemo", "inside getAppSegmentData")
         val groupedDataList = dataList?.let { groupAndSortData(it) }
+        val groupedDataListSegmentSize = groupedDataList?.appSegments?.size
+        val groupedDataListScreenshotSize = groupedDataList?.screenshots?.size
+        Log.i("appSegmentDemo", "groupedDataListSegmentSize: $groupedDataListSegmentSize")
+        Log.i("appSegmentDemo", "groupedDataListScreenshotSize: $groupedDataListScreenshotSize")
         return groupedDataList?.let { addPrevAppDataToSegments(it) }
     }
 

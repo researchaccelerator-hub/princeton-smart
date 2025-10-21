@@ -19,6 +19,12 @@ interface ScreenshotDao {
     suspend fun insertScreenshot(screenshot: ScreenshotEntity)
 
     /**
+     * Inserts a list of screenshots in a single transaction.
+     */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertScreenshots(screenshots: List<ScreenshotEntity>)
+
+    /**
      * Deletes a Screenshot.
      *
      * @param screenshot The Screenshot to be deleted.

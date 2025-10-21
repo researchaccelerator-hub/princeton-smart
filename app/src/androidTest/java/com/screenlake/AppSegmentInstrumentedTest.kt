@@ -109,29 +109,48 @@ class AppSegmentInstrumentedTest {
     fun appSegmentDemo() = runBlocking {
         val screenshots = ScreenshotData.screenshotList
 
-        // transaction avoids potential race condition on clean
-        // val insertedScreenshots = mutableListOf<ScreenshotEntity>()
-        // try {
-        //     database.runInTransaction {
-        //         runBlocking {
-        //             screenshots.forEach { 
-        //                 daoScreenshot.insertScreenshot(it)
-        //                 insertedScreenshots.add(it)
-        //             }
-        //         }
-        //     }
-        //     Log.i("appSegmentDemo", "Inserted ${insertedScreenshots.size} screenshots: $insertedScreenshots")
-        // } catch (e: Exception ) {
-        //     Log.e("appSegmentDemo", "Transaction failed: ${e.message}", e)
-        // }
-
         // screenshots.forEach { daoScreenshot.insertScreenshot(it)}
         daoScreenshot.insertScreenshots(screenshots)
-        val screenshotsBySession = screenshots.first().sessionId?.let {
-            daoScreenshot.getScreenshotsBySessionId(it)
+
+        // Timeout and Delay Settings
+        val maxAttempts = 10         // Maximum number of times to check the database
+        val delayMs = 500L           // How long to wait between checks (0.5 second)
+        val targetSize = screenshots?.size
+        var attempts = 0
+        var screenshotsBySessionSize = 0
+        var screenshotsBySession: List<ScreenshotEntity>? = null
+
+        while (screenshotsBySessionSize != targetSize && attempts < maxAttempts) {
+            attempts++
+
+            screenshotsBySession = screenshots.first().sessionId?.let {
+                daoScreenshot.getScreenshotsBySessionId(it)
+            }
+
+            screenshotsBySessionSize = screenshotsBySession?.size ?: 0
+
+            Log.i("appSegmentDemo", "Attempt $attempts: Current size is $screenshotsBySessionSize. Target: $targetSize.")
+
+            // 3. If the condition is met, break the loop
+            if (screenshotsBySessionSize == targetSize) {
+                Log.i("appSegmentDemo", "Success! Reached size $targetSize in $attempts attempts.")
+                break
+            }
+
+            try {
+                Thread.sleep(delayMs)
+            } catch (e: InterruptedException) {
+                Thread.currentThread().interrupt()
+                println("Polling interrupted.")
+                break
+            }
         }
 
-        val screenshotsBySessionSize = screenshotsBySession?.size
+        // val screenshotsBySession = screenshots.first().sessionId?.let {
+        //     daoScreenshot.getScreenshotsBySessionId(it)
+        // }
+
+        // val screenshotsBySessionSize = screenshotsBySession?.size
 
         Log.i("appSegmentDemo", "screenshots by session size: $screenshotsBySessionSize")
 

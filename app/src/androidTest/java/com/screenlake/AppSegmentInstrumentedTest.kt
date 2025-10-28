@@ -110,7 +110,23 @@ class AppSegmentInstrumentedTest {
         val screenshots = ScreenshotData.screenshotList
 
         // screenshots.forEach { daoScreenshot.insertScreenshot(it)}
+        var allSessionsWithoutAppSegments = daoScreenshot.getAllSessionsWithoutAppSegments()
+        var totalScreenshotCount = daoScreenshot.getTotalCount()
+        var totalCountAgain = daoScreenshot.getCount()
+
+        Log.i("appSegmentDemo", "allSessionsWithoutAppSegments before insert: $allSessionsWithoutAppSegments")
+        Log.i("appSegmentDemo", "totalScreenshotCount before insert: $totalScreenshotCount")
+        Log.i("appSegmentDemo", "totalCountAgain before insert: $totalCountAgain")
+
         daoScreenshot.insertScreenshots(screenshots)
+
+        allSessionsWithoutAppSegments = daoScreenshot.getAllSessionsWithoutAppSegments()
+        totalScreenshotCount = daoScreenshot.getTotalCount()
+        totalCountAgain = daoScreenshot.getCount()
+
+        Log.i("appSegmentDemo", "allSessionsWithoutAppSegments after insert: $allSessionsWithoutAppSegments")
+        Log.i("appSegmentDemo", "totalScreenshotCount after insert: $totalScreenshotCount")
+        Log.i("appSegmentDemo", "totalCountAgain after insert: $totalCountAgain")
 
         // Timeout and Delay Settings
         val maxAttempts = 10         // Maximum number of times to check the database
@@ -145,6 +161,14 @@ class AppSegmentInstrumentedTest {
                 break
             }
         }
+
+        allSessionsWithoutAppSegments = daoScreenshot.getAllSessionsWithoutAppSegments()
+        totalScreenshotCount = daoScreenshot.getTotalCount()
+        totalCountAgain = daoScreenshot.getCount()
+
+        Log.i("appSegmentDemo", "allSessionsWithoutAppSegments after check: $allSessionsWithoutAppSegments")
+        Log.i("appSegmentDemo", "totalScreenshotCount after check: $totalScreenshotCount")
+        Log.i("appSegmentDemo", "totalCountAgain after check: $totalCountAgain")
 
         // val screenshotsBySession = screenshots.first().sessionId?.let {
         //     daoScreenshot.getScreenshotsBySessionId(it)

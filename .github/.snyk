@@ -3,16 +3,8 @@ version: v1.25.0
 language-settings:
   java: "17"
 ignore:
-  3b4542ab-4a6f-473d-b8eb-1f843f6d01ac:
+  SNYK-JAVA-COMMONSIO-8161190:
     - '*':
-        reason: 'Temporary ignore - reviewing broadcast receiver security'
-        expires: 2025-10-27T00:00:00.000Z
-  dace2532-33ac-41e7-8bf7-a9bd415c1100:
-    - '*':
-        reason: 'Temporary ignore - reviewing broadcast receiver security'
-        expires: 2025-10-27T00:00:00.000Z
-  0319d51b-8106-48a7-9fb5-7a2e104484b6:
-    - '*':
-        reason: 'Temporary ignore - reviewing broadcast receiver security'
-        expires: 2025-10-27T00:00:00.000Z
+        reason: 'Direct dependency has not incorporated fix yet'
+        expires: 2025-11-07T00:00:00.000Z
 patch: {}

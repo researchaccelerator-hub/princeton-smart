@@ -58,7 +58,7 @@
             android:gravity="start"
             android:paddingTop="10dp"
             android:paddingBottom="10dp"
-            android:text="This app is a research tool for individuals participating in a research study affiliated with the :Princeton University:. It captures and transmits data about your smartphone activity."
+            android:text="This app is a research tool for individuals participating in a research study affiliated with Princeton University. It captures and transmits data about your smartphone activity."
             android:textColor="#000000"
             android:textSize="16sp"
             android:textStyle="bold"

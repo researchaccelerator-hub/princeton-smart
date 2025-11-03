@@ -7,8 +7,7 @@ on:
 env:
   dispatch_workflow: android-build-trigger.yaml
   dispatch_repo: irieaccelerator/common-workflows
-  # dispatch_ref: main
-  dispatch_ref: feature/INFRA-274/fixAndroidTest
+  dispatch_ref: main
 jobs:
   trigger-build:
     runs-on: ubuntu-latest

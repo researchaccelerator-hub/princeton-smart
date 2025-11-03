@@ -3,6 +3,7 @@ package com.screenlake.recorder.utilities
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import androidx.core.content.ContextCompat
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.BatteryManager
@@ -27,7 +28,15 @@ object HardwareChecks {
      * @return True if the device is connected to a power source, false otherwise.
      */
     fun isPowerConnected(context: Context): Boolean {
-        val intent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        // val intent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+
+        val intent = ContextCompat.registerReceiver(
+            context,
+            null,
+            IntentFilter(Intent.ACTION_BATTERY_CHANGED),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+
         val plugged = intent?.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1)
 
         val result = plugged == BatteryManager.BATTERY_PLUGGED_AC ||

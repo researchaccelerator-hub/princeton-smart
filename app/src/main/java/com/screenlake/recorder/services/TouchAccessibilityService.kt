@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import androidx.core.content.ContextCompat
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -157,7 +158,10 @@ class TouchAccessibilityService() : AccessibilityService() {
             addAction(Intent.ACTION_USER_PRESENT)
         }
         mReceiver = SystemAccessibilityEventReceiver(context?.get())
-        context?.get()?.registerReceiver(mReceiver, filter)
+        // context?.get()?.registerReceiver(mReceiver, filter)
+        context?.get()?. let { ctx ->
+            ContextCompat.registerReceiver(ctx, mReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        }
     }
 
     @RequiresApi(Build.VERSION_CODES.R)

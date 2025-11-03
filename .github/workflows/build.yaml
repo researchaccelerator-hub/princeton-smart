@@ -1,20 +1,47 @@
 name: Build
 on:
   push:
-    branches:
-      - feature/**
-      - release/**
-      - main
-      - dev
-  # Handles release branch creation without push, avoids duplicate runs by restricting to open events
-  pull_request:
-    types:
-      - opened
-    branches:
-      - main
+  schedule:
+    # tuesday at 12:15 PM UTC
+    - cron: "15 12 * * 2"
+env:
+  dispatch_workflow: android-build-trigger.yaml
+  dispatch_repo: irieaccelerator/common-workflows
+  dispatch_ref: main
 jobs:
   trigger-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: echo "Hello World"
+
+      - name: Print Job Information
+        run: |
+          echo "### ${dispatch_repo}/.github/workflows/${dispatch_workflow}" >> $GITHUB_STEP_SUMMARY
+          echo "Build info: __${org_repo}@${ref}__ commit: __${sha}__" >> $GITHUB_STEP_SUMMARY
+        env:
+          org_repo: ${{github.repository}}
+          ref: ${{github.ref_name}}
+          sha: ${{github.sha}}
+
+      - name: Generate a token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.TRIGGER_APP_ID }}
+          private-key: ${{ secrets.TRIGGER_APP_KEY }}
+          owner: IRIEAccelerator
+          repositories: "common-workflows"
+
+      - name: Trigger Build and Deploy
+        run: |
+          gh workflow run ${dispatch_workflow} -f repository="${org_repo}" -f ref="${ref}" -f sha="${sha}" --ref "${dispatch_ref}" --repo "${dispatch_repo}"
+        env:
+          org_repo: ${{github.repository}}
+          ref: ${{github.ref_name}}
+          sha: ${{github.sha}}
+          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
+
+      - name: Add Workflow Page Location to Job Summary
+        run: echo "[Workflow Page](${workflow_url})" >> $GITHUB_STEP_SUMMARY
+        env:
+          workflow_url: https://github.com/${{env.dispatch_repo}}/actions/workflows/${{env.dispatch_workflow}}

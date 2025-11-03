@@ -6,6 +6,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.screenlake.data.DataHelper
 import com.screenlake.data.database.entity.ScreenshotEntity
+import com.screenlake.data.database.entity.UserEntity
+import com.screenlake.data.repository.GeneralOperationsRepository
 import com.screenlake.di.DatabaseModule
 import com.screenlake.recorder.ocr.Recognize
 import kotlinx.coroutines.runBlocking
@@ -15,6 +17,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import timber.log.Timber
 import java.io.File
+import io.mockk.mockk
 
 /**
  * Instrumented test class for testing the Recognize OCR functionality.
@@ -28,6 +31,7 @@ class RecognizeInstrumentedTest {
     private lateinit var recognize: Recognize
     private lateinit var appContext: Context
     private lateinit var tessDataDir: String
+    private lateinit var genOp: GeneralOperationsRepository
 
     /**
      * Sets up the test environment.
@@ -40,15 +44,22 @@ class RecognizeInstrumentedTest {
         // Initialize the Timber logger for debug output
         Timber.plant(Timber.DebugTree())
 
+        genOp = mockk(relaxed = true)
+
         // Get the application context
         appContext = InstrumentationRegistry.getInstrumentation().targetContext
 
         // Copy Tesseract trained data and test image to internal storage
         tessDataDir = DataHelper.copyAssetToInternalStorage(appContext, "eng.traineddata")
         DataHelper.copyAssetToInternalStorage(appContext, "img.png")
+        
+        var user = UserEntity()
 
+        runBlocking {
+            DatabaseModule.provideDatabase(appContext).getUserDao().insertUserObj(user)
+        }
         // Initialize the Recognize class
-        recognize = Recognize(DatabaseModule.provideDatabase(appContext).getUserDao())
+        recognize = Recognize(DatabaseModule.provideDatabase(appContext).getUserDao(), genOp)
     }
 
     /**
@@ -73,24 +84,27 @@ class RecognizeInstrumentedTest {
      * The test also ensures that the `isOcrComplete` flag in the `Screenshot` object is set to true.
      */
     @Test
-    fun testProcessImage() = runBlocking {
-        // Create a temporary image file for testing
-        val tempImageFile = File(appContext.filesDir, "img.png")
+    fun testProcessImage() {
+        runBlocking {
 
-        // Create a screenshot object with the path to the temporary image
-        val screenshot = ScreenshotEntity(filePath = tempImageFile.absolutePath)
+            // Create a temporary image file for testing
+            val tempImageFile = File(appContext.filesDir, "img.png")
 
-        // Process the image using Tesseract OCR
-        val result = recognize.processImage(screenshot)
+            // Create a screenshot object with the path to the temporary image
+            val screenshot = ScreenshotEntity(filePath = tempImageFile.absolutePath)
 
-        // Assert that the image processing was successful
-        assert(result) { "Image processing should return true" }
+            // Process the image using Tesseract OCR
+            val result = recognize.processImage(screenshot)
 
-        // Assert that the OCR process is marked as complete in the screenshot object
-        assert(screenshot.isOcrComplete) { "OCR should be marked complete" }
+            // Assert that the image processing was successful
+            assert(result) { "Image processing should return true" }
 
-        // Clean up the temporary file
-        tempImageFile.delete()
+            // Assert that the OCR process is marked as complete in the screenshot object
+            assert(screenshot.isOcrComplete) { "OCR should be marked complete" }
+
+            // Clean up the temporary file
+            tempImageFile.delete()
+        }
     }
 
     /**

@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.screenlake.data.repository.GeneralOperationsRepository
 import com.screenlake.recorder.services.ScreenshotService.Companion.CHANNEL_ID
 import com.screenlake.recorder.services.ScreenshotService.Companion.RESTART_NOTIFICATION_ID
@@ -62,7 +63,8 @@ class ScreenStateReceiver(private val callback: ScreenStateCallback) : Broadcast
             addAction(Intent.ACTION_SCREEN_ON)
             addAction(Intent.ACTION_USER_PRESENT)
         }
-        context.registerReceiver(this, filter)
+        // context.registerReceiver(this, filter)
+        ContextCompat.registerReceiver(context, this, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
         Log.d(TAG, "Screen state receiver registered")
     }
 

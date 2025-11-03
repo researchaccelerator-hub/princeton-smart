@@ -1,0 +1,16 @@
+# Snyk (https://snyk.io) policy file, patches or ignores known vulnerabilities.
+version: v1.25.0
+language-settings:
+  java: "17"
+ignore:
+  SNYK-JAVA-COMMONSIO-8161190:
+    - '*':
+        reason: 'Direct dependency has not incorporated fix yet'
+        expires: 2025-11-07T10:02:05.356Z
+        created: 2025-10-28T10:02:05.356Z
+  'snyk:lic:maven:junit:junit:EPL-1.0':
+    - '*':
+        reason: 'allow EPL license'
+        expires: 2099-01-20T00:00:00.000Z
+        created: 2025-10-28T10:02:05.356Z
+patch: {}

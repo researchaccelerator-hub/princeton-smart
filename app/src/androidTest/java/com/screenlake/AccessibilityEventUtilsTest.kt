@@ -1,6 +1,5 @@
 package com.screenlake
 
-import android.util.Log // REMOVE LATER
 import android.os.Build // Added by me
 import android.view.accessibility.AccessibilityEvent
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -53,9 +52,6 @@ class AccessibilityEventUtilsTest {
                 """{"EventType":"TYPE_VIEW_CLICKED","EventTime":"0","PackageName":"com.example.app","MovementGranularity":"0","Action":"0","ContentChangeTypes":"[]","Text":"[Click Me]","ContentDescription":"null","ItemCount":"-1","CurrentItemIndex":"-1","Enabled":"false","Password":"false","Checked":"false","FullScreen":"false","Scrollable":"false","BeforeText":"null","FromIndex":"-1","ToIndex":"-1","ScrollX":"-1","ScrollY":"-1","MaxScrollX":"-1","MaxScrollY":"-1","AddedCount":"-1","RemovedCount":"-1","ParcelableData":"null ]","recordCount":"0"}"""
             }
         }
-
-        Log.i("shouldCorrectlyConvertAccessibilityEventToJsonString", "Expected: $expectedJson")
-        Log.i("shouldCorrectlyConvertAccessibilityEventToJsonString", "Actual: $jsonString")
 
         // Assert that the JSON string matches the expected value
         assertEquals(expectedJson, jsonString)

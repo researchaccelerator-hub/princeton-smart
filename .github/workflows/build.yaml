@@ -2,8 +2,8 @@ name: Build
 on:
   push:
   schedule:
-    # monday at 12:15 PM UTC
-    - cron: "15 12 * * 1"
+    # tuesday at 12:15 PM UTC
+    - cron: "15 12 * * 2"
 env:
   dispatch_workflow: android-build-trigger.yaml
   dispatch_repo: irieaccelerator/common-workflows

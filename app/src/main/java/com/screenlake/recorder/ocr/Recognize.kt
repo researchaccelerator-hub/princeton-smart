@@ -1,6 +1,5 @@
 package com.screenlake.recorder.ocr
 
-import android.util.Log // REMOVE LATER
 import android.graphics.BitmapFactory
 import android.os.SystemClock
 import androidx.lifecycle.MutableLiveData
@@ -107,8 +106,6 @@ class Recognize @Inject constructor(
                         }
 
                         screenshot.isOcrComplete = true
-
-                        Log.i("recognizeDAO", "DAO: $userDao.getUser()")
 
                         if (!userDao.getUser().uploadImages) {
                             screenshot.filePath?.let { File(it).delete() }

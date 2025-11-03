@@ -90,9 +90,8 @@ class RecognizeInstrumentedTest {
             // Create a temporary image file for testing
             val tempImageFile = File(appContext.filesDir, "img.png")
 
+            // Create a screenshot object with the path to the temporary image
             val screenshot = ScreenshotEntity(filePath = tempImageFile.absolutePath)
-
-            val absPath = tempImageFile.absolutePath
 
             // Process the image using Tesseract OCR
             val result = recognize.processImage(screenshot)

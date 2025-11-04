@@ -159,7 +159,7 @@ class TouchAccessibilityService() : AccessibilityService() {
         }
         mReceiver = SystemAccessibilityEventReceiver(context?.get())
         context?.get()?. let { ctx ->
-            ContextCompat.registerReceiver(ctx, mReceiver, filter, ContextCompat.RECEIVER_EXPORTED))
+            ContextCompat.registerReceiver(ctx, mReceiver, filter, ContextCompat.RECEIVER_EXPORTED)
         }
     }
 

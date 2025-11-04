@@ -158,9 +158,8 @@ class TouchAccessibilityService() : AccessibilityService() {
             addAction(Intent.ACTION_USER_PRESENT)
         }
         mReceiver = SystemAccessibilityEventReceiver(context?.get())
-        // context?.get()?.registerReceiver(mReceiver, filter)
         context?.get()?. let { ctx ->
-            ContextCompat.registerReceiver(ctx, mReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+            ContextCompat.registerReceiver(ctx, mReceiver, filter, ContextCompat.RECEIVER_EXPORTED))
         }
     }
 

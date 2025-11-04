@@ -63,8 +63,7 @@ class ScreenStateReceiver(private val callback: ScreenStateCallback) : Broadcast
             addAction(Intent.ACTION_SCREEN_ON)
             addAction(Intent.ACTION_USER_PRESENT)
         }
-        // context.registerReceiver(this, filter)
-        ContextCompat.registerReceiver(context, this, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        ContextCompat.registerReceiver(context, this, filter, ContextCompat.RECEIVER_EXPORTED)
         Log.d(TAG, "Screen state receiver registered")
     }
 

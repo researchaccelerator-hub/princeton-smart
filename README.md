@@ -1,5 +1,12 @@
 # Princeton Screenlake Mobile Analytics & Recording Tool (SMART)
 
+## App Status
+
+- Code Security - ✅
+- Dependency Security - ✅
+- Unit Tests - ✅
+- Instrumented Tests - ✅
+
 ## Explanatory Research Guide for Faculty, PIs, ICs, and Researchers
 - [Princeton SMART: A Practical Guide](https://docs.google.com/document/d/1TMU9V169so5C-JHJscVokS_iKi2IjCiabze07KnQ41E/edit?usp=sharing)
 
@@ -423,4 +430,3 @@ Regularly running and reviewing your tests ensures that your app remains reliabl
 ## How to Cite Princeton SMART
 
 Cornelius, Justin & Muise, Daniel (2025). Screenlake Research Kit, maintained by the Accelerator at Princeton University \[Software\]. GitHub. |add link to repo branch|
-

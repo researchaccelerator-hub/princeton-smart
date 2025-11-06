@@ -184,7 +184,7 @@ class TouchAccessibilityService() : AccessibilityService() {
         saveEvent(
             AccessibilityEventEntity(
                 user = ScreenshotService.user.emailHash,
-                eventTime = Instant.now().epochSecond,
+                eventTime = Instant.now().toEpochMilli(),
                 eventType = "SESSION_START",
                 appIntervalId = appIntervalId,
                 accessibilitySessionId = appAccessibilitySessionId
@@ -240,7 +240,7 @@ class TouchAccessibilityService() : AccessibilityService() {
                 saveEvent(
                     AccessibilityEventEntity(
                         user = ScreenshotService.user.emailHash,
-                        eventTime = Instant.now().epochSecond,
+                        eventTime = Instant.now().toEpochMilli(),
                         eventType = "APP_RESTRICTED",
                         appIntervalId = appIntervalId,
                         accessibilitySessionId = appAccessibilitySessionId,

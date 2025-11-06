@@ -234,7 +234,7 @@ class TouchAccessibilityService() : AccessibilityService() {
 
             val moveForward = !(RESTRICTED_APPS.contains(packageName)) && !(userRestricted)
 
-            Timber.tag("Accessibility Service").d("User Restricted: %s, Default Restricted: %s, Move Forward: %s", userRestricted, RESTRICTED_APPS.contains(packageName), moveForward)
+            Timber.tag("AccessibilityService").d("User Restricted: %s, Default Restricted: %s, Move Forward: %s", userRestricted, RESTRICTED_APPS.contains(packageName), moveForward)
 
             if (!moveForward) {
                 saveEvent(

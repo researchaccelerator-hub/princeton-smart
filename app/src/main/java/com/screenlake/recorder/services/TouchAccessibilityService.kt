@@ -229,12 +229,10 @@ class TouchAccessibilityService() : AccessibilityService() {
             screenOffDetected = true
 
             val packageName = rootInActiveWindow?.packageName
-            val nameFromApk = ScreenshotService.appNameVsPackageName[packageName] ?: ""
+            val nameFromApk = ScreenshotService.appNameVsPackageName.getOrDefault(packageName, "")
             val userRestricted = ScreenshotService.restrictedApps.value?.contains(nameFromApk) ?: false
 
             val moveForward = !(RESTRICTED_APPS.contains(packageName)) && !(userRestricted)
-
-            Timber.tag("AccessibilityService").d("User Restricted: %s, Default Restricted: %s, Move Forward: %s", userRestricted, RESTRICTED_APPS.contains(packageName), moveForward)
 
             if (!moveForward) {
                 saveEvent(

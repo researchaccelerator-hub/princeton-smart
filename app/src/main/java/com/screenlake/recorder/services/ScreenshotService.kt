@@ -664,18 +664,15 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
             }
 
             Timber.d("Current user restricted apps: %s", ScreenshotService.restrictedApps.value)
-            Timber.d("currentAppInUse: %s", currentAppInUse.apk)
             
             val nameFromApk = appNameVsPackageName[currentAppInUse.apk] ?: ""
             val userRestricted = ScreenshotService.restrictedApps.value?.contains(nameFromApk) ?: false
 
-            Timber.d("Current App Name: %s", nameFromApk)
-            Timber.d("User Restricted: %s", userRestricted)
-            Timber.d("Default Restricted: %s", RESTRICTED_APPS.contains(currentAppInUse.apk))
-            
+            Timber.d("currentAppAPK: %s, currentAppName: %s", currentAppInUse.apk, nameFromApk)
+
             moveForward = !(RESTRICTED_APPS.contains(currentAppInUse.apk)) && !(userRestricted)
 
-            Timber.d("Move forward: %s", moveForward)
+            Timber.d("User Restricted: %s, Default Restricted: %s, Move Forward: %s", userRestricted, RESTRICTED_APPS.contains(currentAppInUse.apk), moveForward)
 
             if (!moveForward) {
                 val screenshotData = ScreenshotData.saveScreenshotData(

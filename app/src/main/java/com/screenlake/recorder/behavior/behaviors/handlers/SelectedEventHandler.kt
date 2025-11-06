@@ -36,7 +36,12 @@ class SelectedEventHandler @Inject constructor(
         if (accessibilityEventConverted?.text?.trim()?.isNotEmpty() == true
             && accessibilityEventConverted.text != "[]"
         ) {
-            val moveForward = ConstantSettings.RESTRICTED_APPS.contains(accessibilityEventConverted.packageName)
+            val nameFromApk = ScreenshotService.appNameVsPackageName[accessibilityEventConverted.packageName] ?: ""
+            val userRestricted = ScreenshotService.restrictedApps.value?.contains(nameFromApk) ?: false
+            val moveForward = ConstantSettings.RESTRICTED_APPS.contains(accessibilityEventConverted.packageName) || userRestricted
+
+            Timber.tag("SelectedEvent").d("packageName: %s, userRestricted: %s, moveForward: %s", accessibilityEventConverted.packageName, userRestricted, moveForward)
+
             if (moveForward) return
 
             accessibilityEventConverted.text =

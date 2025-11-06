@@ -56,7 +56,12 @@ class AllTextHandler @Inject constructor(
 
         if (rootNode != null) {
             val packageName = rootNode.packageName.toString()
-            val moveForward = ConstantSettings.RESTRICTED_APPS.contains(packageName)
+            val nameFromApk = ScreenshotService.appNameVsPackageName[packageName] ?: ""
+            val userRestricted = ScreenshotService.restrictedApps.value?.contains(nameFromApk) ?: false
+
+            val moveForward = ConstantSettings.RESTRICTED_APPS.contains(packageName) || userRestricted
+
+            Timber.tag("AccessibilityEvent").d("packageName: %s, userRestricted: %s, moveForward: %s", packageName, userRestricted, moveForward)
 
             if (moveForward) return
 

@@ -4,6 +4,7 @@ import com.screenlake.recorder.constants.ConstantSettings
 import com.screenlake.data.database.entity.AccessibilityEventEntity
 import com.screenlake.data.enums.BehavioralEvents
 import com.screenlake.data.repository.GeneralOperationsRepository
+import com.screenlake.recorder.services.ScreenshotService
 import com.screenlake.recorder.services.util.ScreenshotData
 import timber.log.Timber
 import javax.inject.Inject

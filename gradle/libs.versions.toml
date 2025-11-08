@@ -1,7 +1,7 @@
 [versions]
 amplify = "1.37.10"
 amplifyCoreKotlin = "0.21.3"
-android = "8.3.0"
+android = "8.13.0"
 androidxAnnotation = "1.9.1"
 androidxPreference = "1.2.1"
 androidxSecurityCrypto = "1.0.0"

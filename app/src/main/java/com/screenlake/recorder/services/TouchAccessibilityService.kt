@@ -229,10 +229,11 @@ class TouchAccessibilityService() : AccessibilityService() {
             screenOffDetected = true
 
             val packageName = rootInActiveWindow?.packageName
-            val nameFromApk = ScreenshotService.appNameVsPackageName.getOrDefault(packageName, "")
-            val userRestricted = ScreenshotService.restrictedApps.value?.contains(nameFromApk) ?: false
+            // val nameFromApk = ScreenshotService.appNameVsPackageName.getOrDefault(packageName, "")
+            // val userRestricted = ScreenshotService.restrictedApps.value?.contains(nameFromApk) ?: false
 
-            val moveForward = !(RESTRICTED_APPS.contains(packageName)) && !(userRestricted)
+            // val moveForward = !(RESTRICTED_APPS.contains(packageName)) && !(userRestricted)
+            val moveForward = !(ScreenshotService.isRestrictedApp(packageName?.toString()))
 
             if (!moveForward) {
                 saveEvent(

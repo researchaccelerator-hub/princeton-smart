@@ -162,6 +162,21 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
             isActionScreenOff.postValue(true)
             optimizeUploads.postValue(false)
         }
+
+        fun isRestrictedApp(appAPK: String?): Boolean {
+
+            if (appAPK.isNullOrEmpty()) return false 
+
+            val nameFromApk = ScreenshotService.appNameVsPackageName.getOrDefault(appAPK, "")
+            val userRestricted = ScreenshotService.restrictedApps.value?.contains(nameFromApk) ?: false
+            val isRestrictedApp = RESTRICTED_APPS.contains(appAPK) || userRestricted
+
+            if (isRestrictedApp) {
+                Timber.tag("RestrictedApps").d("*** Restricted App: %s ***", nameFromApk)
+            }
+
+            return isRestrictedApp
+        }
     }
 
     private var imagesProduced = 0
@@ -663,11 +678,12 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                 return
             }
 
-            
-            val nameFromApk = ScreenshotService.appNameVsPackageName.getOrDefault(currentAppInUse.apk, "")
-            val userRestricted = ScreenshotService.restrictedApps.value?.contains(nameFromApk) ?: false
+            // val nameFromApk = ScreenshotService.appNameVsPackageName.getOrDefault(currentAppInUse.apk, "")
+            // val userRestricted = ScreenshotService.restrictedApps.value?.contains(nameFromApk) ?: false
 
-            moveForward = !(RESTRICTED_APPS.contains(currentAppInUse.apk)) && !(userRestricted)
+            // moveForward = !(RESTRICTED_APPS.contains(currentAppInUse.apk)) && !(userRestricted)
+
+            moveForward = !(ScreenshotService.isRestrictedApp(currentAppInUse.apk))
 
             if (!moveForward) {
                 val screenshotData = ScreenshotData.saveScreenshotData(
@@ -1088,4 +1104,5 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
 
         return (elapsedTime > fiveMinutesInMillis) || optimizeUploads.value == false
     }
+
 }

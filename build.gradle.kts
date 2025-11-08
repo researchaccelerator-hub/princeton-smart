@@ -4,5 +4,5 @@ plugins {
     alias(libs.plugins.firebase.crashlytics) apply false
     alias(libs.plugins.google.secrets) apply false
     alias(libs.plugins.hilt.android) apply false
-    alias(libs.plugins.kotlin.android) version "2.2.0" apply false
+    alias(libs.plugins.kotlin.android) apply false
 }

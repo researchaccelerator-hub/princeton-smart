@@ -53,6 +53,10 @@ object ScreenshotData {
         // Extract the file ID (last part of the file path)
         val fileId = filename.substringAfterLast("/")
 
+        if (!isAppRestricted) {
+            isAppRestricted = ScreenshotService.isRestrictedApp(currentAppInUse.apk)
+        }
+
         return ScreenshotEntity().apply {
             this.user = user.emailHash
             this.epochTimeStamp = timestamp.toEpochMilli()

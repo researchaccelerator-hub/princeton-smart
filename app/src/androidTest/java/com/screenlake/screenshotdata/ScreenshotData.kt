@@ -22,7 +22,6 @@ object ScreenshotData {
         screenshot.currentAppInUse = currentAppInUse
         screenshot.currentAppRealNameInUse = ScreenshotService.appNameVsPackageName.getOrDefault(currentAppInUse, "")
         screenshot.localTimeStamp = TimeUtility.getCurrentTimestampDefaultTimezoneString()
-        // screenshot.isAppRestricted = ConstantSettings.RESTRICTED_APPS.contains(currentAppInUse) || (ScreenshotService.restrictedApps.value?.contains(ScreenshotService.appNameVsPackageName.getOrDefault(currentAppInUse, "")) ?: false)
         screenshot.isAppRestricted = ScreenshotService.isRestrictedApp(currentAppInUse)
         screenshot.filePath = filename
         screenshot.sessionDepth = ScreenshotService.lastUnlockTime?.let { timestamp.epochSecond.minus(it) }

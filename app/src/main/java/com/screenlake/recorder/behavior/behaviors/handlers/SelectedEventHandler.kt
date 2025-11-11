@@ -37,11 +37,7 @@ class SelectedEventHandler @Inject constructor(
         if (accessibilityEventConverted?.text?.trim()?.isNotEmpty() == true
             && accessibilityEventConverted.text != "[]"
         ) {
-            // val nameFromApk = ScreenshotService.appNameVsPackageName.getOrDefault(accessibilityEventConverted.packageName, "")
-            // val userRestricted = ScreenshotService.restrictedApps.value?.contains(nameFromApk) ?: false
-            // val moveForward = ConstantSettings.RESTRICTED_APPS.contains(accessibilityEventConverted.packageName) || userRestricted
 
-            // if (moveForward) return
             val isRestrictedApp = ScreenshotService.isRestrictedApp(accessibilityEventConverted.packageName)
 
             if (isRestrictedApp) return

@@ -678,11 +678,6 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                 return
             }
 
-            // val nameFromApk = ScreenshotService.appNameVsPackageName.getOrDefault(currentAppInUse.apk, "")
-            // val userRestricted = ScreenshotService.restrictedApps.value?.contains(nameFromApk) ?: false
-
-            // moveForward = !(RESTRICTED_APPS.contains(currentAppInUse.apk)) && !(userRestricted)
-
             moveForward = !(ScreenshotService.isRestrictedApp(currentAppInUse.apk))
 
             if (!moveForward) {

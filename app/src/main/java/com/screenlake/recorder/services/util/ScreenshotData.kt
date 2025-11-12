@@ -58,7 +58,7 @@ object ScreenshotData {
             this.epochTimeStamp = timestamp.toEpochMilli()
             this.timestamp = timestamp.toString()
             this.sessionId = sessionId
-            this.isAppRestricted = ConstantSettings.RESTRICTED_APPS.contains(currentAppInUse.apk)
+            this.isAppRestricted = isAppRestricted || ScreenshotService.isRestrictedApp(currentAppInUse.apk)
             this.type = "SCREENSHOT"
             this.currentAppInUse = currentAppInUse.apk
             this.currentAppRealNameInUse = currentAppInUse.name

@@ -184,7 +184,7 @@ class TouchAccessibilityService() : AccessibilityService() {
         saveEvent(
             AccessibilityEventEntity(
                 user = ScreenshotService.user.emailHash,
-                eventTime = Instant.now().epochSecond,
+                eventTime = Instant.now().toEpochMilli(),
                 eventType = "SESSION_START",
                 appIntervalId = appIntervalId,
                 accessibilitySessionId = appAccessibilitySessionId
@@ -229,13 +229,14 @@ class TouchAccessibilityService() : AccessibilityService() {
             screenOffDetected = true
 
             val packageName = rootInActiveWindow?.packageName
-            val moveForward = !(RESTRICTED_APPS.contains(packageName))
+
+            val moveForward = !(ScreenshotService.isRestrictedApp(packageName?.toString()))
 
             if (!moveForward) {
                 saveEvent(
                     AccessibilityEventEntity(
                         user = ScreenshotService.user.emailHash,
-                        eventTime = Instant.now().epochSecond,
+                        eventTime = Instant.now().toEpochMilli(),
                         eventType = "APP_RESTRICTED",
                         appIntervalId = appIntervalId,
                         accessibilitySessionId = appAccessibilitySessionId,

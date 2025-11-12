@@ -6,7 +6,7 @@ ignore:
   SNYK-JAVA-COMMONSIO-8161190:
     - '*':
         reason: 'Direct dependency has not incorporated fix yet'
-        expires: 2025-11-07T10:02:05.356Z
+        expires: 2025-11-14T10:02:05.356Z
         created: 2025-10-28T10:02:05.356Z
   'snyk:lic:maven:junit:junit:EPL-1.0':
     - '*':

@@ -56,9 +56,9 @@ class AllTextHandler @Inject constructor(
 
         if (rootNode != null) {
             val packageName = rootNode.packageName.toString()
-            val moveForward = ConstantSettings.RESTRICTED_APPS.contains(packageName)
+            val isRestrictedApp = ScreenshotService.isRestrictedApp(packageName)
 
-            if (moveForward) return
+            if (isRestrictedApp) return
 
             val result = mutableListOf<AccessibilityEventEntity>()
             var groupdId = UUID.randomUUID().toString()

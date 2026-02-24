@@ -1,7 +1,7 @@
 package com.screenlake.di
 
 import android.content.Context
-import com.airbnb.lottie.BuildConfig
+import com.screenlake.BuildConfig
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.screenlake.data.repository.AwsService
@@ -61,7 +61,7 @@ internal object DataModule {
         gson: Gson
     ): Retrofit {
         return Retrofit.Builder()
-            .baseUrl(com.screenlake.BuildConfig.AMAZON_BUCKET_URL)
+            .baseUrl(BuildConfig.AMAZON_BUCKET_URL)
             .client(httpClient)
             .addConverterFactory(GsonConverterFactory.create(gson))
             .build()

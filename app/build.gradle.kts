@@ -36,6 +36,11 @@ android {
         exclude(group = "com.google.firebase", module = "protolite-well-known-types")
         exclude(group = "com.google.protobuf", module = "protobuf-java-util")
         exclude(group = "com.google.protobuf", module = "protobuf-javalite")
+        resolutionStrategy {
+            // Force safe version of commons-io to fix SNYK-JAVA-COMMONSIO-8161190
+            // (Resource Exhaustion in commons-io < 2.14.0, introduced transitively via databinding-compiler)
+            force("commons-io:commons-io:2.14.0")
+        }
     }
 
     // Load local.properties file

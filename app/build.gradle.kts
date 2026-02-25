@@ -36,26 +36,6 @@ android {
         exclude(group = "com.google.firebase", module = "protolite-well-known-types")
         exclude(group = "com.google.protobuf", module = "protobuf-java-util")
         exclude(group = "com.google.protobuf", module = "protobuf-javalite")
-        resolutionStrategy {
-            // Force safe version of commons-io to fix SNYK-JAVA-COMMONSIO-8161190
-            // (Resource Exhaustion in commons-io < 2.14.0, introduced transitively via databinding-compiler)
-            force("commons-io:commons-io:2.14.0")
-
-            // Fix netty CVEs — all modules must share the same version to avoid
-            // internal compatibility breaks within the netty ecosystem.
-            // Covers: SNYK-JAVA-IONETTY-11799531, -12485151, -12485150, -12485149,
-            //         -5953332, -6483812, -5725787, -8707739, -8367012, -8707740
-            // Introduced transitively via com.android.tools.utp and com.google.testing.platform
-            val nettyVersion = "4.1.129.Final"
-            force("io.netty:netty-codec-http2:$nettyVersion")
-            force("io.netty:netty-codec-http:$nettyVersion")
-            force("io.netty:netty-handler:$nettyVersion")
-            force("io.netty:netty-common:$nettyVersion")
-            force("io.netty:netty-codec:$nettyVersion")
-            force("io.netty:netty-buffer:$nettyVersion")
-            force("io.netty:netty-transport:$nettyVersion")
-            force("io.netty:netty-resolver:$nettyVersion")
-        }
     }
 
     // Load local.properties file

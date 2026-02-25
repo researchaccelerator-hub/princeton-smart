@@ -41,10 +41,6 @@ android {
             // (Resource Exhaustion in commons-io < 2.14.0, introduced transitively via databinding-compiler)
             force("commons-io:commons-io:2.14.0")
 
-            // Fix SNYK-JAVA-COMGOOGLEPROTOBUF-8055227 (Stack-based Buffer Overflow)
-            // Introduced transitively via com.google.testing.platform build tooling
-            force("com.google.protobuf:protobuf-java:3.25.5")
-
             // Fix netty CVEs — all modules must share the same version to avoid
             // internal compatibility breaks within the netty ecosystem.
             // Covers: SNYK-JAVA-IONETTY-11799531, -12485151, -12485150, -12485149,

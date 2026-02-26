@@ -2,7 +2,7 @@
 # Amplify: v2.x is a major migration (callback API removed, new init model). Skip for now.
 amplify = "1.37.10"
 amplifyCoreKotlin = "0.21.3"
-android = "8.11.2"
+android = "8.13.2"
 androidxAnnotation = "1.9.1"
 androidxPreference = "1.2.1"
 androidxSecurityCrypto = "1.0.0"

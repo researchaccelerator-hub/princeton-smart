@@ -34,7 +34,9 @@ android {
     configurations.all {
         exclude(group = "com.google.protobuf", module = "protobuf-lite")
         exclude(group = "com.google.firebase", module = "protolite-well-known-types")
-        exclude(group = "com.google.protobuf", module = "protobuf-java-util")
+        // protobuf-java-util intentionally NOT excluded: AGP 8.13+ assembles the UTP
+        // test driver classpath through project configurations, so excluding it here
+        // strips Timestamps from the driver and breaks all instrumented test runs.
         exclude(group = "com.google.protobuf", module = "protobuf-javalite")
     }
 

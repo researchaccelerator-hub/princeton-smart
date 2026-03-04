@@ -21,6 +21,15 @@ ignore:
           exclusions in configurations.all.
         expires: 2027-01-01T00:00:00.000Z
         created: 2026-02-25T00:00:00.000Z
+  SNYK-JAVA-COMGOOGLEPROTOBUF-8055228:
+    - '*':
+        reason: >
+          Transitive via com.google.testing.platform build tooling (AGP/UTP only).
+          Not included in the shipped APK. Forcing protobuf-java-util version risks
+          version skew with protobuf-java and has previously broken the instrumented
+          test infrastructure.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-03-03T00:00:00.000Z
   SNYK-JAVA-IONETTY-11799531:
     - '*':
         reason: >

@@ -67,8 +67,11 @@ class TouchAccessibilityServiceTest {
         AccessibilityServiceDependencies.trackingManager = trackingManager
         AccessibilityServiceDependencies.context = WeakReference(mockContext)
 
-        // Initialize the service (using spy to monitor behavior)
-        service = spyk(TouchAccessibilityService())  // Using spyk so that you can spy on the service's behavior
+        // Initialize the service directly — spyk is not used because no calls on the
+        // service itself are verified; tests only verify on mockEventHandler.
+        // spyk on @AndroidEntryPoint classes triggers Kotlin reflection over the
+        // Hilt-generated superclass constructor which fails on API 31.
+        service = TouchAccessibilityService()
     }
 
     /**

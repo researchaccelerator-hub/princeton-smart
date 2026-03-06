@@ -1,4 +1,5 @@
 import java.util.Properties
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.application)
@@ -33,7 +34,9 @@ android {
     configurations.all {
         exclude(group = "com.google.protobuf", module = "protobuf-lite")
         exclude(group = "com.google.firebase", module = "protolite-well-known-types")
-        exclude(group = "com.google.protobuf", module = "protobuf-java-util")
+        // protobuf-java-util intentionally NOT excluded: AGP 8.13+ assembles the UTP
+        // test driver classpath through project configurations, so excluding it here
+        // strips Timestamps from the driver and breaks all instrumented test runs.
         exclude(group = "com.google.protobuf", module = "protobuf-javalite")
     }
 
@@ -100,16 +103,13 @@ android {
             excludes += "META-INF/LICENSE.txt"
             excludes += "META-INF/NOTICE.txt"
             excludes += "META-INF/LICENSE.md"
+            excludes += "META-INF/versions/9/OSGI-INF/MANIFEST.MF"
         }
     }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
     buildFeatures {
@@ -119,13 +119,18 @@ android {
     }
 }
 
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+    }
+}
+
 dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(platform(libs.squareup.okhttp3.bom))
 
     implementation(libs.adaptech.tesseract4Android)
     implementation(libs.airbnb.lottie)
-    implementation(libs.android.support.annotations)
     implementation(libs.androidx.annotation)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.constraintlayout)

@@ -16,6 +16,7 @@ android {
 
     namespace = "com.screenlake"
     compileSdk = 35
+    ndkVersion = "27.0.12077973"
 
     defaultConfig {
         applicationId = "com.screenlake"
@@ -105,6 +106,13 @@ android {
             excludes += "META-INF/LICENSE.md"
             excludes += "META-INF/versions/9/OSGI-INF/MANIFEST.MF"
         }
+        jniLibs {
+            useLegacyPackaging = false
+        }
+    }
+
+    lint {
+        error += "PageAlignedJni"
     }
 
     compileOptions {

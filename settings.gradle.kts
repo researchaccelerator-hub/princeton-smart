@@ -16,8 +16,8 @@ dependencyResolutionManagement {
     repositories {
         mavenLocal() // provides tesseract4android:4.9.0 until JitPack is available
         google()
-        maven("https://jitpack.io")
         mavenCentral()
+        maven("https://jitpack.io")
     }
 }
 

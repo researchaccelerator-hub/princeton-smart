@@ -48,7 +48,7 @@ retrofit = "3.0.0"
 robolectric = "4.16.1"
 room = "2.8.4"
 secrets = "2.0.1"
-tesseract4Android = "4.4.0"
+tesseract4Android = "4.9.0"
 timber = "4.7.1"
 truth = "1.4.5"
 

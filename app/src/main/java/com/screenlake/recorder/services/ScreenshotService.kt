@@ -224,6 +224,10 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
     private var resultCode: Int = Activity.RESULT_CANCELED
     private var resultData: Intent? = null
 
+    // Prevents multiple concurrent code paths from each posting a restart notification.
+    // Reset when a fresh consent token is successfully consumed in setupMediaProjection().
+    private var restartNotificationShown = false
+
     override fun onBind(intent: Intent?): IBinder? {
         return null
     }
@@ -408,6 +412,9 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
             Timber.w("setupMediaProjection: projection already active, ignoring duplicate call")
             return
         }
+        // Fresh consent token received — allow the restart notification to be shown again
+        // if projection is lost in this new session.
+        restartNotificationShown = false
         try {
             val mediaProjectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -461,17 +468,20 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
     }
 
     private fun showProjectionStoppedNotification() {
+        if (restartNotificationShown) return
+        restartNotificationShown = true
         try {
             // Create a notification to inform the user that projection stopped
             val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
 
             val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("Screenshot Service Stopped")
-                .setContentText("Tap to restart.")
+                .setContentTitle("Study Recording Paused")
+                .setContentText("Tap to resume data collection")
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setSmallIcon(com.screenlake.R.drawable.logo_just_square_small)
                 .setContentIntent(NotificationHelper(this).getMainActivityPendingIntent())
                 .setAutoCancel(true)
+                .setOngoing(false)
                 .build()
 
             notificationManager.notify(RESTART_NOTIFICATION_ID, notification)

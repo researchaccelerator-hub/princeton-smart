@@ -98,7 +98,6 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         val isPaused = MutableLiveData<Boolean>()
         var offlineUpdates = MutableLiveData<Int>()
         var pausedTimer = MutableLiveData<String>()
-        var projection : MediaProjection? = null
         var isProjectionValid = MutableLiveData<Boolean>()
         // Settings
         var uploadOverWifi = MutableLiveData<Boolean>()
@@ -622,8 +621,16 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
 
                     // Only try to restart if we have valid data
                     if (resultCode != Activity.RESULT_CANCELED && resultData != null) {
-                        setupMediaProjection(resultCode, resultData!!)
-                        startCapturing()
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                            // On API 34+, the consent token is single-use and has already been
+                            // consumed by the original getMediaProjection() call. Attempting to
+                            // reuse it will throw a SecurityException or silently return null.
+                            // Instead, prompt the user for fresh consent.
+                            showProjectionStoppedNotification()
+                        } else {
+                            setupMediaProjection(resultCode, resultData!!)
+                            startCapturing()
+                        }
                     } else {
                         showErrorNotification(
                             "Screenshot Service Error",
@@ -829,14 +836,18 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
     }
 
     private fun resetCapturing() {
-//        try {
-//            virtualDisplay?.release()
-//        } catch (e: Exception) {
-//            e.record()
-//            CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("STOP_CAPTURE_RESET", "${e.message} -> ${e.stackTrace}") }
-//            Timber.e(e, "Error releasing virtual display")
-//        }
-//        virtualDisplay = null
+        // Release the VirtualDisplay first. The old ImageReader surface is now dead, so
+        // leaving the VirtualDisplay attached would cause silent frame drops or an
+        // IllegalStateException. No re-consent is required — createVirtualDisplay() can be
+        // called multiple times on the same MediaProjection instance.
+        try {
+            virtualDisplay?.release()
+        } catch (e: Exception) {
+            e.record()
+            CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("STOP_CAPTURE_RESET", "${e.message} -> ${e.stackTrace}") }
+            Timber.e(e, "Error releasing virtual display during reset")
+        }
+        virtualDisplay = null
 
         try {
             imageReader?.close()
@@ -847,7 +858,9 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         }
         imageReader = null
 
-        imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
+        if (!setupVirtualDisplay()) {
+            Timber.e("resetCapturing: failed to recreate virtual display")
+        }
     }
 
 

@@ -405,8 +405,17 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
     }
 
     private fun setupMediaProjection(resultCode: Int, data: Intent) {
+        if (mediaProjection != null) {
+            Timber.w("setupMediaProjection: projection already active, ignoring duplicate call")
+            return
+        }
         try {
             val mediaProjectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                // On API 34+, the consent token is single-use. This call consumes it permanently.
+                // Any subsequent call with the same token will throw SecurityException or return null.
+                Timber.d("setupMediaProjection: consuming single-use token (API 34+)")
+            }
             mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, data)
 
             if (mediaProjection == null) {
@@ -415,11 +424,16 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                 return
             }
 
-            // Register callback for Android 15+
+            // MediaProjection.Callback is available from API 34 (Android 14, UPSIDE_DOWN_CAKE).
+            // Named constants for reference:
+            //   API 34 = UPSIDE_DOWN_CAKE  (Android 14)
+            //   API 35 = VANILLA_ICE_CREAM (Android 15)
+            //   API 36 = BAKLAVA           (Android 16)
+            // On API 33 and below, projection stop must be detected via other signals.
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 mediaProjection?.registerCallback(object : MediaProjection.Callback() {
                     override fun onStop() {
-                        Timber.d("MediaProjection stopped callback (Android 15+)")
+                        Timber.d("MediaProjection.Callback.onStop() fired")
                         coroutineScope.launch {
                             stopCapturing()
                             showProjectionStoppedNotification()
@@ -659,12 +673,23 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
             // Create image reader to capture screenshots
             imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
 
-            // Create virtual display
+            // Create virtual display.
+            // A VirtualDisplay.Callback is provided so the app can detect if the system
+            // stops the display unexpectedly (e.g. display resolution change) and recover
+            // without requiring re-consent — resetCapturing() recreates the VirtualDisplay
+            // and ImageReader on the existing, still-valid MediaProjection.
             virtualDisplay = mediaProjection?.createVirtualDisplay(
                 "ScreenCapture",
                 width, height, density,
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                imageReader?.surface, null, null
+                imageReader?.surface,
+                object : VirtualDisplay.Callback() {
+                    override fun onStopped() {
+                        Timber.w("VirtualDisplay stopped unexpectedly, resetting capture")
+                        coroutineScope.launch(Dispatchers.Main) { resetCapturing() }
+                    }
+                },
+                Handler(Looper.getMainLooper())
             )
 
             return virtualDisplay != null
@@ -925,6 +950,9 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
     // Screen state callback implementations
     override fun onScreenOff() {
         Timber.d("Screen turned off")
+        // IMPORTANT: Do NOT call mediaProjection.stop() or stopCapturing() here.
+        // On Android 14+, stopping the projection requires fresh user consent to restart.
+        // The capture loop skips frames while isScreenLocked = true; the projection stays alive.
         isScreenLocked.set(true)
 
         CoroutineScope(Dispatchers.IO).launch {

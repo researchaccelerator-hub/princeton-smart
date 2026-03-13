@@ -140,7 +140,6 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         var uploadCountMsg = MutableLiveData<Int>()
         var restrictedApps = MutableLiveData<HashSet<String>>()
         var user = UserEntity()
-        // TODO: Is this not getting set??
         var lastUnlockTime: Long? = null
 
         private const val TAG = "OcrWorker"
@@ -435,6 +434,17 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                     override fun onStop() {
                         Timber.d("MediaProjection.Callback.onStop() fired")
                         coroutineScope.launch {
+                            // Save the in-progress session before stopping, mirroring the logic
+                            // in onScreenOff(). Without this, screenshots captured since the last
+                            // screen-off event are orphaned in the database.
+                            saveSessionSegmentsInBackground()
+                            generalOperationsRepository.buildCurrentSession(framesPerSecondConst)
+                            generalOperationsRepository.saveSession(generalOperationsRepository.currentSession)
+
+                            // Rotate the session ID so data captured before and after re-consent
+                            // is stored in separate sessions, preserving the consent boundary.
+                            sessionId = UUID.randomUUID().toString()
+
                             stopCapturing()
                             showProjectionStoppedNotification()
                             isMediaProjectionValid.postValue(false)
@@ -978,6 +988,8 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
 
     override fun onScreenUnlocked() {
         Timber.d("Screen unlocked")
+
+        lastUnlockTime = System.currentTimeMillis()
 
         val currentTime = TimeUtility.getCurrentTimestamp()
         Timber.tag("SR_START").d("**** $currentTime ****")

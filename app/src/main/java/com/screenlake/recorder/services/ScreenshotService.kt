@@ -98,6 +98,10 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         val isPaused = MutableLiveData<Boolean>()
         var offlineUpdates = MutableLiveData<Int>()
         var pausedTimer = MutableLiveData<String>()
+        // Written by ScreenRecordFragment.updateMediaProjectionInService(); the service
+        // uses its own private mediaProjection instance, but this companion reference
+        // must remain for the fragment to compile.
+        var projection: MediaProjection? = null
         var isProjectionValid = MutableLiveData<Boolean>()
         // Settings
         var uploadOverWifi = MutableLiveData<Boolean>()

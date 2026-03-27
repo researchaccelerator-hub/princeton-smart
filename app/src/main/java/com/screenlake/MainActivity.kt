@@ -204,17 +204,25 @@ class MainActivity : AppCompatActivity(), ScreenRecordFragment.MediaProjectionCa
         super.onNewIntent(intent)
         setIntent(intent) // Store the new intent
 
-        // If this is a restart projection intent, create a new fragment instance
-        if (intent?.action == "ACTION_RESTART_PROJECTION") {
-            val fragment = ScreenRecordFragment.newInstance().apply {
-                arguments = Bundle().apply {
-                    putBoolean("restartProjection", true)
-                }
+        when (intent?.action) {
+            // Sent by the restart notification via NotificationHelper.getMainActivityPendingIntent().
+            // Handles the case where the activity is already running when the user taps the
+            // notification — onCreate() handles cold-start, this handles the warm/hot path.
+            "ACTION_REQUEST_MEDIA_PROJECTION" -> {
+                manager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+                requestMediaProjection()
             }
-
-            supportFragmentManager.beginTransaction()
-                .replace(R.id.nav_host_fragment, fragment)
-                .commit()
+            // Legacy path: restart triggered programmatically from within the app.
+            "ACTION_RESTART_PROJECTION" -> {
+                val fragment = ScreenRecordFragment.newInstance().apply {
+                    arguments = Bundle().apply {
+                        putBoolean("restartProjection", true)
+                    }
+                }
+                supportFragmentManager.beginTransaction()
+                    .replace(R.id.nav_host_fragment, fragment)
+                    .commit()
+            }
         }
     }
 

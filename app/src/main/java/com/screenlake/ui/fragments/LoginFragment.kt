@@ -34,6 +34,8 @@ import com.screenlake.data.database.entity.UserEntity
 import com.screenlake.data.repository.AmplifyRepository
 import com.screenlake.recorder.services.util.ScreenshotData
 import com.screenlake.recorder.utilities.HardwareChecks
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import com.screenlake.recorder.utilities.hideKeyboard
 import com.screenlake.recorder.viewmodels.MainViewModel
 import com.screenlake.recorder.viewmodels.UserViewModel
@@ -78,6 +80,16 @@ class LoginFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         mainViewModel.isOnPastOnBoarding(false)
+
+        // On edge-to-edge displays (mandatory from Android 15+), adjustResize no longer
+        // moves the layout automatically. Apply the IME (keyboard) inset as bottom padding
+        // on the ScrollView so the input fields stay visible while typing.
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
+            val imeBottom = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+            v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, imeBottom)
+            insets
+        }
+
         setupListeners()
         observeLoginState()
 
@@ -166,7 +178,6 @@ class LoginFragment : Fragment() {
     }
 
     private fun clearEditText() {
-        binding.loginEmail.editText?.text?.clear()
         binding.loginPassword.editText?.text?.clear()
     }
 

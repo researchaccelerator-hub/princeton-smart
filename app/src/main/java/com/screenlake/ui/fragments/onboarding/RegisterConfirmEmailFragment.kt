@@ -16,6 +16,8 @@ import com.screenlake.data.repository.AmplifyRepository
 import com.screenlake.databinding.FragmentRegisterConfirmEmailBinding
 import com.screenlake.recorder.authentication.CloudAuthentication
 import com.screenlake.recorder.constants.ConstantSettings
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import com.screenlake.recorder.utilities.hideKeyboard
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
@@ -37,6 +39,12 @@ class RegisterConfirmEmailFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
+            val imeBottom = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+            v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, imeBottom)
+            insets
+        }
 
         binding.registerConfirmCodeNext.setOnClickListener {
             val code = binding.registerNameEmailFragmentCode.text?.toString()?.trim()

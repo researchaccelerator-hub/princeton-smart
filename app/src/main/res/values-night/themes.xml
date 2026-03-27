@@ -4,4 +4,17 @@
         <!-- Customize your dark theme here. -->
         <!-- <item name="colorPrimary">@color/my_dark_primary</item> -->
     </style>
+
+    <!-- Dark mode overrides for Theme.Screenlake.
+         The DayNight parent handles surface/background colors automatically.
+         We override only the attributes where we set explicit light-mode values. -->
+    <style name="Theme.Screenlake" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/screenlake_main</item>
+        <item name="colorPrimaryVariant">@color/screenlake_main</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSecondary">@color/teal_200</item>
+        <item name="colorSecondaryVariant">@color/teal_200</item>
+        <item name="colorOnSecondary">@color/black</item>
+        <item name="android:statusBarColor" tools:targetApi="l">@color/screenlake_main</item>
+    </style>
 </resources>

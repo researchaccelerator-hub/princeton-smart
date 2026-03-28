@@ -41,8 +41,11 @@ class RegisterConfirmEmailFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
+            val bars = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+            )
             val imeBottom = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
-            v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, imeBottom)
+            v.setPadding(bars.left, bars.top, bars.right, maxOf(bars.bottom, imeBottom))
             insets
         }
 

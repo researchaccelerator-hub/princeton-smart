@@ -85,8 +85,11 @@ class LoginFragment : Fragment() {
         // moves the layout automatically. Apply the IME (keyboard) inset as bottom padding
         // on the ScrollView so the input fields stay visible while typing.
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
+            val bars = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+            )
             val imeBottom = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
-            v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, imeBottom)
+            v.setPadding(bars.left, bars.top, bars.right, maxOf(bars.bottom, imeBottom))
             insets
         }
 

@@ -26,7 +26,7 @@
                 android:paddingTop="10dp"
                 android:paddingBottom="5dp"
                 android:text="Lets get accessibility service enabled"
-                android:textColor="#000000"
+                android:textColor="?attr/colorOnSurface"
                 android:textSize="20sp"
                 android:textStyle="bold"
                 android:typeface="sans" />

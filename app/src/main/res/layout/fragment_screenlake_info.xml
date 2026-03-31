@@ -26,7 +26,7 @@
                 android:fontFamily="@font/inter_black"
                 android:gravity="center"
                 android:text="What is SRK"
-                android:textColor="@color/black"
+                android:textColor="?attr/colorOnSurface"
                 android:textSize="24sp"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
@@ -67,7 +67,7 @@
                     android:layout_marginEnd="20dp"
                     android:text="How does SRK Work?"
                     android:textSize="18sp"
-                    android:textColor="@color/black"
+                    android:textColor="?attr/colorOnSurface"
                     android:fontFamily="@font/inter_semibold"/>
 
                 <TextView
@@ -106,7 +106,7 @@
                     android:layout_marginEnd="20dp"
                     android:text="Why do we want screen data?"
                     android:textSize="18sp"
-                    android:textColor="@color/black"
+                    android:textColor="?attr/colorOnSurface"
                     android:fontFamily="@font/inter_semibold"/>
 
                 <TextView
@@ -145,7 +145,7 @@
                     android:layout_marginEnd="20dp"
                     android:text="What control do I have over data sharing?"
                     android:textSize="18sp"
-                    android:textColor="@color/black"
+                    android:textColor="?attr/colorOnSurface"
                     android:fontFamily="@font/inter_semibold"/>
 
                 <TextView

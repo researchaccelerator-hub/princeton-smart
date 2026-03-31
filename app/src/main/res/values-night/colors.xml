@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Lighter gray for body text on dark surfaces -->
+    <color name="screenlake_light_gray">#B0B1BC</color>
+    <!-- Dark surface color for dividers/separators -->
+    <color name="screenlake_lighter_gray">#3A3A3A</color>
+</resources>

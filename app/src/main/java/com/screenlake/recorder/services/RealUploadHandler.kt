@@ -59,6 +59,12 @@ class RealUploadHandler @Inject constructor(
 
                 // Handle the upload result
                 handleUploadResult(result, file, entryId, uploadPath, test)
+            } else {
+                generalOperationsRepository.saveLog(
+                    "UPLOAD_URL_EMPTY",
+                    "Presigned URL generation returned empty — possible expired Cognito credentials for file: ${file.name}"
+                )
+                Timber.tag(TAG).e("Presigned URL is empty for ${file.name}; skipping upload. Possible credential expiry.")
             }
         } catch (error: Exception) {
             // Log upload failure
@@ -151,6 +157,12 @@ class RealUploadHandler @Inject constructor(
 
                 // Handle the upload result
                 handleUploadResult(result, file, entryId, uploadPath, test)
+            } else {
+                generalOperationsRepository.saveLog(
+                    "UPLOAD_URL_EMPTY",
+                    "Presigned URL generation returned empty — possible expired Cognito credentials for file: ${file.name}"
+                )
+                Timber.tag(TAG).e("Presigned URL is empty for ${file.name}; skipping upload. Possible credential expiry.")
             }
         } catch (error: Exception) {
             // Log upload failure
@@ -222,9 +234,15 @@ class RealUploadHandler @Inject constructor(
             if (test) UploadWorker.uploadFeedback.postValue("Upload succeeded -> $uploadPath")
             Timber.tag(TAG).d("Upload succeeded")
         } else {
+            val code = result?.code() ?: -1
+            val msg = result?.message() ?: "no message"
+            generalOperationsRepository.saveLog(
+                "UPLOAD_HTTP_FAIL",
+                "Upload failed HTTP $code ($msg) for path: $uploadPath"
+            )
             if (test) UploadWorker.uploadFeedback.postValue("Upload failed -> $uploadPath")
             if (file.extension != "csv") ScreenshotService.lastUploadSuccessful.postValue(false)
-            Timber.tag(TAG).d("Upload failed")
+            Timber.tag(TAG).d("Upload failed HTTP $code ($msg)")
         }
     }
 

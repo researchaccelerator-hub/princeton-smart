@@ -76,6 +76,15 @@ class Util {
     fun generates3ShareUrl(applicationContext: Context, path: String?, uploadPath:String): String {
         val url: URL? = try {
             val s3client: AmazonS3? = getS3Client(applicationContext)
+
+            // Force a credential refresh before signing the URL so that stale
+            // Cognito Identity Pool credentials don't produce a rejected upload.
+            try {
+                AWSMobileClient.getInstance().credentials
+            } catch (credEx: Exception) {
+                Timber.tag(TAG).w("Credential refresh failed before URL generation: ${credEx.message}")
+            }
+
             val expiration = Date()
             var msec = expiration.time
             msec += 1000 * 60 * 60.toLong() // 1 hour.

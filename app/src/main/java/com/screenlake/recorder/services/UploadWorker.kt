@@ -74,7 +74,7 @@ class UploadWorker @AssistedInject constructor(
 
                 if (!uploadHandler.isNetworkConnected()) {
                     Timber.tag(TAG).d("No network connection. Upload Worker has finished.")
-                    return Result.failure()
+                    return Result.retry()
                 }
 
                 generalOperationsRepository.saveLog("UPLOAD_SERVICE_RUN", "")
@@ -88,7 +88,7 @@ class UploadWorker @AssistedInject constructor(
         } catch (ex: Exception) {
             generalOperationsRepository.saveLog("UPLOAD_SERVICE_RUN_FAIL", ex.stackTraceToString())
             Timber.tag(TAG).e(ex, "Upload Worker failed.")
-            Result.failure()
+            Result.retry()
         } finally {
             isRunning = false
             mutex.unlock()

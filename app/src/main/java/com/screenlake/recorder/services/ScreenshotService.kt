@@ -386,7 +386,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Screenshot Service")
-            .setContentText("Taking screenshots every 3 seconds")
+            .setContentText("Taking screenshots every 5 seconds")
             .setSmallIcon(com.screenlake.R.drawable.logo_just_square_small)
             .setContentIntent(pendingIntent)
             .build()

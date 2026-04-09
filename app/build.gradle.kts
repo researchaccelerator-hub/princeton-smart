@@ -75,6 +75,7 @@ android {
         }
 
         debug {
+            applicationIdSuffix = ".debug"
             isMinifyEnabled = false
             isDebuggable = true
             proguardFiles(

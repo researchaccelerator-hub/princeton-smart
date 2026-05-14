@@ -30,6 +30,7 @@ import com.screenlake.data.database.entity.SettingsEntity
 import com.screenlake.data.database.entity.UploadDailyEntity
 import com.screenlake.data.database.entity.UploadHistoryEntity
 import com.screenlake.data.database.entity.UserEntity
+import com.screenlake.recorder.constants.ConstantSettings
 
 @Database(
     entities = [
@@ -48,7 +49,7 @@ import com.screenlake.data.database.entity.UserEntity
         ScrollEventSegmentEntity::class,
         TopicSeenIntervalEntity::class
     ],
-    version = 2
+    version = ConstantSettings.DATA_SCHEMA_VERSION
 )
 abstract class ScreenshotDatabase : RoomDatabase() {
     abstract fun getScreenshotDao(): ScreenshotDao

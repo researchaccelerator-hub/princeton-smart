@@ -286,7 +286,7 @@ Every zip bundle produced by the app includes a `manifest.csv` file with one row
 
 When processing data collected across multiple app versions, check `schema_version` in `manifest.csv` first. Data from schema version `1` (pre-upgrade) will not have a manifest file and will not have a `stop_reason` column in session CSVs; treat missing `stop_reason` values as `UNKNOWN`.
 
-**For developers:** increment `DATA_SCHEMA_VERSION` in [app/src/main/java/com/screenlake/recorder/constants/ConstantSettings.kt](app/src/main/java/com/screenlake/recorder/constants/ConstantSettings.kt) any time a CSV column is added, renamed, or removed in any exported file.
+**For developers:** `DATA_SCHEMA_VERSION` in [app/src/main/java/com/screenlake/recorder/constants/ConstantSettings.kt](app/src/main/java/com/screenlake/recorder/constants/ConstantSettings.kt) is the single source of truth for both the exported CSV schema version and the Room database version — [ScreenshotDatabase.kt](app/src/main/java/com/screenlake/data/database/ScreenshotDatabase.kt) references it directly. Increment it any time a CSV column is added, renamed, or removed. Because the app uses destructive migration, incrementing this value will wipe and recreate the local database on the next app launch.
 
 ---
 

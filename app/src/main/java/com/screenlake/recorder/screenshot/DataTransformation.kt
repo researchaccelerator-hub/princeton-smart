@@ -96,8 +96,8 @@ object DataTransformation {
                 "t_natural_second_session_start",
                 "t_natural_day_session_start",
                 "t_natural_second_session_end",
-                "t_natural_day_session_end"
-
+                "t_natural_day_session_end",
+                "stop_reason"
             ),
             session
         ) {
@@ -115,7 +115,8 @@ object DataTransformation {
                     getFormattedHhMmSs(it.sessionStartEpoch ?: 0L),
                     getFormattedDate(it.sessionStartEpoch ?: 0L),
                     getFormattedHhMmSs(it.sessionEndEpoch ?: 0L),
-                    getFormattedDate(it.sessionEndEpoch ?: 0L)
+                    getFormattedDate(it.sessionEndEpoch ?: 0L),
+                    it.stopReason ?: "UNKNOWN"
             )
         }
 

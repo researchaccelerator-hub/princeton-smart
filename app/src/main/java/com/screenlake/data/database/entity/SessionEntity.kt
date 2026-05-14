@@ -18,7 +18,8 @@ data class SessionEntity(
     var sessionCountPerDay: Int? = null,
     var fps: Double = 0.0,
     var panelId: String? = null,
-    var tenantId: String? = null
+    var tenantId: String? = null,
+    var stopReason: String? = "UNKNOWN"
 ) {
 
     @PrimaryKey(autoGenerate = true)

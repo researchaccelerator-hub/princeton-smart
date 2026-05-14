@@ -48,7 +48,7 @@ import com.screenlake.data.database.entity.UserEntity
         ScrollEventSegmentEntity::class,
         TopicSeenIntervalEntity::class
     ],
-    version = 1
+    version = 2
 )
 abstract class ScreenshotDatabase : RoomDatabase() {
     abstract fun getScreenshotDao(): ScreenshotDao

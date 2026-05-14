@@ -319,4 +319,24 @@
     <string name="please_re_enable_screen_recording">Please re-enable screen recording.</string>
     <string name="screenlake_is_using_the_accessibility_service_to_record_your_screen_in_the_background">SRK is using the accessibility service to record your screen in the background</string>
     <string name="_00_00_00">00:00:00</string>
+
+    <!-- Participant info screen -->
+    <string name="participant_info_title">About This Study</string>
+    <string name="participant_info_what_title">What is this app?</string>
+    <string name="participant_info_what_body">This app runs quietly in the background and collects data about how you use your smartphone. It was developed at Princeton University and is used for academic research.</string>
+    <string name="participant_info_collects_title">What does the app collect?</string>
+    <string name="participant_info_collects_body">Screenshots, text extracted from screenshots, which apps are open and when, recent app switching history, screen content data, and when your phone screen turns on and off.</string>
+    <string name="participant_info_not_collects_title">What does the app NOT collect?</string>
+    <string name="participant_info_not_collects_body">The app cannot access your location, microphone, camera, or speakers.</string>
+    <string name="participant_info_data_goes_title">Where does my data go?</string>
+    <string name="participant_info_data_goes_body">All data goes directly to a private, secured cloud storage account belonging to the research team. It is not shared with any third party.</string>
+    <string name="participant_info_permissions_title">Why does the app need three permissions?</string>
+    <string name="participant_info_permissions_body">Usage access lets the app see which apps are open. Battery optimization exemption keeps the app running reliably in the background. Accessibility service lets the app read screen content. All three are required for the app to work.</string>
+    <string name="participant_info_daily_title">Day-to-day experience</string>
+    <string name="participant_info_daily_body">After setup, the app runs silently in the background. A small notification appears in your status bar while it is active. You do not need to open or interact with the app.</string>
+    <string name="participant_info_battery_title">Battery and performance</string>
+    <string name="participant_info_battery_body">The app is designed to have minimal impact on battery life. The battery optimization exemption granted during setup is what allows it to run efficiently without being suspended by Android.</string>
+    <string name="participant_info_stop_title">How to pause or stop</string>
+    <string name="participant_info_stop_body">Open the app and use the stop button to stop participating. You can also go to Settings > Accessibility on your phone, find the app in the list, and disable it. Uninstalling the app stops all data collection immediately.</string>
+    <string name="participant_info_close">Close</string>
 </resources>

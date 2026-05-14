@@ -136,7 +136,7 @@ class GeneralOperationsRepository @Inject constructor(
         ScreenshotService.screenshotInterval.postValue(ConstantSettings.SCREENSHOT_MAPPING[ScreenshotService.framesPerSecond])
     }
 
-    suspend fun buildCurrentSession(localFPS: Double) {
+    suspend fun buildCurrentSession(localFPS: Double, stopReason: String = "UNKNOWN") {
         val lastActiveTime1 = getLastTimeSessionActive()
         val time = TimeUtility.getCurrentTimestamp()
         currentSession.user = ScreenshotService.user.emailHash
@@ -155,6 +155,8 @@ class GeneralOperationsRepository @Inject constructor(
         if (currentSession.sessionId.isNullOrEmpty()) {
             currentSession.sessionId = ScreenshotService.sessionId
         }
+
+        currentSession.stopReason = stopReason
 
         this.lastActiveTime = currentSession.sessionEnd?.toEpochMilli()
 

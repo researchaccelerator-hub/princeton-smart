@@ -316,7 +316,14 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
 
             if (intent != null) {
                 when (intent.action) {
-                    ACTION_STOP_SERVICE -> stopCapturing()
+                    ACTION_STOP_SERVICE -> {
+                        coroutineScope.launch {
+                            saveSessionSegmentsInBackground()
+                            generalOperationsRepository.buildCurrentSession(framesPerSecondConst, "USER_STOP")
+                            generalOperationsRepository.saveSession(generalOperationsRepository.currentSession)
+                            stopCapturing()
+                        }
+                    }
                     ACTION_PAUSE_SERVICE -> handlePauseService()
 
                     ACTION_RESTART_PROJECTION -> {
@@ -449,7 +456,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                             // in onScreenOff(). Without this, screenshots captured since the last
                             // screen-off event are orphaned in the database.
                             saveSessionSegmentsInBackground()
-                            generalOperationsRepository.buildCurrentSession(framesPerSecondConst)
+                            generalOperationsRepository.buildCurrentSession(framesPerSecondConst, "MEDIA_PROJECTION_REVOKED")
                             generalOperationsRepository.saveSession(generalOperationsRepository.currentSession)
 
                             // Rotate the session ID so data captured before and after re-consent
@@ -958,6 +965,12 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         }
         screenStateReceiver = null
 
+        CoroutineScope(Dispatchers.IO).launch {
+            saveSessionSegmentsInBackground()
+            generalOperationsRepository.buildCurrentSession(framesPerSecondConst, "SERVICE_DESTROYED")
+            generalOperationsRepository.saveSession(generalOperationsRepository.currentSession)
+        }
+
         stopCapturing()
 
         try {
@@ -981,7 +994,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
 
         CoroutineScope(Dispatchers.IO).launch {
             saveSessionSegmentsInBackground()
-            generalOperationsRepository.buildCurrentSession(framesPerSecondConst)
+            generalOperationsRepository.buildCurrentSession(framesPerSecondConst, "SCREEN_OFF")
             generalOperationsRepository.saveSession(generalOperationsRepository.currentSession)
             // Create a new session.
             sessionId = UUID.randomUUID().toString()

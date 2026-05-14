@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.screenlake.BuildConfig
 import com.screenlake.recorder.constants.ConstantSettings
 import com.screenlake.data.database.entity.ScreenshotEntity
 import com.screenlake.data.database.entity.ScreenshotZipEntity
@@ -139,6 +140,7 @@ class ZipFileWorker @AssistedInject constructor(
                     processScreenshots(screenshots, path, zipFileId, toZip)
                     processSessions(screenshots, path, zipFileId, toZip)
                     processAppSegments(screenshots, path, zipFileId, toZip)
+                    writeManifestCsv(path, zipFileId, toZip)
 
                     // Create zip file for this batch
                     createZipFile(toZip, path, zipFileId, screenshots.size, screenshots.mapNotNull { it.id })
@@ -310,6 +312,17 @@ class ZipFileWorker @AssistedInject constructor(
             toZip.add(File(path, appSegmentCSVFile))
             generalOperationsRepository.deleteAppSegments(appSegments.map { it.id.toString() })
         }
+    }
+
+    private fun writeManifestCsv(path: String, zipFileId: UUID, toZip: MutableList<File>) {
+        val nowMs = System.currentTimeMillis()
+        val csv = buildString {
+            append("\"app_version\",\"schema_version\",\"zip_id\",\"recorded_at_epoch_ms\",\"recorded_at_utc\"\n")
+            append("\"${BuildConfig.VERSION_NAME}\",\"${ConstantSettings.DATA_SCHEMA_VERSION}\",\"$zipFileId\",\"$nowMs\",\"${TimeUtility.getFormattedDate(nowMs)}\"\n")
+        }
+        val fileName = "manifest_${zipFileId}.csv"
+        writeFileOnInternalStorage(fileName, csv, path)
+        toZip.add(File(path, fileName))
     }
 
     /**

@@ -32,12 +32,12 @@ New to the project? Start with [QUICKSTART.md](QUICKSTART.md) — a plain-langua
 
 This step-by-step guide is made to match the following tools, including click-by-click UI navigation instructions, as of 2025-03-31. Each of these tools can be substituted with alternative replacements (e.g. a different cloud provider) by a technical user of the repo, such as a software engineer or programming-saving student. If you're a social scientist who wants to get going fast and independently, then you'll want to use these tools and stick to the readme as-is.
 
-- [**AWS**](https://aws.amazon.com/), a cloud provider where screenshtos and data land
+- [**AWS**](https://aws.amazon.com/), a cloud provider where screenshots and data land
 - [**Android Studio**](https://developer.android.com/studio), a software for compiling an Android App
 - [**Firebase**](https://firebase.google.com/), a tool for distributing apps
 - [**Pycharm**](https://www.jetbrains.com/pycharm/download), a tool for running post-processing Python scripts
 - A safe local machine (like a university-approved laptop) or virtual machine (like an [ec2](https://aws.amazon.com/pm/ec2/)) that can connect to your cloud storage location.
-   - When participants' data lands in the cloud, it's in zipped-format, and you'll run some (included) post-processing Python scripts to unpack and organize all of that data. Whereever you run the post-processing scripts from, participant data be be downloaded to temporarily.
+   - When participants' data lands in the cloud, it's in zipped-format, and you'll run some (included) post-processing Python scripts to unpack and organize all of that data. Wherever you run the post-processing scripts from, participant data will be downloaded to that machine temporarily.
 
 
 ### Not necessary, but useful to have ready
@@ -244,7 +244,7 @@ Suggested commit: update the readme to include a walkthrough transcription or ex
 When participants' data lands in the cloud, it's in zipped-format. Use the python script in the **scripts** folder to unpack and organize all of that data.
 
 NOTES:
-- Whereever you run the script from, participant data be be downloaded to temporarily. So, make sure that you run that script from an approved machine which participant data can safely be stored. An AWS ec2 is likely your best option, as it falls under the same security and institutional approval umbrella as the AWS cloud storage you're using.
+- Wherever you run the script from, participant data will be downloaded to that machine temporarily. So, make sure that you run that script from an approved machine where participant data can safely be stored. An AWS ec2 is likely your best option, as it falls under the same security and institutional approval umbrella as the AWS cloud storage you're using.
 - The script can run for a long time if you've got a lot of data collected and process it all at once. The script will stop/hang if its connection is interrupted, (e.g.) if your laptop falls-asleep midway. You can mitigate this by:
    - Running processing in date-bounded batches (super easy thanks to the script)
    - Making sure that there are no internet disruptions during the script's run

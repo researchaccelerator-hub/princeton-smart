@@ -9,7 +9,7 @@ This script automates the process of downloading, processing, and combining data
 When participants' data lands in the cloud, it's in zipped-format. Use the python script in the **scripts** folder to unpack and organize all of that data.
 
 NOTES:
-- Whereever you run the script from, participant data be be downloaded to temporarily. So, make sure that you run that script from an approved machine which participant data can safely be stored. An AWS ec2 is likely your best option, as it falls under the same security and institutional approval umbrella as the AWS cloud storage you're using.
+- Wherever you run the script from, participant data will be downloaded to that machine temporarily. So, make sure that you run that script from an approved machine where participant data can safely be stored. An AWS ec2 is likely your best option, as it falls under the same security and institutional approval umbrella as the AWS cloud storage you're using.
 - The script can run for a long time if you've got a lot of data collected and process it all at once. The script will stop/hang if its connection is interrupted, (e.g.) if your laptop falls-asleep midway. You can mitigate this by:
     - Running processing in date-bounded batches (super easy thanks to the script)
     - Making sure that there are no internet disruptions during the script's run

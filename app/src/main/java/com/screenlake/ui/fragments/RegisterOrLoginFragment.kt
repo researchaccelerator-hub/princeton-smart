@@ -53,6 +53,10 @@ class RegisterOrLoginFragment : Fragment() {
         binding.sendToRegisterButton.setOnClickListener {
             findNavController().navigate(R.id.registerNameEmailFragment)
         }
+
+        binding.aboutThisStudyLink.setOnClickListener {
+            findNavController().navigate(R.id.action_registerOrLoginFragment_to_participantInfoFragment)
+        }
     }
 
     override fun onCreateView(

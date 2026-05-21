@@ -65,7 +65,7 @@
             />
 
         <Preference
-            android:title="About This Study"
+            android:title="About This App"
             android:key="about_this_study"
             android:summary="What this app collects and how to stop."
             app:isPreferenceVisible="true" />

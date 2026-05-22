@@ -321,7 +321,7 @@
     <string name="_00_00_00">00:00:00</string>
 
     <!-- Participant info screen -->
-    <string name="participant_info_title">About This appropriate</string>
+    <string name="participant_info_title">About This App</string>
     <string name="participant_info_what_title">What is this app?</string>
     <string name="participant_info_what_body">This app runs quietly in the background and collects data about how you use your smartphone. It was developed at Princeton University and is used for academic research.</string>
     <string name="participant_info_collects_title">What does the app collect?</string>

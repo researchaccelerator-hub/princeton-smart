@@ -89,6 +89,11 @@ android {
             buildConfigField("String", "COGNITO_IDENTITY_POOL_ID", "\"$cognitoIdentityPoolId\"")
             buildConfigField("String", "COGNITO_POOL_ID", "\"$cognitoUserPoolId\"")
             buildConfigField("String", "COGNITO_APP_CLIENT_ID", "\"$cognitoAppClientId\"")
+
+            // Set to true to export a copy of each zip to external storage for local inspection.
+            // Pull with: adb pull /sdcard/Android/data/com.screenlake/files/debug_zips/ ./debug-output/
+            // Or use: python3 claude-docs/scripts/pull_debug_zip.py
+            buildConfigField("Boolean", "DEBUG_ZIP_EXPORT", "false")
         }
     }
 

@@ -348,9 +348,21 @@ class ZipFileWorker @AssistedInject constructor(
         }
 
         generalOperationsRepository.insertScreenshotZip(zipObj)
-//
+
+        if (BuildConfig.DEBUG && BuildConfig.DEBUG_ZIP_EXPORT) {
+            exportZipForDebugging(zipFile)
+        }
+
         toZip.forEach { it.withLogging("Zip Worker", "Delete") { file -> file.delete() } }
         Timber.tag(TAG).d("Zip file created with ${toZip.size} files.")
+    }
+
+    private fun exportZipForDebugging(zipFile: File) {
+        val exportDir = applicationContext.getExternalFilesDir("debug_zips") ?: return
+        exportDir.mkdirs()
+        val dest = File(exportDir, zipFile.name)
+        zipFile.copyTo(dest, overwrite = true)
+        Timber.tag(TAG).d("Debug export: ${dest.absolutePath}")
     }
 
     /**

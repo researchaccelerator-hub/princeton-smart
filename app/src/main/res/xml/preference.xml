@@ -65,6 +65,12 @@
             />
 
         <Preference
+            android:title="About This App"
+            android:key="about_this_study"
+            android:summary="What this app collects and how to stop."
+            app:isPreferenceVisible="true" />
+
+        <Preference
             android:title="Logout of SRK"
             android:key="@string/logout"
             />

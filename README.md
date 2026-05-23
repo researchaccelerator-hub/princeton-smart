@@ -265,6 +265,47 @@ To understand the final output data, read through the explainer doc.
 Before using Princeton SMART for your research, you'll want (or need) to configure some resources to reflect your particular research project. That means adding your app's privacy policy link, your app's terms of service link, editing the text on screen, filling-in the right logo and university name, confirming authentication setup, and so on.
 
 
+### Data Schema Versioning
+
+Every zip bundle produced by the app includes a `manifest.csv` file with one row describing the data it contains:
+
+| Column | Example | Description |
+|--------|---------|-------------|
+| `app_version` | `1.42` | Version name of the app that produced this zip |
+| `schema_version` | `2` | Integer identifying the CSV column layout (see below) |
+| `zip_id` | `uuid-...` | Unique identifier for this zip bundle |
+| `recorded_at_epoch_ms` | `1747234567890` | Unix timestamp (ms) when the zip was created |
+| `recorded_at_utc` | `2025-05-14` | Human-readable UTC date when the zip was created |
+
+**Schema versions:**
+
+| Version | Description |
+|---------|-------------|
+| 1 | Original schema. No `manifest.csv` present, no `stop_reason` column in session data. |
+| 2 | Added `stop_reason` column to session CSV. Added `manifest.csv` to all zip bundles. |
+
+When processing data collected across multiple app versions, check `schema_version` in `manifest.csv` first. Data from schema version `1` (pre-upgrade) will not have a manifest file and will not have a `stop_reason` column in session CSVs; treat missing `stop_reason` values as `UNKNOWN`.
+
+**For developers:** `DATA_SCHEMA_VERSION` in [app/src/main/java/com/screenlake/recorder/constants/ConstantSettings.kt](app/src/main/java/com/screenlake/recorder/constants/ConstantSettings.kt) is the single source of truth for both the exported CSV schema version and the Room database version — [ScreenshotDatabase.kt](app/src/main/java/com/screenlake/data/database/ScreenshotDatabase.kt) references it directly. Increment it any time a CSV column is added, renamed, or removed. Because the app uses destructive migration, incrementing this value will wipe and recreate the local database on the next app launch.
+
+---
+
+### Session Stop Reasons
+
+The session CSV (`session_data_csv_*.csv`) includes a `stop_reason` column (added in schema version `2`) that records why each recording session ended.
+
+| Value | Meaning |
+|-------|---------|
+| `USER_STOP` | Participant explicitly stopped recording via the app (tap or long press on the stop button) |
+| `SCREEN_OFF` | Device screen turned off (locked or display timeout) |
+| `MEDIA_PROJECTION_REVOKED` | System revoked screen capture permission (Android 14+) |
+| `SERVICE_DESTROYED` | OS terminated the recording service (force-stop, reboot, or memory pressure) |
+| `UNKNOWN` | Stop reason could not be determined (hard crash, or data predates schema version 2) |
+
+Note that a single uninterrupted recording will produce multiple session rows, one per screen-on/screen-off cycle. Each row will have `SCREEN_OFF` as the `stop_reason` except the final one when the participant explicitly stops.
+
+---
+
 ### Authentication
 This app uses authenticated user pools within AWS to provision accounts for participants. Participants will need to provide the app with an email and a panel confirmation code (aka group code) to use the app. The researcher determines the panel confirmation code. See screenshot of the participant-facing Android application's UI:
 

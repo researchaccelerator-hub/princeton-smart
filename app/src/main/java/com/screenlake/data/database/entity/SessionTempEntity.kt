@@ -20,7 +20,8 @@ class SessionTempEntity(
     var sessionCountPerDay: Int? = null,
     var fps: Double = 0.0,
     var panelId: String? = null,
-    var tenantId: String? = null
+    var tenantId: String? = null,
+    var stopReason: String? = "UNKNOWN"
 ) {
     fun toSession() : SessionEntity {
         return SessionEntity().also { sesh: SessionEntity ->
@@ -36,7 +37,7 @@ class SessionTempEntity(
             sesh.fps = fps
             sesh.panelId = panelId
             sesh.tenantId = tenantId
-
+            sesh.stopReason = stopReason
         }
     }
 }

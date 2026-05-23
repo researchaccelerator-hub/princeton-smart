@@ -108,6 +108,12 @@ class SettingsFragment : PreferenceFragmentCompat() {
                 true
             }
 
+        findPreference<Preference>("about_this_study")?.onPreferenceClickListener =
+            Preference.OnPreferenceClickListener {
+                findNavController().navigate(R.id.participantInfoFragment)
+                true
+            }
+
         findPreference<Preference>("Logout")?.onPreferenceClickListener =
             Preference.OnPreferenceClickListener {
                 showSignOutDialog()

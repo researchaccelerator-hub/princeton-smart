@@ -111,7 +111,13 @@
     <fragment
         android:id="@+id/registerOrLoginFragment"
         android:name="com.screenlake.ui.fragments.RegisterOrLoginFragment"
-        android:label="RegisterOrLoginFragment" />
+        android:label="RegisterOrLoginFragment">
+        <action
+            android:id="@+id/action_registerOrLoginFragment_to_participantInfoFragment"
+            app:destination="@id/participantInfoFragment"
+            app:enterAnim="@anim/slide_up"
+            app:exitAnim="@anim/slide_down" />
+    </fragment>
     <fragment
         android:id="@+id/powerAccessFragment"
         android:name="com.screenlake.ui.fragments.onboarding.PowerAccessSelectFragment"
@@ -132,6 +138,11 @@
         android:id="@+id/screenshotStatsFragment"
         android:name="com.screenlake.ui.fragments.ScreenshotStatsFragment"
         android:label="ScreenshotStatsFragment" />
+    <fragment
+        android:id="@+id/participantInfoFragment"
+        android:name="com.screenlake.ui.fragments.ParticipantInfoFragment"
+        android:label="ParticipantInfoFragment"
+        tools:layout="@layout/fragment_participant_info" />
     <!--    <fragment-->
     <!--        android:id="@+id/splashScreenFragment"-->
     <!--        android:name="com.screenlake.recorder.fragments.SplashScreenFragment"-->

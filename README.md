@@ -304,6 +304,8 @@ The session CSV (`session_data_csv_*.csv`) includes a `stop_reason` column (adde
 
 Note that a single uninterrupted recording will produce multiple session rows, one per screen-on/screen-off cycle. Each row will have `SCREEN_OFF` as the `stop_reason` except the final one when the participant explicitly stops.
 
+**Pause and resume:** The app does not have a true pause state. When a participant stops recording and restarts, each restart creates a new, independent session row with a new `id_session`. There is no identifier linking a stop to its subsequent resume — they appear in the data as two separate sessions from the same participant. When analysing gaps between sessions for the same user, a gap followed by a new session indicates the participant voluntarily stopped and restarted, but this cannot be confirmed from the data alone.
+
 ---
 
 ### Authentication

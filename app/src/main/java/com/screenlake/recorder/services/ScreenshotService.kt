@@ -37,6 +37,7 @@ import com.screenlake.data.database.entity.SessionTempEntity
 import com.screenlake.data.database.entity.UserEntity
 import com.screenlake.data.model.AppInfo
 import com.screenlake.data.repository.GeneralOperationsRepository
+import com.screenlake.recorder.constants.ResearchConfig
 import com.screenlake.recorder.constants.ConstantSettings.ACTION_PAUSE_SERVICE
 import com.screenlake.recorder.constants.ConstantSettings.ACTION_STOP_SERVICE
 import com.screenlake.recorder.constants.ConstantSettings.RESTRICTED_APPS
@@ -123,8 +124,8 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
 
         var isMediaProjectionValid = MutableLiveData<Boolean>()
 
-        const val framesPerSecondConst: Double = 0.2
-        var framesPerSecond: Double = framesPerSecondConst
+        val framesPerSecondConst: Double get() = ResearchConfig.ACTIVE_PRESET.fps
+        var framesPerSecond: Double = ResearchConfig.ACTIVE_PRESET.fps
         val notUploaded = MutableLiveData<Int>()
         var sessionId = UUID.randomUUID().toString()
         const val NOTIFICATION_ID = 1337
@@ -151,8 +152,6 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         private const val OCR_IMAGE_THRESHOLD = 5  // Minimum number of images to trigger OCR
 
         fun postInitialValues(){
-            // Disabled, user should not set this value.
-            // framesPerSecond = PreferenceManager.getDefaultSharedPreferences(this).getString(getString(R.string.fps), "1.0")?.toDouble()!!
             screenshotInterval.postValue(SCREENSHOT_MAPPING[ScreenshotService.Companion.framesPerSecond])
             isPaused.postValue(false)
             uploadCountMsg.postValue(0)
@@ -163,15 +162,21 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
             manualOcr.postValue(false)
             isActionScreenOff.postValue(true)
             optimizeUploads.postValue(false)
+            uploadOverWifi.postValue(ResearchConfig.UPLOAD_OVER_WIFI_ONLY)
+            uploadOverPower.postValue(ResearchConfig.UPLOAD_OVER_POWER_ONLY)
         }
 
         fun isRestrictedApp(appAPK: String?): Boolean {
 
-            if (appAPK.isNullOrEmpty()) return false 
+            if (appAPK.isNullOrEmpty()) return false
+
+            if (ResearchConfig.ALLOWED_APPS_OVERRIDE.contains(appAPK)) return false
 
             val nameFromApk = ScreenshotService.appNameVsPackageName.getOrDefault(appAPK, "")
             val userRestricted = ScreenshotService.restrictedApps.value?.contains(nameFromApk) ?: false
-            val isRestrictedApp = RESTRICTED_APPS.contains(appAPK) || userRestricted
+            val isRestrictedApp = RESTRICTED_APPS.contains(appAPK)
+                    || ResearchConfig.ADDITIONAL_BLOCKED_APPS.contains(appAPK)
+                    || userRestricted
 
             if (isRestrictedApp) {
                 Timber.tag("RestrictedApps").d("*** Restricted App: %s ***", nameFromApk)

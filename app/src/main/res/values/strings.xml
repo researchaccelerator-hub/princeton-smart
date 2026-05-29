@@ -336,7 +336,7 @@
     <string name="participant_info_daily_body">After setup, the app runs silently in the background. A small notification appears in your status bar while it is active. You do not need to open or interact with the app.</string>
     <string name="participant_info_battery_title">Battery and performance</string>
     <string name="participant_info_battery_body">The app is designed to have minimal impact on battery life. The battery optimization exemption granted during setup is what allows it to run efficiently without being suspended by Android.</string>
-    <string name="participant_info_stop_title">How to pause or stop</string>
-    <string name="participant_info_stop_body">Open the app and use the stop button to stop participating. You can also go to Settings > Accessibility on your phone, find the app in the list, and disable it. Uninstalling the app stops all data collection immediately.</string>
+    <string name="participant_info_stop_title">Starting, stopping, and resuming</string>
+    <string name="participant_info_stop_body">To start recording, open the app and long-press the record button, then accept the screen recording prompt.\n\nTo stop, open the app and long-press the stop button. You can also go to Settings > Accessibility on your phone, find the app in the list, and disable it. Uninstalling the app stops all data collection immediately.\n\nTo resume after stopping, open the app and long-press the record button again. Resuming starts a new recording session — there is no limit to how many times you can stop and restart.</string>
     <string name="participant_info_close">Close</string>
 </resources>

@@ -122,6 +122,7 @@ Firebase is used to distribute the app to participants via email invite.
   > **Security:** Never commit `local.properties` to a public repository. These are private credentials.
 
 - [ ] Copy `google-services.json` (from Phase 2) into the `app/` folder of the project
+- [ ] **Optional: Configure study settings** — open `app/src/main/java/com/screenlake/recorder/constants/ResearchConfig.kt`. This is the single file for all researcher-adjustable settings: screenshot frequency (`ACTIVE_PRESET`: LOW/MEDIUM/HIGH), image quality, upload interval, WiFi-only and charge-only upload flags, storage pressure threshold, and study-specific app block/allow lists. Defaults are suitable for most deployments. None of these settings are visible to participants. See [README.md](README.md#researcher-configuration-file) for a full reference table.
 - [ ] Optional: Press **▶** in Android Studio to test the app on the built-in emulator
 - [ ] Go to **Build → Generate Signed App Bundle or APK → APK**, follow the prompts, and select **release** when asked
 - [ ] Locate the generated `.apk` file on your computer

@@ -265,6 +265,53 @@ To understand the final output data, read through the explainer doc.
 Before using Princeton SMART for your research, you'll want (or need) to configure some resources to reflect your particular research project. That means adding your app's privacy policy link, your app's terms of service link, editing the text on screen, filling-in the right logo and university name, confirming authentication setup, and so on.
 
 
+### Researcher Configuration File
+
+All study-specific settings are consolidated in a single file:
+
+**[app/src/main/java/com/screenlake/recorder/constants/ResearchConfig.kt](app/src/main/java/com/screenlake/recorder/constants/ResearchConfig.kt)**
+
+Edit the values in that file before building and distributing the app. None of these settings are visible to participants. Rebuild and redistribute after any change.
+
+The table below summarizes every configurable setting and its default:
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `ACTIVE_PRESET` | `MEDIUM` | Screenshot capture frequency (see presets below) |
+| `SCREENSHOT_JPEG_QUALITY` | `50` | JPEG compression quality 1-100. Lower = smaller files, potentially lower OCR accuracy. |
+| `UPLOAD_WORKER_INTERVAL_HOURS` | `1` | How often (hours) background upload and zip workers run. Minimum 0.25 (15 min, OS enforced). |
+| `UPLOAD_OVER_WIFI_ONLY` | `true` | When true, data uploads only over WiFi. Recommended for studies with cellular-limited participants. |
+| `UPLOAD_OVER_POWER_ONLY` | `false` | When true, data uploads only while the device is charging. |
+| `STORAGE_PRESSURE_THRESHOLD_PERCENT` | `95.0` | Triggers an out-of-schedule upload when device storage exceeds this percentage. Lower this for low-storage devices. |
+| `ADDITIONAL_BLOCKED_APPS` | `emptyList()` | Package names to block in addition to the built-in sensitive-app list. |
+| `ALLOWED_APPS_OVERRIDE` | `emptyList()` | Package names to allow even if they appear on the built-in block list. Use with caution. |
+
+#### Screenshot Capture Presets
+
+Set `ACTIVE_PRESET` to one of the three options:
+
+| Preset | Interval | fps (in data) | When to use |
+|--------|----------|---------------|-------------|
+| `LOW` | 1 screenshot every 10 s | 0.1 | Long-duration studies where high temporal resolution is not required. Lowest storage and battery impact. |
+| `MEDIUM` | 1 screenshot every 5 s | 0.2 | Balanced fidelity and storage. Suitable for most research use cases. **(default)** |
+| `HIGH` | 1 screenshot every 1 s | 1.0 | Short-duration sessions requiring fine-grained activity capture. Storage and upload costs increase significantly. |
+
+The active preset's interval is recorded in the `fps` column of the session CSV output, allowing you to confirm the deployed configuration from collected data.
+
+#### App Recording Controls
+
+The app ships with a built-in block list of sensitive app categories (banking, health, finance) that is always enforced. Use `ADDITIONAL_BLOCKED_APPS` to add study-specific exclusions on top of it, or `ALLOWED_APPS_OVERRIDE` to explicitly permit an app that the default list would otherwise block.
+
+```kotlin
+// Block a specific app not in the default list
+val ADDITIONAL_BLOCKED_APPS: List<String> = listOf("com.example.internalapp")
+
+// Allow an app that appears on the default block list
+val ALLOWED_APPS_OVERRIDE: List<String> = listOf("com.example.studyapp")
+```
+
+---
+
 ### Data Schema Versioning
 
 Every zip bundle produced by the app includes a `manifest.csv` file with one row describing the data it contains:
@@ -303,6 +350,8 @@ The session CSV (`session_data_csv_*.csv`) includes a `stop_reason` column (adde
 | `UNKNOWN` | Stop reason could not be determined (hard crash, or data predates schema version 2) |
 
 Note that a single uninterrupted recording will produce multiple session rows, one per screen-on/screen-off cycle. Each row will have `SCREEN_OFF` as the `stop_reason` except the final one when the participant explicitly stops.
+
+**Pause and resume:** The app does not have a true pause state. When a participant stops recording and restarts, each restart creates a new, independent session row with a new `id_session`. There is no identifier linking a stop to its subsequent resume — they appear in the data as two separate sessions from the same participant. When analysing gaps between sessions for the same user, a gap followed by a new session indicates the participant voluntarily stopped and restarted, but this cannot be confirmed from the data alone.
 
 ---
 

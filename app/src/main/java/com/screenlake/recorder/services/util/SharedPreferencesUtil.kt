@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.screenlake.R
+import com.screenlake.recorder.constants.ResearchConfig
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 
@@ -14,13 +15,13 @@ object SharedPreferencesUtil {
     fun getLimitDataUsage(context: Context): Boolean = runBlocking {
         val dataStore = context.dataStore
         val onboardingSeenKey = booleanPreferencesKey(context.getString(R.string.limit_data_usage))
-        dataStore.data.first()[onboardingSeenKey] ?: false
+        dataStore.data.first()[onboardingSeenKey] ?: ResearchConfig.UPLOAD_OVER_WIFI_ONLY
     }
 
     fun getLimitPowerUsage(context: Context): Boolean = runBlocking {
         val dataStore = context.dataStore
         val onboardingSeenKey = booleanPreferencesKey(context.getString(R.string.limit_power_usage))
-        dataStore.data.first()[onboardingSeenKey] ?: false
+        dataStore.data.first()[onboardingSeenKey] ?: ResearchConfig.UPLOAD_OVER_POWER_ONLY
     }
 
     fun setLimitPowerUsage(context: Context, value: String) = runBlocking {

@@ -13,6 +13,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import com.screenlake.recorder.constants.ResearchConfig
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -56,7 +57,7 @@ class WorkerStarter @Inject constructor(
         workManager.enqueueUniquePeriodicWork(
             uniqueWorkName = WORK_MANAGER_UPLOAD_WORKER,
             existingPeriodicWorkPolicy = ExistingPeriodicWorkPolicy.KEEP,
-            request = PeriodicWorkRequestBuilder<UploadWorker>(1, TimeUnit.HOURS)
+            request = PeriodicWorkRequestBuilder<UploadWorker>(ResearchConfig.UPLOAD_WORKER_INTERVAL_HOURS, TimeUnit.HOURS)
                 .setConstraints(
                     Constraints.Builder()
                         .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -71,7 +72,7 @@ class WorkerStarter @Inject constructor(
         workManager.enqueueUniquePeriodicWork(
             uniqueWorkName = WORK_MANAGER_ZIP_FILE_WORKER,
             existingPeriodicWorkPolicy = ExistingPeriodicWorkPolicy.KEEP,
-            request = PeriodicWorkRequestBuilder<ZipFileWorker>(1, TimeUnit.HOURS)
+            request = PeriodicWorkRequestBuilder<ZipFileWorker>(ResearchConfig.UPLOAD_WORKER_INTERVAL_HOURS, TimeUnit.HOURS)
                 .setConstraints(
                     Constraints.Builder()
                         .setRequiredNetworkType(NetworkType.NOT_REQUIRED)
@@ -101,7 +102,7 @@ class WorkerStarter @Inject constructor(
         workManager.enqueueUniquePeriodicWork(
             uniqueWorkName = WORK_MANAGER_METRIC_WORKER,
             existingPeriodicWorkPolicy = ExistingPeriodicWorkPolicy.KEEP,
-            request = PeriodicWorkRequestBuilder<MetricWorker>(1, TimeUnit.HOURS)
+            request = PeriodicWorkRequestBuilder<MetricWorker>(ResearchConfig.UPLOAD_WORKER_INTERVAL_HOURS, TimeUnit.HOURS)
                 .setConstraints(
                     Constraints.Builder()
                         .setRequiredNetworkType(NetworkType.NOT_REQUIRED)

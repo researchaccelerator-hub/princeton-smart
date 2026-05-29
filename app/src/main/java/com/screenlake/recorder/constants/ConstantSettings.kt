@@ -44,7 +44,7 @@ object ConstantSettings {
         20.0 to 50L,
         30.0 to 33L
     )
-    const val SCREENSHOT_IMAGE_QUALITY = 50
+    val SCREENSHOT_IMAGE_QUALITY: Int get() = ResearchConfig.SCREENSHOT_JPEG_QUALITY
 
     const val NOTIFICATION_CHANNEL_ID = "recording_channel"
     const val NOTIFICATION_CHANNEL_NAME = "Tracking"
@@ -62,13 +62,7 @@ object ConstantSettings {
     private const val CHECK_CREDENTIAL = 10800000
     private const val PERCENT_USED_LIMIT = 95.0
 
-    fun getPercentUsedLimitInterval() : Double {
-        return if(isDebug()){
-            DEBUG_PERCENT_USED_LIMIT
-        }else{
-            PERCENT_USED_LIMIT
-        }
-    }
+    fun getPercentUsedLimitInterval() : Double = ResearchConfig.STORAGE_PRESSURE_THRESHOLD_PERCENT
 
     fun getBatch(testing: Boolean = false) : Int {
         return if(testing){

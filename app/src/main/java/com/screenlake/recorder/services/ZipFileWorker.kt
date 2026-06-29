@@ -140,7 +140,8 @@ class ZipFileWorker @AssistedInject constructor(
                     processScreenshots(screenshots, path, zipFileId, toZip)
                     processSessions(screenshots, path, zipFileId, toZip)
                     processAppSegments(screenshots, path, zipFileId, toZip)
-                    writeManifestCsv(path, zipFileId, toZip)
+                    val manifestFile = writeManifestCsv(path, zipFileId)
+                    toZip.add(manifestFile)
 
                     // Create zip file for this batch
                     createZipFile(toZip, path, zipFileId, screenshots.size, screenshots.mapNotNull { it.id })
@@ -314,7 +315,7 @@ class ZipFileWorker @AssistedInject constructor(
         }
     }
 
-    private fun writeManifestCsv(path: String, zipFileId: UUID, toZip: MutableList<File>) {
+    private fun writeManifestCsv(path: String, zipFileId: UUID): File {
         val nowMs = System.currentTimeMillis()
         val csv = buildString {
             append("\"app_version\",\"schema_version\",\"zip_id\",\"recorded_at_epoch_ms\",\"recorded_at_utc\"\n")
@@ -322,7 +323,7 @@ class ZipFileWorker @AssistedInject constructor(
         }
         val fileName = "manifest_${zipFileId}.csv"
         writeFileOnInternalStorage(fileName, csv, path)
-        toZip.add(File(path, fileName))
+        return File(path, fileName)
     }
 
     /**

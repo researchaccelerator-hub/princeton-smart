@@ -123,7 +123,8 @@ class ZipFileWorker @AssistedInject constructor(
             // Loop until all screenshots are processed
             while (hasMoreScreenshots) {
                 val zipFileId = UUID.randomUUID() // New UUID for each batch
-                val toZip = mutableListOf<File>()
+                val csvFiles = mutableListOf<File>()
+                val imageFiles = mutableListOf<File>()
 
                 val screenshots = generalOperationsRepository.getPaginateScreenshotsById(0L, lastProcessedId, limit)
 
@@ -136,15 +137,24 @@ class ZipFileWorker @AssistedInject constructor(
 
                     findDuplicates(screenshots, zipFileId)
 
-                    processAccessibilityEvents(screenshots, path, zipFileId, toZip)
-                    processScreenshots(screenshots, path, zipFileId, toZip)
-                    processSessions(screenshots, path, zipFileId, toZip)
-                    processAppSegments(screenshots, path, zipFileId, toZip)
-                    val manifestFile = writeManifestCsv(path, zipFileId)
-                    toZip.add(manifestFile)
+                    processAccessibilityEvents(screenshots, path, zipFileId, csvFiles)
+                    processScreenshots(screenshots, path, zipFileId, csvFiles, imageFiles)
+                    processSessions(screenshots, path, zipFileId, csvFiles)
+                    processAppSegments(screenshots, path, zipFileId, csvFiles)
 
-                    // Create zip file for this batch
-                    createCsvZipFile(toZip, path, zipFileId)
+                    val manifestFile = writeManifestCsv(path, zipFileId)
+                    csvFiles.add(manifestFile)
+                    imageFiles.add(manifestFile)
+
+                    createCsvZipFile(csvFiles, path, zipFileId)
+                    if (imageFiles.isNotEmpty()) {
+                        createImageZipFile(imageFiles, path, zipFileId, screenshots.size)
+                    }
+
+                    // Delete all temp files after both zips are written; distinctBy prevents double-delete of the shared manifest
+                    (csvFiles + imageFiles)
+                        .distinctBy { it.absolutePath }
+                        .forEach { it.withLogging("Zip Worker", "Delete") { file -> file.delete() } }
 
                     // Update lastProcessedId for next batch instead of using offset
                     lastProcessedId = screenshots.lastOrNull()?.id
@@ -217,7 +227,7 @@ class ZipFileWorker @AssistedInject constructor(
         screenshots: List<ScreenshotEntity>,
         path: String,
         zipFileId: UUID,
-        toZip: MutableList<File>
+        csvFiles: MutableList<File>
     ) {
         val accessibilityEvents = generalOperationsRepository.getASEvents()
         if (accessibilityEvents.isNotEmpty()) {
@@ -225,7 +235,7 @@ class ZipFileWorker @AssistedInject constructor(
             val accessibilityEventsCSVs = DataTransformation.createAccessibilityCSVs(modifiedASEvents)
             val accessibilityEventsCSVsFile = "app_accessibility_data_csv_${zipFileId}.csv"
             writeFileOnInternalStorage(accessibilityEventsCSVsFile, accessibilityEventsCSVs, path)
-            toZip.add(File(path, accessibilityEventsCSVsFile))
+            csvFiles.add(File(path, accessibilityEventsCSVsFile))
             generalOperationsRepository.deleteAccessibilityEvents(accessibilityEvents.mapNotNull { it.id })
         }
     }
@@ -242,21 +252,22 @@ class ZipFileWorker @AssistedInject constructor(
         screenshots: List<ScreenshotEntity>,
         path: String,
         zipFileId: UUID,
-        toZip: MutableList<File>
+        csvFiles: MutableList<File>,
+        imageFiles: MutableList<File>
     ) {
         screenshots.forEach { it.zipFileId = "image_zip_${zipFileId}_${screenshots.size}.zip" }
 
         val screenshotCsv = DataTransformation.createScreenshotCsv(screenshots)
         val screenshotCSVFile = "screenshot_data_csv_${zipFileId}.csv"
         writeFileOnInternalStorage(screenshotCSVFile, screenshotCsv, path)
-        toZip.add(File(path, screenshotCSVFile) )
+        csvFiles.add(File(path, screenshotCSVFile))
 
         if (userObj?.uploadImages == true) {
             for (screenshot in screenshots) {
                 if (screenshot.isAppRestricted == false && !screenshot.fileName.isNullOrEmpty()) {
                     val file = File(screenshot.filePath!!)
                     if (file.exists()) {
-                        toZip.add(file)
+                        imageFiles.add(file)
                     }
                 }
             }
@@ -277,7 +288,7 @@ class ZipFileWorker @AssistedInject constructor(
         screenshots: List<ScreenshotEntity>,
         path: String,
         zipFileId: UUID,
-        toZip: MutableList<File>
+        csvFiles: MutableList<File>
     ) {
         val sessionIds = screenshots.mapNotNull { it.sessionId }.distinct()
         val sessions = withContext(Dispatchers.IO) { generalOperationsRepository.getSessionsById(sessionIds) }
@@ -285,7 +296,7 @@ class ZipFileWorker @AssistedInject constructor(
             val sessionCsv = DataTransformation.createSessionJson(sessions)
             val sessionCSVFile = "session_data_csv_${zipFileId}.csv"
             writeFileOnInternalStorage(sessionCSVFile, sessionCsv, path)
-            toZip.add(File(path, sessionCSVFile))
+            csvFiles.add(File(path, sessionCSVFile))
             generalOperationsRepository.deleteSessionsId(sessions.mapNotNull { it.id }.toList())
         }
     }
@@ -302,7 +313,7 @@ class ZipFileWorker @AssistedInject constructor(
         screenshots: List<ScreenshotEntity>,
         path: String,
         zipFileId: UUID,
-        toZip: MutableList<File>
+        csvFiles: MutableList<File>
     ) {
         val uniqueSessions = screenshots.mapNotNull { it.sessionId }.toHashSet().map { it.toString() }
         val appSegments = generalOperationsRepository.getAppSegmentsBySessionId(uniqueSessions)
@@ -310,7 +321,7 @@ class ZipFileWorker @AssistedInject constructor(
             val appSegmentCsv = DataTransformation.createAppSegmentCSV(appSegments)
             val appSegmentCSVFile = "app_segment_data_csv_${zipFileId}.csv"
             writeFileOnInternalStorage(appSegmentCSVFile, appSegmentCsv, path)
-            toZip.add(File(path, appSegmentCSVFile))
+            csvFiles.add(File(path, appSegmentCSVFile))
             generalOperationsRepository.deleteAppSegments(appSegments.map { it.id.toString() })
         }
     }

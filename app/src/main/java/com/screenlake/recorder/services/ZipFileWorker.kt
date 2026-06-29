@@ -144,10 +144,10 @@ class ZipFileWorker @AssistedInject constructor(
 
                     val manifestFile = writeManifestCsv(path, zipFileId)
                     csvFiles.add(manifestFile)
-                    imageFiles.add(manifestFile)
 
                     createCsvZipFile(csvFiles, path, zipFileId)
                     if (imageFiles.isNotEmpty()) {
+                        imageFiles.add(manifestFile)
                         createImageZipFile(imageFiles, path, zipFileId, screenshots.size)
                     }
 
@@ -221,7 +221,7 @@ class ZipFileWorker @AssistedInject constructor(
      * @param screenshots The list of screenshots to associate with accessibility events.
      * @param path The path where the CSV should be saved.
      * @param zipFileId The unique identifier for the zip file.
-     * @param toZip The list of files to be included in the zip.
+     * @param csvFiles The list of CSV files to be included in the zip.
      */
     private suspend fun processAccessibilityEvents(
         screenshots: List<ScreenshotEntity>,
@@ -246,7 +246,8 @@ class ZipFileWorker @AssistedInject constructor(
      * @param screenshots The list of screenshots to process.
      * @param path The path where the CSV should be saved.
      * @param zipFileId The unique identifier for the zip file.
-     * @param toZip The list of files to be included in the zip.
+     * @param csvFiles The list of CSV files to be included in the zip.
+     * @param imageFiles The list of image files to be included in the image zip.
      */
     private fun processScreenshots(
         screenshots: List<ScreenshotEntity>,
@@ -282,7 +283,7 @@ class ZipFileWorker @AssistedInject constructor(
      * @param screenshots The list of screenshots to associate with sessions.
      * @param path The path where the CSV should be saved.
      * @param zipFileId The unique identifier for the zip file.
-     * @param toZip The list of files to be included in the zip.
+     * @param csvFiles The list of CSV files to be included in the zip.
      */
     private suspend fun processSessions(
         screenshots: List<ScreenshotEntity>,
@@ -307,7 +308,7 @@ class ZipFileWorker @AssistedInject constructor(
      * @param screenshots The list of screenshots to associate with app segments.
      * @param path The path where the CSV should be saved.
      * @param zipFileId The unique identifier for the zip file.
-     * @param toZip The list of files to be included in the zip.
+     * @param csvFiles The list of CSV files to be included in the zip.
      */
     private suspend fun processAppSegments(
         screenshots: List<ScreenshotEntity>,

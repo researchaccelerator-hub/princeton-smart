@@ -144,7 +144,7 @@ class ZipFileWorker @AssistedInject constructor(
                     toZip.add(manifestFile)
 
                     // Create zip file for this batch
-                    createZipFile(toZip, path, zipFileId, screenshots.size, screenshots.mapNotNull { it.id })
+                    createCsvZipFile(toZip, path, zipFileId)
 
                     // Update lastProcessedId for next batch instead of using offset
                     lastProcessedId = screenshots.lastOrNull()?.id
@@ -327,16 +327,15 @@ class ZipFileWorker @AssistedInject constructor(
     }
 
     /**
-     * Creates a zip file from the specified files and updates the database.
+     * Creates a CSV zip file containing CSV data files.
      *
-     * @param toZip The list of files to include in the zip.
+     * @param csvFiles The list of CSV files to include in the zip.
      * @param path The path where the zip should be saved.
      * @param zipFileId The unique identifier for the zip file.
-     * @param screenshotCount The number of screenshots included in the zip.
      */
-    private fun createZipFile(toZip: MutableList<File>, path: String, zipFileId: UUID, screenshotCount: Int, screenshots: List<Int>) {
-        val zipFile = File(path, "image_zip_${zipFileId}_${screenshotCount}.zip")
-        ZipFile().zip(zipFile, toZip)
+    private fun createCsvZipFile(csvFiles: List<File>, path: String, zipFileId: UUID) {
+        val zipFile = File(path, "csv_zip_${zipFileId}.zip")
+        ZipFile().zip(zipFile, csvFiles)
 
         val zipObj = ScreenshotZipEntity().apply {
             this.file = zipFile.toString()
@@ -354,8 +353,38 @@ class ZipFileWorker @AssistedInject constructor(
             exportZipForDebugging(zipFile)
         }
 
-        toZip.forEach { it.withLogging("Zip Worker", "Delete") { file -> file.delete() } }
-        Timber.tag(TAG).d("Zip file created with ${toZip.size} files.")
+        Timber.tag(TAG).d("CSV zip created with ${csvFiles.size} files.")
+    }
+
+    /**
+     * Creates an image zip file containing screenshot image files.
+     *
+     * @param imageFiles The list of image files to include in the zip.
+     * @param path The path where the zip should be saved.
+     * @param zipFileId The unique identifier for the zip file.
+     * @param screenshotCount The number of screenshots included in the zip.
+     */
+    private fun createImageZipFile(imageFiles: List<File>, path: String, zipFileId: UUID, screenshotCount: Int) {
+        val zipFile = File(path, "image_zip_${zipFileId}_${screenshotCount}.zip")
+        ZipFile().zip(zipFile, imageFiles)
+
+        val zipObj = ScreenshotZipEntity().apply {
+            this.file = zipFile.toString()
+            this.localTimeStamp = TimeUtility.getCurrentTimestampDefaultTimezoneString()
+            this.timestamp = TimeUtility.getCurrentTimestampString()
+            this.user = userObj?.email ?: ""
+            this.toDelete = false
+            this.panelId = userObj?.panelId?.toString() ?: ""
+            this.panelName = userObj?.panelName ?: ""
+        }
+
+        generalOperationsRepository.insertScreenshotZip(zipObj)
+
+        if (BuildConfig.DEBUG && BuildConfig.DEBUG_ZIP_EXPORT) {
+            exportZipForDebugging(zipFile)
+        }
+
+        Timber.tag(TAG).d("Image zip created with ${imageFiles.size} files.")
     }
 
     private fun exportZipForDebugging(zipFile: File) {

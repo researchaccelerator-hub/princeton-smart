@@ -22,8 +22,8 @@ android {
         applicationId = "com.screenlake"
         minSdk = 28
         targetSdk = 35
-        versionCode = 50
-        versionName = "1.42"
+        versionCode = 51
+        versionName = "1.50.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -75,6 +75,7 @@ android {
         }
 
         debug {
+            applicationIdSuffix = ".debug"
             isMinifyEnabled = false
             isDebuggable = true
             proguardFiles(

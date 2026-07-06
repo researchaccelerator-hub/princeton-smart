@@ -8,7 +8,9 @@ import androidx.work.WorkerParameters
 import com.screenlake.data.database.entity.ScreenshotZipEntity
 import com.screenlake.data.database.entity.UserEntity
 import com.screenlake.data.repository.GeneralOperationsRepository
+import com.screenlake.recorder.authentication.CloudAuthentication
 import com.screenlake.recorder.viewmodels.WorkerProgressManager
+import java.lang.ref.WeakReference
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Dispatchers
@@ -35,7 +37,8 @@ class UploadWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted workerParams: WorkerParameters,
     private val uploadHandler: UploadHandler,
-    private val generalOperationsRepository: GeneralOperationsRepository
+    private val generalOperationsRepository: GeneralOperationsRepository,
+    private val cloudAuthentication: CloudAuthentication
 ) : CoroutineWorker(context, workerParams) {
 
     private var user: UserEntity? = null
@@ -77,13 +80,23 @@ class UploadWorker @AssistedInject constructor(
                     return Result.retry()
                 }
 
+                // Ensure a valid auth session before uploading. After extended inactivity
+                // or a process restart without SplashActivity, the Cognito session can be
+                // in SIGNED_OUT_USER_POOLS_TOKENS_INVALID state (idToken null). Re-signing
+                // in with the stored credentials fixes the token state for AWSMobileClient.
+                if (!cloudAuthentication.ensureValidSession(WeakReference(applicationContext))) {
+                    Timber.tag(TAG).w("Auth session could not be established; will retry upload")
+                    generalOperationsRepository.saveLog("UPLOAD_AUTH_FAIL", "Auth session invalid, retrying")
+                    return Result.retry()
+                }
+
                 generalOperationsRepository.saveLog("UPLOAD_SERVICE_RUN", "")
 
-                uploadZipFilesAsync()
+                val hadAuthFailure = uploadZipFilesAsync()
 
                 Timber.tag(TAG).d("Upload Worker has finished.")
                 WorkerProgressManager.updateProgress("Upload has finished.")
-                Result.success()
+                if (hadAuthFailure) Result.retry() else Result.success()
             }
         } catch (ex: Exception) {
             generalOperationsRepository.saveLog("UPLOAD_SERVICE_RUN_FAIL", ex.stackTraceToString())
@@ -102,7 +115,7 @@ class UploadWorker @AssistedInject constructor(
      * and uploads each file. It handles upload progress updates and cleans up files
      * after successful uploads.
      */
-    private suspend fun uploadZipFilesAsync() = withContext(Dispatchers.IO) {
+    private suspend fun uploadZipFilesAsync(): Boolean = withContext(Dispatchers.IO) {
         // Fetch the list of zips to upload and the user information
         zipsToUpload = generalOperationsRepository.getZipsToUpload().take(10)?.toMutableList()
         user = generalOperationsRepository.getUser()
@@ -113,6 +126,7 @@ class UploadWorker @AssistedInject constructor(
         addLocalLogFiles()
 
         var count = 0.0
+        var hadAuthFailure = false
         zipsToUpload?.let {
             for (zip in it) {
                 WorkerProgressManager.updateProgress("Uploading $count of ${zipsToUpload?.count()}")
@@ -121,10 +135,12 @@ class UploadWorker @AssistedInject constructor(
                     if (file.exists() && uploadHandler.isNetworkConnected()) {
                         Timber.tag(TAG).d("Uploading file ${file.name}")
 
-                        // Upload the file
-                        async {
+                        // Upload the file; false means the presigned URL was empty (auth failure)
+                        val uploaded = async {
                             uploadHandler.uploadFile(file, zip.id, user)
                         }.await()
+
+                        if (!uploaded) hadAuthFailure = true
 
                         ScreenshotService.manualUploadPercentComplete.postValue(count / it.count())
                         count++
@@ -137,6 +153,7 @@ class UploadWorker @AssistedInject constructor(
             }
             System.gc() // Suggest garbage collection after uploads
         }
+        hadAuthFailure
     }
 
     /**

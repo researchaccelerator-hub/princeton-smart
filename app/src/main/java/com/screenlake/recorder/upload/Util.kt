@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import android.webkit.MimeTypeMap
 import com.amazonaws.HttpMethod
+import com.amazonaws.auth.AWSCredentials
 import com.amazonaws.auth.AWSCredentialsProvider
 import com.amazonaws.mobile.client.AWSMobileClient
 import com.amazonaws.mobile.client.Callback
@@ -14,8 +15,10 @@ import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.AmazonS3Client
 import com.amazonaws.services.s3.model.GeneratePresignedUrlRequest
 import com.amazonaws.services.s3.model.ResponseHeaderOverrides
+import com.amplifyframework.auth.cognito.AWSCognitoAuthSession
 import com.screenlake.BuildConfig
 import com.screenlake.data.repository.NativeLib
+import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
@@ -73,37 +76,54 @@ class Util {
      * @param uploadPath The path in the S3 bucket where the file should be uploaded.
      * @return The presigned URL as a string.
      */
-    fun generates3ShareUrl(applicationContext: Context, path: String?, uploadPath:String): String {
-        val url: URL? = try {
-            val s3client: AmazonS3? = getS3Client(applicationContext)
-
-            // Force a credential refresh before signing the URL so that stale
-            // Cognito Identity Pool credentials don't produce a rejected upload.
-            try {
-                AWSMobileClient.getInstance().credentials
-            } catch (credEx: Exception) {
-                Timber.tag(TAG).w("Credential refresh failed before URL generation: ${credEx.message}")
-            }
+    fun generates3ShareUrl(applicationContext: Context, path: String?, uploadPath: String): String {
+        return try {
+            // Prefer credentials from Amplify Auth (handles token refresh and Identity Pool
+            // exchange internally). Fall back to the AWSMobileClient path for compatibility.
+            val s3client: AmazonS3 = buildS3ClientFromAmplifyCredentials()
+                ?: getS3Client(applicationContext)
+                ?: return ""
 
             val expiration = Date()
-            var msec = expiration.time
-            msec += 1000 * 60 * 60.toLong() // 1 hour.
-            expiration.time = msec
+            expiration.time += 1000L * 60 * 60 // 1 hour
             val overrideHeader = ResponseHeaderOverrides()
             overrideHeader.contentType = getMimeType(path)
-            val generatePresignedUrlRequest = GeneratePresignedUrlRequest(BuildConfig.AMAZON_BUCKET_NAME, uploadPath, HttpMethod.PUT)
-            generatePresignedUrlRequest.method = HttpMethod.PUT // Default.
+            val generatePresignedUrlRequest = GeneratePresignedUrlRequest(
+                BuildConfig.AMAZON_BUCKET_NAME, uploadPath, HttpMethod.PUT
+            )
+            generatePresignedUrlRequest.method = HttpMethod.PUT
             generatePresignedUrlRequest.expiration = expiration
             generatePresignedUrlRequest.responseHeaders = overrideHeader
-            val url = s3client?.generatePresignedUrl(generatePresignedUrlRequest).toString()
-            Timber.tag(TAG).d("Generated Url - ${url.toString()}")
-            return url
-
+            val url = s3client.generatePresignedUrl(generatePresignedUrlRequest).toString()
+            Timber.tag(TAG).d("Generated Url - $url")
+            url
         } catch (e: Exception) {
-            Timber.d("Error generating presigned URL: $e")
-            return ""
+            Timber.tag(TAG).d("Error generating presigned URL: $e")
+            ""
         }
-        return url.toString()
+    }
+
+    /**
+     * Gets fresh AWS STS credentials from Amplify's auth session (Cognito Identity Pool
+     * via User Pool) and builds an S3 client with them. Returns null if Amplify is not
+     * configured or the session has no credentials (e.g. user not signed in).
+     */
+    private fun buildS3ClientFromAmplifyCredentials(): AmazonS3Client? {
+        return try {
+            val session = runBlocking {
+                com.amplifyframework.kotlin.core.Amplify.Auth.fetchAuthSession()
+            }
+            // awsCredentials.value is com.amazonaws.auth.AWSCredentials from the AWS SDK —
+            // compatible directly with AmazonS3Client, no conversion needed.
+            val awsCreds: AWSCredentials = (session as? AWSCognitoAuthSession)
+                ?.awsCredentials?.value ?: return null
+            AmazonS3Client(awsCreds).apply {
+                setRegion(Region.getRegion(BuildConfig.AMAZON_REGION_NAME))
+            }
+        } catch (e: Exception) {
+            Timber.tag(TAG).w("Amplify credential fetch failed, will fall back to AWSMobileClient: ${e.message}")
+            null
+        }
     }
 
     /**

@@ -23,11 +23,61 @@ import java.lang.ref.WeakReference
 import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CompletableDeferred
 
 @Singleton
 class CloudAuthentication @Inject constructor(
     private val amplifyRepository: AmplifyRepository
 ) {
+
+    private val TAG = "CloudAuthentication"
+
+    /**
+     * Checks if the current Amplify auth session has valid AWS credentials.
+     * If not (e.g. SIGNED_OUT_USER_POOLS_TOKENS_INVALID after long inactivity),
+     * re-authenticates using stored credentials so background workers can upload.
+     */
+    suspend fun ensureValidSession(context: WeakReference<Context>): Boolean {
+        return try {
+            val sessionDeferred = CompletableDeferred<AWSCognitoAuthSession?>()
+            Amplify.Auth.fetchAuthSession(
+                { sessionDeferred.complete(it as? AWSCognitoAuthSession) },
+                { sessionDeferred.complete(null) }
+            )
+            val session = sessionDeferred.await()
+            if (session?.awsCredentials?.value != null) return true
+
+            Timber.tag(TAG).w("Auth session has no credentials; re-authenticating with stored credentials")
+            signInSuspend(context)
+        } catch (e: Exception) {
+            Timber.tag(TAG).e("Session check failed: ${e.message}")
+            false
+        }
+    }
+
+    /**
+     * Signs in using stored credentials and waits for the result.
+     * Returns true if the sign-in completed successfully.
+     */
+    suspend fun signInSuspend(context: WeakReference<Context>): Boolean {
+        val creds = getEncryptedCredentials(context)
+        if (creds.email.isBlank() || creds.password.isBlank()) {
+            Timber.tag(TAG).e("No stored credentials available for re-authentication")
+            return false
+        }
+        val signInDeferred = CompletableDeferred<Boolean>()
+        Amplify.Auth.signIn(creds.email, creds.password,
+            { result ->
+                Timber.tag(TAG).d("Re-authentication result: isSignInComplete=${result.isSignInComplete}")
+                signInDeferred.complete(result.isSignInComplete)
+            },
+            { error ->
+                Timber.tag(TAG).e("Re-authentication failed: ${error.message}")
+                signInDeferred.complete(false)
+            }
+        )
+        return signInDeferred.await()
+    }
 
     /**
      * Fetches the current authentication session.
@@ -118,7 +168,7 @@ class CloudAuthentication @Inject constructor(
 
         return context.get()?.let {
             EncryptedSharedPreferences.create(
-                "encrypted_prefs",
+                "shared_preferences_filename",
                 masterKeyAlias,
                 it,
                 EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,

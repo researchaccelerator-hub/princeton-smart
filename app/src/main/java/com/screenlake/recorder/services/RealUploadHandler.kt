@@ -2,6 +2,7 @@ package com.screenlake.recorder.services
 
 import android.content.Context
 import androidx.lifecycle.MutableLiveData
+import com.amazonaws.mobile.client.AWSMobileClient
 import com.screenlake.data.repository.AwsService
 import com.screenlake.recorder.constants.ConstantSettings
 import com.screenlake.data.database.entity.ScreenshotZipEntity
@@ -41,12 +42,12 @@ class RealUploadHandler @Inject constructor(
         user: UserEntity?,
         test: Boolean,
         testContext: Context?
-    ) {
+    ): Boolean {
         val uploadPath = buildUploadPath(file, user, test)
 
         Timber.tag(TAG).d("Upload path -> $uploadPath")
 
-        try {
+        return try {
             // Generate a signed URL for S3 upload
             val urlFromS3 = Util().generates3ShareUrl(testContext ?: context, file.path, uploadPath)
             if (!urlFromS3.isNullOrEmpty()) {
@@ -59,12 +60,17 @@ class RealUploadHandler @Inject constructor(
 
                 // Handle the upload result
                 handleUploadResult(result, file, entryId, uploadPath, test)
+                true
             } else {
+                val userState = try {
+                    AWSMobileClient.getInstance().currentUserState().userState.toString()
+                } catch (e: Exception) { "unknown" }
                 generalOperationsRepository.saveLog(
                     "UPLOAD_URL_EMPTY",
-                    "Presigned URL generation returned empty — possible expired Cognito credentials for file: ${file.name}"
+                    "Presigned URL generation returned empty — possible expired Cognito credentials for file: ${file.name}. AWS user state: $userState"
                 )
-                Timber.tag(TAG).e("Presigned URL is empty for ${file.name}; skipping upload. Possible credential expiry.")
+                Timber.tag(TAG).e("Presigned URL is empty for ${file.name}; skipping upload. AWS user state: $userState")
+                false
             }
         } catch (error: Exception) {
             // Log upload failure
@@ -75,6 +81,7 @@ class RealUploadHandler @Inject constructor(
             )
             Timber.tag(TAG).e(error, "Upload failed")
             WorkerProgressManager.updateProgress("Upload failed -> ${error.message}")
+            true // exception-path failures are not auth failures; let WorkManager treat as success
         }
     }
 

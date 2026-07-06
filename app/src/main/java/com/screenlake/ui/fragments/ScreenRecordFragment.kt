@@ -37,6 +37,7 @@ import androidx.lifecycle.Observer
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.work.OneTimeWorkRequest
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.screenlake.MainActivity
@@ -768,8 +769,22 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
         lifecycleScope.launch { saveLog(RECORD_TRIGGERED, "false") }
     }
 
-    private fun uploadCommand() = CoroutineScope(Dispatchers.IO).launch {
-        ScreenshotService.manualOcr.postValue(true)
+    private fun uploadCommand() {
+        if (ScreenshotService.isRunning.value == true) {
+            // Service is alive: use normal OCR → zip → upload path
+            CoroutineScope(Dispatchers.IO).launch {
+                ScreenshotService.manualOcr.postValue(true)
+            }
+        } else {
+            // Service is dead: LiveData has no observer — go directly to WorkManager
+            val zipRequest = OneTimeWorkRequestBuilder<ZipFileWorker>().build()
+            val uploadRequest = OneTimeWorkRequestBuilder<UploadWorker>().build()
+            WorkManager.getInstance(requireContext())
+                .beginWith(zipRequest)
+                .then(uploadRequest)
+                .enqueue()
+            Toast.makeText(requireContext(), "Uploading available data…", Toast.LENGTH_SHORT).show()
+        }
     }
 
 

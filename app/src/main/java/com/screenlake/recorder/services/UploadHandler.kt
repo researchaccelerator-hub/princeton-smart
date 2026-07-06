@@ -11,7 +11,7 @@ interface UploadHandler {
         user: UserEntity?,
         test: Boolean = false,
         testContext: Context? = null
-    )
+    ): Boolean
 
     suspend fun isNetworkConnected(): Boolean
 }

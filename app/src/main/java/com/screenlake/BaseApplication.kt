@@ -6,6 +6,7 @@ import androidx.work.Configuration
 import com.amplifyframework.AmplifyException
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.screenlake.data.database.dao.RestrictedAppDao
+import com.screenlake.data.repository.AmplifyRepository
 import com.screenlake.recorder.ocr.Assets
 import dagger.hilt.android.HiltAndroidApp
 import timber.log.Timber
@@ -20,6 +21,14 @@ class BaseApplication : Application(), Configuration.Provider {
 
     @Inject
     lateinit var workerFactory: HiltWorkerFactory
+
+    // Injecting this singleton here ensures Amplify (and the AWSMobileClient it wraps) is
+    // configured on every process start, including WorkManager-only restarts that never reach
+    // SplashActivity. Without this, AWSMobileClient finds User Pool tokens in SharedPreferences
+    // but lacks the Amplify plugin chain to use them, causing getCredentials() to fail with
+    // "No cached session" and all uploads to fail silently.
+    @Inject
+    lateinit var amplifyRepository: AmplifyRepository
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()

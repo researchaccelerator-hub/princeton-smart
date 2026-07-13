@@ -16,17 +16,21 @@ import com.amazonaws.services.s3.model.GeneratePresignedUrlRequest
 import com.amazonaws.services.s3.model.ResponseHeaderOverrides
 import com.screenlake.BuildConfig
 import com.screenlake.data.repository.NativeLib
+import com.screenlake.recorder.authentication.AuthRecoveryManager
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
 import java.net.URL
 import java.util.*
 import java.util.concurrent.CountDownLatch
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * Handles basic helper functions used throughout the app.
  */
-class Util {
+@Singleton
+class Util @Inject constructor(private val authRecoveryManager: AuthRecoveryManager) {
     private var sMobileClient: AWSCredentialsProvider? = null
     private var amazonS3Client: AmazonS3Client? = null
 
@@ -68,23 +72,42 @@ class Util {
      * This function creates a presigned URL that can be used to upload a file to a specified path in an Amazon S3 bucket.
      * The URL is valid for 1 hour from the time of creation.
      *
+     * If the Cognito credential refresh fails, this attempts a silent re-authentication via
+     * [AuthRecoveryManager] before giving up. If recovery also fails, this throws
+     * [CredentialExpiredException] instead of silently returning an empty URL.
+     *
      * @param applicationContext The application context.
      * @param path The local path of the file to be uploaded.
      * @param uploadPath The path in the S3 bucket where the file should be uploaded.
      * @return The presigned URL as a string.
      */
-    fun generates3ShareUrl(applicationContext: Context, path: String?, uploadPath:String): String {
-        val url: URL? = try {
-            val s3client: AmazonS3? = getS3Client(applicationContext)
+    suspend fun generates3ShareUrl(applicationContext: Context, path: String?, uploadPath: String): String {
+        val s3client: AmazonS3? = getS3Client(applicationContext)
 
-            // Force a credential refresh before signing the URL so that stale
-            // Cognito Identity Pool credentials don't produce a rejected upload.
-            try {
-                AWSMobileClient.getInstance().credentials
-            } catch (credEx: Exception) {
-                Timber.tag(TAG).w("Credential refresh failed before URL generation: ${credEx.message}")
+        try {
+            AWSMobileClient.getInstance().credentials
+        } catch (credEx: Exception) {
+            Timber.tag(TAG).w("Credential refresh failed before URL generation: ${credEx.message}")
+
+            val recovered = authRecoveryManager.attemptSilentReauth(applicationContext)
+            if (!recovered) {
+                throw CredentialExpiredException(
+                    "Cognito credential refresh failed and silent reauth did not recover it.",
+                    credEx
+                )
             }
 
+            try {
+                AWSMobileClient.getInstance().credentials
+            } catch (retryEx: Exception) {
+                throw CredentialExpiredException(
+                    "Cognito credentials still invalid after silent reauth.",
+                    retryEx
+                )
+            }
+        }
+
+        return try {
             val expiration = Date()
             var msec = expiration.time
             msec += 1000 * 60 * 60.toLong() // 1 hour.
@@ -96,14 +119,12 @@ class Util {
             generatePresignedUrlRequest.expiration = expiration
             generatePresignedUrlRequest.responseHeaders = overrideHeader
             val url = s3client?.generatePresignedUrl(generatePresignedUrlRequest).toString()
-            Timber.tag(TAG).d("Generated Url - ${url.toString()}")
-            return url
-
+            Timber.tag(TAG).d("Generated Url - $url")
+            url
         } catch (e: Exception) {
             Timber.d("Error generating presigned URL: $e")
-            return ""
+            ""
         }
-        return url.toString()
     }
 
     /**

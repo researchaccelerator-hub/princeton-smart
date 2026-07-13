@@ -8,6 +8,7 @@ import com.screenlake.data.database.entity.ScreenshotZipEntity
 import com.screenlake.data.database.entity.UserEntity
 import com.screenlake.data.repository.GeneralOperationsRepository
 import com.screenlake.recorder.services.util.ScreenshotData
+import com.screenlake.recorder.upload.CredentialExpiredException
 import com.screenlake.recorder.upload.Util
 import com.screenlake.recorder.utilities.HardwareChecks
 import com.screenlake.recorder.viewmodels.WorkerProgressManager
@@ -27,7 +28,8 @@ import javax.inject.Singleton
 class RealUploadHandler @Inject constructor(
     private val context: Context,
     private val awsService: AwsService,
-    private val generalOperationsRepository: GeneralOperationsRepository
+    private val generalOperationsRepository: GeneralOperationsRepository,
+    private val util: Util
 ) : UploadHandler {
     private var zipsToUpload: List<ScreenshotZipEntity>? = mutableListOf()
     companion object {
@@ -48,7 +50,7 @@ class RealUploadHandler @Inject constructor(
 
         try {
             // Generate a signed URL for S3 upload
-            val urlFromS3 = Util().generates3ShareUrl(testContext ?: context, file.path, uploadPath)
+            val urlFromS3 = util.generates3ShareUrl(testContext ?: context, file.path, uploadPath)
             if (!urlFromS3.isNullOrEmpty()) {
                 val requestFile = file.asRequestBody()
 
@@ -66,6 +68,8 @@ class RealUploadHandler @Inject constructor(
                 )
                 Timber.tag(TAG).e("Presigned URL is empty for ${file.name}; skipping upload. Possible credential expiry.")
             }
+        } catch (credError: CredentialExpiredException) {
+            handleCredentialFailure(credError, file)
         } catch (error: Exception) {
             // Log upload failure
             if (file.extension != "csv") ScreenshotService.lastUploadSuccessful.postValue(false)
@@ -76,6 +80,37 @@ class RealUploadHandler @Inject constructor(
             Timber.tag(TAG).e(error, "Upload failed")
             WorkerProgressManager.updateProgress("Upload failed -> ${error.message}")
         }
+    }
+
+    /**
+     * Handles a credential refresh failure that silent re-authentication could not recover.
+     *
+     * Tracks consecutive failures and escalates to a user notification once the threshold
+     * (ConstantSettings.CREDENTIAL_FAILURE_NOTIFICATION_THRESHOLD) is reached, then rethrows
+     * so the caller (UploadWorker) knows this upload attempt did not succeed.
+     */
+    private suspend fun handleCredentialFailure(credError: CredentialExpiredException, file: File): Nothing {
+        if (file.extension != "csv") ScreenshotService.lastUploadSuccessful.postValue(false)
+
+        val failureCount = generalOperationsRepository.incrementCredentialFailureCount()
+        generalOperationsRepository.saveLog(
+            ConstantSettings.UPLOAD_CREDENTIAL_FAILURE,
+            "Credential refresh and silent reauth both failed for file: ${file.name} (consecutive failures: $failureCount) -> ${credError.message}"
+        )
+        Timber.tag(TAG).e(credError, "Upload skipped: credentials could not be recovered")
+        WorkerProgressManager.updateProgress("Upload failed -> credentials expired")
+
+        if (failureCount >= ConstantSettings.CREDENTIAL_FAILURE_NOTIFICATION_THRESHOLD) {
+            val notificationHelper = NotificationHelper(context)
+            notificationHelper.createNotificationChannel()
+            notificationHelper.showNotification(
+                "Screenlake",
+                "We're having trouble uploading your data. Please open the app and log in again.",
+                ConstantSettings.CREDENTIAL_EXPIRED_NOTIFICATION_ID
+            )
+        }
+
+        throw credError
     }
 
     /**
@@ -146,7 +181,7 @@ class RealUploadHandler @Inject constructor(
 
         try {
             // Generate a signed URL for S3 upload
-            val urlFromS3 = Util().generates3ShareUrl(testContext ?: context, file.path, uploadPath)
+            val urlFromS3 = util.generates3ShareUrl(testContext ?: context, file.path, uploadPath)
             if (!urlFromS3.isNullOrEmpty()) {
                 val requestFile = file.asRequestBody()
 
@@ -233,6 +268,9 @@ class RealUploadHandler @Inject constructor(
             entryId?.let { generalOperationsRepository.deleteZip(it) }
             if (test) UploadWorker.uploadFeedback.postValue("Upload succeeded -> $uploadPath")
             Timber.tag(TAG).d("Upload succeeded")
+
+            generalOperationsRepository.resetCredentialFailureCount()
+            NotificationHelper(context).cancelNotification(ConstantSettings.CREDENTIAL_EXPIRED_NOTIFICATION_ID)
         } else {
             val code = result?.code() ?: -1
             val msg = result?.message() ?: "no message"

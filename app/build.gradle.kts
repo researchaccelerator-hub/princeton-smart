@@ -196,6 +196,7 @@ dependencies {
 //    testImplementation(libs.junit.jupiter.api)
     testImplementation(libs.mockk)
     testImplementation(libs.robolectric)
+    testImplementation(libs.jetbrains.kotlinx.coroutines.test)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.google.truth)

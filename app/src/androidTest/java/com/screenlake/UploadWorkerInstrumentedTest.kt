@@ -8,6 +8,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.work.ListenableWorker
 import androidx.work.testing.TestListenableWorkerBuilder
 import com.screenlake.data.TestWorkerFactory
+import com.screenlake.data.TestWorkerFactoryCredentialFailure
 import com.screenlake.data.TestWorkerFactoryException
 import com.screenlake.data.database.ScreenshotDatabase
 import com.screenlake.data.database.entity.ScreenshotZipEntity
@@ -15,6 +16,7 @@ import com.screenlake.data.database.entity.UserEntity
 import com.screenlake.data.repository.GeneralOperationsRepository
 import com.screenlake.di.DatabaseModule
 import com.screenlake.recorder.services.UploadWorker
+import io.mockk.coEvery
 import io.mockk.mockk
 import junit.framework.TestCase.assertEquals
 import kotlinx.coroutines.runBlocking
@@ -219,6 +221,34 @@ class UploadWorkerInstrumentedTest {
         cleanUpFiles(zipsToUpload,)
 
         assert(logFiles.isNullOrEmpty()) { "All log files should have been uploaded and deleted." }
+    }
+
+    /**
+     * Tests that the UploadWorker retries (rather than succeeding or failing outright)
+     * when the upload handler reports a credential expiry — regression test for AC-1043.
+     */
+    @Test
+    fun testDoWork_credentialExpired_returnsRetry() = runBlocking {
+        val workerFactory = TestWorkerFactoryCredentialFailure(genOp)
+
+        val uploadWorkerLocal = TestListenableWorkerBuilder<UploadWorker>(context)
+            .setWorkerFactory(workerFactory)
+            .build()
+
+        val user = insertUser()
+        val zipsToUpload = insertZipsToUpload(user)
+        createDummyZipFiles(zipsToUpload)
+
+        // genOp is a relaxed mock, not backed by the real DAO the helpers above write to,
+        // so it must be stubbed here or the upload loop sees an empty list and never
+        // invokes the upload handler at all.
+        coEvery { genOp.getZipsToUpload() } returns zipsToUpload
+
+        val result = uploadWorkerLocal.doWork()
+
+        cleanUpFiles(zipsToUpload)
+
+        assertEquals(ListenableWorker.Result.retry(), result)
     }
 
     // Helper methods for setting up and managing test data

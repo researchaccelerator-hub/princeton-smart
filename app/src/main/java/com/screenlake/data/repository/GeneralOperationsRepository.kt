@@ -257,6 +257,23 @@ class GeneralOperationsRepository @Inject constructor(
         return userDao.getUser()
     }
 
+    fun incrementCredentialFailureCount(): Int {
+        val prefs = context.getSharedPreferences(CREDENTIAL_RECOVERY_PREFS, Context.MODE_PRIVATE)
+        val next = prefs.getInt(CREDENTIAL_FAILURE_COUNT_KEY, 0) + 1
+        prefs.edit().putInt(CREDENTIAL_FAILURE_COUNT_KEY, next).apply()
+        return next
+    }
+
+    fun resetCredentialFailureCount() {
+        val prefs = context.getSharedPreferences(CREDENTIAL_RECOVERY_PREFS, Context.MODE_PRIVATE)
+        prefs.edit().putInt(CREDENTIAL_FAILURE_COUNT_KEY, 0).apply()
+    }
+
+    fun getCredentialFailureCount(): Int {
+        val prefs = context.getSharedPreferences(CREDENTIAL_RECOVERY_PREFS, Context.MODE_PRIVATE)
+        return prefs.getInt(CREDENTIAL_FAILURE_COUNT_KEY, 0)
+    }
+
     private suspend fun saveScreenshots(screenshots: List<ScreenshotEntity>) {
         screenshots.forEach {
             screenshotDao.insertScreenshot(it)
@@ -408,5 +425,10 @@ class GeneralOperationsRepository @Inject constructor(
             // Subsequent queries - get records with ID > lastId
             screenshotDao.getScreenshotsBatchByTimeAndId(start, lastId, limit)
         }
+    }
+
+    companion object {
+        private const val CREDENTIAL_RECOVERY_PREFS = "credential_recovery_prefs"
+        private const val CREDENTIAL_FAILURE_COUNT_KEY = "consecutive_credential_failures"
     }
 }

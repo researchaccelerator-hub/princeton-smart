@@ -1,18 +1,14 @@
 package com.screenlake.recorder.authentication
 
 import android.content.Context
-import android.content.SharedPreferences
 import android.widget.Toast
 import androidx.lifecycle.MutableLiveData
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKeys
 import com.amazonaws.mobile.auth.core.internal.util.ThreadUtils.runOnUiThread
 import com.amplifyframework.auth.AuthException
 import com.amplifyframework.auth.AuthUserAttributeKey
 import com.amplifyframework.auth.cognito.AWSCognitoAuthSession
 import com.amplifyframework.auth.options.AuthSignUpOptions
 import com.amplifyframework.core.Amplify
-import com.screenlake.data.model.EmailPasswordData
 import com.screenlake.data.repository.AmplifyRepository
 import com.screenlake.recorder.services.util.CognitoErrorHelper
 import com.screenlake.ui.fragments.onboarding.RegisterConfirmPassword
@@ -26,7 +22,8 @@ import javax.inject.Singleton
 
 @Singleton
 class CloudAuthentication @Inject constructor(
-    private val amplifyRepository: AmplifyRepository
+    private val amplifyRepository: AmplifyRepository,
+    private val encryptedCredentialsStore: EncryptedCredentialsStore
 ) {
 
     /**
@@ -56,7 +53,7 @@ class CloudAuthentication @Inject constructor(
      * @param context The context.
      */
     fun autoSignIn(context: WeakReference<Context>) {
-        val creds = getEncryptedCredentials(context)
+        val creds = encryptedCredentialsStore.getStoredCredentials(context)
         signInAsync(creds.email, creds.password)
     }
 
@@ -104,44 +101,6 @@ class CloudAuthentication @Inject constructor(
                 Timber.e("Sign up error: $error")
             }
         )
-    }
-
-    /**
-     * Retrieves the encrypted shared preferences.
-     *
-     * @param context The context.
-     * @return The encrypted shared preferences.
-     */
-    private fun getEncryptedSharedPreference(context: WeakReference<Context>): SharedPreferences? {
-        val keyGenParameterSpec = MasterKeys.AES256_GCM_SPEC
-        val masterKeyAlias = MasterKeys.getOrCreate(keyGenParameterSpec)
-
-        return context.get()?.let {
-            EncryptedSharedPreferences.create(
-                "encrypted_prefs",
-                masterKeyAlias,
-                it,
-                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-            )
-        }
-    }
-
-    /**
-     * Retrieves the encrypted credentials.
-     *
-     * @param context The context.
-     * @return The email and password data.
-     */
-    private fun getEncryptedCredentials(context: WeakReference<Context>): EmailPasswordData {
-        val sharedPreferences = getEncryptedSharedPreference(context)
-        return if (sharedPreferences != null) {
-            val email = sharedPreferences.getString("email", "") ?: ""
-            val password = sharedPreferences.getString("password", "") ?: ""
-            EmailPasswordData(email, password)
-        } else {
-            EmailPasswordData("", "")
-        }
     }
 
     companion object {

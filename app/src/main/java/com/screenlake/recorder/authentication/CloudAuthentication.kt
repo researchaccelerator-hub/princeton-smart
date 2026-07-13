@@ -28,8 +28,12 @@ class CloudAuthentication @Inject constructor(
 
     /**
      * Fetches the current authentication session.
+     *
+     * @param onBadSession Invoked when the session is signed out, errored, or otherwise
+     * not usable — callers can use this to trigger recovery. Defaults to a no-op so existing
+     * callers that only want the logging behavior are unaffected.
      */
-    fun fetchCurrentAuthSession() {
+    fun fetchCurrentAuthSession(onBadSession: () -> Unit = {}) {
         amplifyRepository.fetchAuthSession(
             onSuccess = { authSession ->
                 val session = authSession as AWSCognitoAuthSession
@@ -37,12 +41,17 @@ class CloudAuthentication @Inject constructor(
                     Timber.d("User is signed in")
                 } else if (session.awsCredentials.error is AuthException.SignedOutException || session.userSub.error is AuthException.SignedOutException) {
                     Timber.d("User is signed out")
+                    onBadSession()
                 } else if (session.awsCredentials.error == null) {
                     Timber.d("Session is valid")
+                } else {
+                    Timber.w("Session is not signed in and not a recognized signed-out state: ${session.awsCredentials.error}")
+                    onBadSession()
                 }
             },
             onError = { error ->
                 Timber.e("Fetch auth session error: $error")
+                onBadSession()
             }
         )
     }

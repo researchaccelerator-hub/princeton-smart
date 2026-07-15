@@ -1,6 +1,7 @@
 package com.screenlake.data.repository
 
 import android.content.Context
+import android.content.SharedPreferences
 import com.screenlake.MainActivity
 import com.screenlake.R
 import com.screenlake.data.database.dao.AccessibilityEventDao
@@ -281,12 +282,18 @@ class GeneralOperationsRepository @Inject constructor(
      * left in place here -- it's only wiped later, in [reconcilePendingReauthUser], if a
      * DIFFERENT user ends up logging back in.
      *
+     * Also records the outgoing user's invite code (emailHash) and tenant/panel assignment, since
+     * a fresh login only ever creates a bare UserEntity with just an email (LoginFragment does not
+     * fetch the rest of the profile from the backend) -- without this, the same participant
+     * reconnecting would lose their invite code and have to be re-prompted, and until then any
+     * upload would go out under a missing/placeholder identifier.
+     *
      * Resets the failure counter so this doesn't re-fire (re-signing-out an already-signed-out
      * session, re-showing the same notification) on every subsequent attempt while the user has
      * not yet re-logged in -- it escalates again only after another full run of failures.
      */
-    suspend fun forceSignOutForCredentialExpiry(currentUserEmail: String?) {
-        recordPendingReauthUser(currentUserEmail)
+    suspend fun forceSignOutForCredentialExpiry(currentUser: UserEntity?) {
+        recordPendingReauthUser(currentUser)
         cloudAuthentication.signOut(MainActivity.isLoggedOut)
         MainActivity.isLoggedIn.postValue(false)
         deleteUser()
@@ -294,16 +301,22 @@ class GeneralOperationsRepository @Inject constructor(
     }
 
     /**
-     * Called after a fresh login completes. If a prior forced sign-out (see
-     * [forceSignOutForCredentialExpiry]) is pending reconciliation, compares the newly signed-in
-     * user's email against the one that was signed out. A different user logging in wipes the
-     * previous participant's pending research data, since it may contain sensitive screen
-     * captures; the same user reconnecting leaves it untouched so uploads can resume normally.
+     * Called after a fresh login completes, before the new [UserEntity] is inserted. If a prior
+     * forced sign-out (see [forceSignOutForCredentialExpiry]) is pending reconciliation, compares
+     * the newly signed-in user's email against the one that was signed out:
+     * - Same user: restores their invite code (emailHash) and tenant/panel assignment onto [user]
+     *   in place (a fresh login only populates email), so they aren't silently uploading under a
+     *   missing/placeholder identifier and don't have to re-enter their invite code. Pending
+     *   research data is left untouched.
+     * - Different user: wipes the previous participant's pending research data, since it may
+     *   contain sensitive screen captures, and leaves [user] as-is -- a genuinely new participant
+     *   is expected to (re-)enter their own invite code through the normal flow.
      */
-    suspend fun reconcilePendingReauthUser(newEmail: String?) {
+    suspend fun reconcilePendingReauthUser(user: UserEntity) {
         val prefs = context.getSharedPreferences(CREDENTIAL_RECOVERY_PREFS, Context.MODE_PRIVATE)
         val pendingUser = prefs.getString(PENDING_REAUTH_USER_KEY, null) ?: return
 
+        val newEmail = user.email
         if (newEmail.isNullOrBlank()) {
             Timber.tag("ReconcilePendingReauthUser").w(
                 "Cannot reconcile pending reauth user: incoming user has no email. Leaving pending research data and marker untouched."
@@ -311,20 +324,45 @@ class GeneralOperationsRepository @Inject constructor(
             return
         }
 
-        if (pendingUser != normalizeEmail(newEmail)) {
+        if (pendingUser == normalizeEmail(newEmail)) {
+            user.emailHash = prefs.getString(PENDING_REAUTH_EMAIL_HASH_KEY, null)
+            user.tenantId = prefs.getString(PENDING_REAUTH_TENANT_ID_KEY, null) ?: user.tenantId
+            user.tenantName = prefs.getString(PENDING_REAUTH_TENANT_NAME_KEY, null) ?: user.tenantName
+            user.panelId = prefs.getString(PENDING_REAUTH_PANEL_ID_KEY, null) ?: user.panelId
+            user.panelName = prefs.getString(PENDING_REAUTH_PANEL_NAME_KEY, null) ?: user.panelName
+        } else {
             Timber.tag("ReconcilePendingReauthUser").w(
                 "Different user logged in after a forced credential-expiry sign-out; wiping pending research data."
             )
             wipePendingResearchData()
         }
 
-        prefs.edit().remove(PENDING_REAUTH_USER_KEY).apply()
+        clearPendingReauthMarkers(prefs)
     }
 
-    private fun recordPendingReauthUser(email: String?) {
+    private fun recordPendingReauthUser(user: UserEntity?) {
+        val email = user?.email
         if (email.isNullOrBlank()) return
         val prefs = context.getSharedPreferences(CREDENTIAL_RECOVERY_PREFS, Context.MODE_PRIVATE)
-        prefs.edit().putString(PENDING_REAUTH_USER_KEY, normalizeEmail(email)).apply()
+        prefs.edit()
+            .putString(PENDING_REAUTH_USER_KEY, normalizeEmail(email))
+            .putString(PENDING_REAUTH_EMAIL_HASH_KEY, user.emailHash)
+            .putString(PENDING_REAUTH_TENANT_ID_KEY, user.tenantId)
+            .putString(PENDING_REAUTH_TENANT_NAME_KEY, user.tenantName)
+            .putString(PENDING_REAUTH_PANEL_ID_KEY, user.panelId)
+            .putString(PENDING_REAUTH_PANEL_NAME_KEY, user.panelName)
+            .apply()
+    }
+
+    private fun clearPendingReauthMarkers(prefs: SharedPreferences) {
+        prefs.edit()
+            .remove(PENDING_REAUTH_USER_KEY)
+            .remove(PENDING_REAUTH_EMAIL_HASH_KEY)
+            .remove(PENDING_REAUTH_TENANT_ID_KEY)
+            .remove(PENDING_REAUTH_TENANT_NAME_KEY)
+            .remove(PENDING_REAUTH_PANEL_ID_KEY)
+            .remove(PENDING_REAUTH_PANEL_NAME_KEY)
+            .apply()
     }
 
     // Emails are compared case- and whitespace-insensitively so the same participant retyping
@@ -512,5 +550,10 @@ class GeneralOperationsRepository @Inject constructor(
         private const val CREDENTIAL_RECOVERY_PREFS = "credential_recovery_prefs"
         private const val CREDENTIAL_FAILURE_COUNT_KEY = "consecutive_credential_failures"
         private const val PENDING_REAUTH_USER_KEY = "pending_reauth_user_email"
+        private const val PENDING_REAUTH_EMAIL_HASH_KEY = "pending_reauth_email_hash"
+        private const val PENDING_REAUTH_TENANT_ID_KEY = "pending_reauth_tenant_id"
+        private const val PENDING_REAUTH_TENANT_NAME_KEY = "pending_reauth_tenant_name"
+        private const val PENDING_REAUTH_PANEL_ID_KEY = "pending_reauth_panel_id"
+        private const val PENDING_REAUTH_PANEL_NAME_KEY = "pending_reauth_panel_name"
     }
 }

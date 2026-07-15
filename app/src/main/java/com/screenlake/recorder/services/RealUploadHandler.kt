@@ -44,6 +44,19 @@ class RealUploadHandler @Inject constructor(
         test: Boolean,
         testContext: Context?
     ) {
+        if (isMissingPanelistInfo(user)) {
+            generalOperationsRepository.saveLog(
+                "UPLOAD_MISSING_PANELIST_INFO",
+                "Skipping upload for ${file.name}: missing invite code or tenant/panel assignment " +
+                    "(emailHash=${user?.emailHash}, tenantId=${user?.tenantId}, panelId=${user?.panelId}). " +
+                    "Uploading now would misfile the data or send it to an invalid path."
+            )
+            Timber.tag(TAG).e(
+                "Upload skipped for ${file.name}: participant has no invite code / panel assignment yet."
+            )
+            return
+        }
+
         val uploadPath = buildUploadPath(file, user, test)
 
         Timber.tag(TAG).d("Upload path -> $uploadPath")
@@ -110,7 +123,7 @@ class RealUploadHandler @Inject constructor(
                 "We're having trouble uploading your data. Please open the app and log in again.",
                 ConstantSettings.CREDENTIAL_EXPIRED_NOTIFICATION_ID
             )
-            generalOperationsRepository.forceSignOutForCredentialExpiry(user?.email)
+            generalOperationsRepository.forceSignOutForCredentialExpiry(user)
         }
 
         throw credError
@@ -210,6 +223,17 @@ class RealUploadHandler @Inject constructor(
             )
             Timber.tag(TAG).e(error, "Upload failed")
         }
+    }
+
+    /**
+     * True when the participant hasn't been assigned an invite code / tenant / panel yet -- a
+     * fresh login only ever populates email (see GeneralOperationsRepository.recordPendingReauthUser
+     * for why), so uploading before this is filled in would either write to a placeholder path or,
+     * for the invite code specifically, a path containing the literal string "null".
+     */
+    private fun isMissingPanelistInfo(user: UserEntity?): Boolean {
+        if (user == null) return true
+        return user.emailHash.isNullOrBlank() || user.tenantId.isNullOrBlank() || user.panelId.isNullOrBlank()
     }
 
     /**

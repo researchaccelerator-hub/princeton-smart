@@ -28,7 +28,7 @@ class UserViewModelTest {
         viewModel.insertUser(user)
 
         coVerifyOrder {
-            generalOperationsRepository.reconcilePendingReauthUser("participant@example.com")
+            generalOperationsRepository.reconcilePendingReauthUser(user)
             userRepository.insertUser(user)
         }
     }

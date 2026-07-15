@@ -2,6 +2,7 @@ package com.screenlake.recorder.services
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.screenlake.data.database.entity.UserEntity
 import com.screenlake.data.repository.AwsService
 import com.screenlake.data.repository.GeneralOperationsRepository
 import com.screenlake.recorder.constants.ConstantSettings
@@ -37,6 +38,17 @@ class RealUploadHandlerCredentialFailureTest {
         return f
     }
 
+    // A complete user (invite code + tenant/panel assignment) so the panelist-info guard doesn't
+    // short-circuit these tests before they can exercise the credential-failure path itself.
+    private fun completeUser() = UserEntity(
+        email = "participant@example.com",
+        emailHash = "1234",
+        tenantId = "acme_tenant",
+        tenantName = "Acme",
+        panelId = "panel_9",
+        panelName = "Acme Panel",
+    )
+
     @Test
     fun `credential failure increments counter, logs, and rethrows`() = runTest {
         val file = tempFile()
@@ -46,7 +58,7 @@ class RealUploadHandlerCredentialFailureTest {
         val handler = buildHandler()
 
         assertThrows(CredentialExpiredException::class.java) {
-            kotlinx.coroutines.runBlocking { handler.uploadFile(file, entryId = 1, user = null) }
+            kotlinx.coroutines.runBlocking { handler.uploadFile(file, entryId = 1, user = completeUser()) }
         }
 
         io.mockk.verify { generalOperationsRepository.incrementCredentialFailureCount() }
@@ -62,7 +74,7 @@ class RealUploadHandlerCredentialFailureTest {
 
         val handler = buildHandler()
         try {
-            kotlinx.coroutines.runBlocking { handler.uploadFile(file, entryId = 1, user = null) }
+            kotlinx.coroutines.runBlocking { handler.uploadFile(file, entryId = 1, user = completeUser()) }
         } catch (_: CredentialExpiredException) {}
 
         val notificationManager = shadowOf(context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager)
@@ -78,7 +90,7 @@ class RealUploadHandlerCredentialFailureTest {
 
         val handler = buildHandler()
         try {
-            kotlinx.coroutines.runBlocking { handler.uploadFile(file, entryId = 1, user = null) }
+            kotlinx.coroutines.runBlocking { handler.uploadFile(file, entryId = 1, user = completeUser()) }
         } catch (_: CredentialExpiredException) {}
 
         val notificationManager = shadowOf(context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager)

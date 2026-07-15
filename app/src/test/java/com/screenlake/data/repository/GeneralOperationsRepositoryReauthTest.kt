@@ -13,11 +13,13 @@ import com.screenlake.data.database.dao.SessionDao
 import com.screenlake.data.database.dao.UploadDailyDao
 import com.screenlake.data.database.dao.UploadHistoryDao
 import com.screenlake.data.database.dao.UserDao
+import com.screenlake.data.database.entity.UserEntity
 import com.screenlake.recorder.authentication.CloudAuthentication
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -26,7 +28,9 @@ import org.robolectric.RobolectricTestRunner
  * Covers the same-user/different-user reconciliation added alongside the credential-expiry
  * forced sign-out: pending research data (screenshots, zips, sessions) must survive the same
  * participant reconnecting, but must be wiped if a different participant logs in afterward,
- * since it may contain sensitive screen captures.
+ * since it may contain sensitive screen captures. Also covers restoring the invite code
+ * (emailHash) and tenant/panel assignment for the same-user case, since a fresh login only ever
+ * creates a bare UserEntity with just an email.
  */
 @RunWith(RobolectricTestRunner::class)
 class GeneralOperationsRepositoryReauthTest {
@@ -69,11 +73,29 @@ class GeneralOperationsRepositoryReauthTest {
         return repo
     }
 
+    private fun outgoingUser(
+        email: String,
+        emailHash: String = "1234",
+        tenantId: String = "acme_tenant",
+        tenantName: String = "Acme",
+        panelId: String = "panel_9",
+        panelName: String = "Acme Panel",
+    ) = UserEntity(
+        email = email,
+        emailHash = emailHash,
+        tenantId = tenantId,
+        tenantName = tenantName,
+        panelId = panelId,
+        panelName = panelName,
+    )
+
+    private fun bareLoggedInUser(email: String) = UserEntity(email = email)
+
     @Test
     fun `forceSignOutForCredentialExpiry signs out and deletes the local user record`() = runTest {
         val repo = buildRepository()
 
-        repo.forceSignOutForCredentialExpiry("participant@example.com")
+        repo.forceSignOutForCredentialExpiry(outgoingUser("participant@example.com"))
 
         verify { cloudAuthentication.signOut(any()) }
         coVerify { userDao.deleteUser() }
@@ -82,9 +104,9 @@ class GeneralOperationsRepositoryReauthTest {
     @Test
     fun `same user reconnecting does not wipe pending research data`() = runTest {
         val repo = buildRepository()
-        repo.forceSignOutForCredentialExpiry("participant@example.com")
+        repo.forceSignOutForCredentialExpiry(outgoingUser("participant@example.com"))
 
-        repo.reconcilePendingReauthUser("participant@example.com")
+        repo.reconcilePendingReauthUser(bareLoggedInUser("participant@example.com"))
 
         coVerify(exactly = 0) { screenshotDao.nukeTable() }
         coVerify(exactly = 0) { screenshotZipDao.nukeTable() }
@@ -92,11 +114,36 @@ class GeneralOperationsRepositoryReauthTest {
     }
 
     @Test
-    fun `different user logging in wipes pending research data`() = runTest {
+    fun `same user reconnecting has their invite code and panel assignment restored`() = runTest {
         val repo = buildRepository()
-        repo.forceSignOutForCredentialExpiry("participant-a@example.com")
+        repo.forceSignOutForCredentialExpiry(
+            outgoingUser(
+                "participant@example.com",
+                emailHash = "9821",
+                tenantId = "acme_tenant",
+                tenantName = "Acme",
+                panelId = "panel_9",
+                panelName = "Acme Panel",
+            )
+        )
 
-        repo.reconcilePendingReauthUser("participant-b@example.com")
+        val freshLogin = bareLoggedInUser("participant@example.com")
+        repo.reconcilePendingReauthUser(freshLogin)
+
+        assertEquals("9821", freshLogin.emailHash)
+        assertEquals("acme_tenant", freshLogin.tenantId)
+        assertEquals("Acme", freshLogin.tenantName)
+        assertEquals("panel_9", freshLogin.panelId)
+        assertEquals("Acme Panel", freshLogin.panelName)
+    }
+
+    @Test
+    fun `different user logging in wipes pending research data and does not inherit the invite code`() = runTest {
+        val repo = buildRepository()
+        repo.forceSignOutForCredentialExpiry(outgoingUser("participant-a@example.com", emailHash = "1111"))
+
+        val newParticipant = bareLoggedInUser("participant-b@example.com")
+        repo.reconcilePendingReauthUser(newParticipant)
 
         coVerify { screenshotDao.nukeTable() }
         coVerify { screenshotZipDao.nukeTable() }
@@ -104,15 +151,17 @@ class GeneralOperationsRepositoryReauthTest {
         coVerify { appSegmentDao.nukeTable() }
         coVerify { accessibilityEventDao.deleteAccessibilityEvents() }
         coVerify { panelDao.deletePanels() }
+        // A genuinely new participant must not inherit the previous participant's invite code.
+        assertEquals(null, newParticipant.emailHash)
     }
 
     @Test
     fun `reconciling twice only wipes once (marker is cleared after reconciling)`() = runTest {
         val repo = buildRepository()
-        repo.forceSignOutForCredentialExpiry("participant-a@example.com")
+        repo.forceSignOutForCredentialExpiry(outgoingUser("participant-a@example.com"))
 
-        repo.reconcilePendingReauthUser("participant-b@example.com")
-        repo.reconcilePendingReauthUser("participant-c@example.com")
+        repo.reconcilePendingReauthUser(bareLoggedInUser("participant-b@example.com"))
+        repo.reconcilePendingReauthUser(bareLoggedInUser("participant-c@example.com"))
 
         coVerify(exactly = 1) { screenshotDao.nukeTable() }
     }
@@ -121,7 +170,7 @@ class GeneralOperationsRepositoryReauthTest {
     fun `reconciling with no pending marker is a no-op`() = runTest {
         val repo = buildRepository()
 
-        repo.reconcilePendingReauthUser("anyone@example.com")
+        repo.reconcilePendingReauthUser(bareLoggedInUser("anyone@example.com"))
 
         coVerify(exactly = 0) { screenshotDao.nukeTable() }
         coVerify(exactly = 0) { userDao.deleteUser() }
@@ -130,9 +179,9 @@ class GeneralOperationsRepositoryReauthTest {
     @Test
     fun `same user reconnecting with different email casing is not treated as a different user`() = runTest {
         val repo = buildRepository()
-        repo.forceSignOutForCredentialExpiry("Participant@Example.com")
+        repo.forceSignOutForCredentialExpiry(outgoingUser("Participant@Example.com"))
 
-        repo.reconcilePendingReauthUser("participant@example.com")
+        repo.reconcilePendingReauthUser(bareLoggedInUser("participant@example.com"))
 
         coVerify(exactly = 0) { screenshotDao.nukeTable() }
     }
@@ -140,9 +189,9 @@ class GeneralOperationsRepositoryReauthTest {
     @Test
     fun `same user reconnecting with surrounding whitespace is not treated as a different user`() = runTest {
         val repo = buildRepository()
-        repo.forceSignOutForCredentialExpiry("participant@example.com")
+        repo.forceSignOutForCredentialExpiry(outgoingUser("participant@example.com"))
 
-        repo.reconcilePendingReauthUser("  participant@example.com  ")
+        repo.reconcilePendingReauthUser(bareLoggedInUser("  participant@example.com  "))
 
         coVerify(exactly = 0) { screenshotDao.nukeTable() }
     }
@@ -150,13 +199,13 @@ class GeneralOperationsRepositoryReauthTest {
     @Test
     fun `reconciling with a blank incoming email does not wipe or clear the marker`() = runTest {
         val repo = buildRepository()
-        repo.forceSignOutForCredentialExpiry("participant@example.com")
+        repo.forceSignOutForCredentialExpiry(outgoingUser("participant@example.com"))
 
-        repo.reconcilePendingReauthUser("")
+        repo.reconcilePendingReauthUser(bareLoggedInUser(""))
 
         coVerify(exactly = 0) { screenshotDao.nukeTable() }
         // Marker should still be pending -- a real reconciliation should still catch a mismatch later.
-        repo.reconcilePendingReauthUser("someone-else@example.com")
+        repo.reconcilePendingReauthUser(bareLoggedInUser("someone-else@example.com"))
         coVerify(exactly = 1) { screenshotDao.nukeTable() }
     }
 
@@ -166,10 +215,8 @@ class GeneralOperationsRepositoryReauthTest {
         repo.incrementCredentialFailureCount()
         repo.incrementCredentialFailureCount()
 
-        repo.forceSignOutForCredentialExpiry("participant@example.com")
+        repo.forceSignOutForCredentialExpiry(outgoingUser("participant@example.com"))
 
-        assert(repo.getCredentialFailureCount() == 0) {
-            "expected failure count to reset to 0, was ${repo.getCredentialFailureCount()}"
-        }
+        assertEquals(0, repo.getCredentialFailureCount())
     }
 }

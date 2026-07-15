@@ -71,4 +71,30 @@ class UtilCredentialRecoveryTest {
             }
         }
     }
+
+    /**
+     * Regression test for a real device-testing finding: AWSMobileClient.getCredentials() can
+     * block forever (an un-timed-out internal latch, confirmed by decompiling the SDK) when the
+     * session has been revoked server-side. This simulates that hang directly with a
+     * CountDownLatch that never counts down, and proves generates3ShareUrl() still terminates
+     * (via the 15s timeout in checkCredentials()) instead of hanging forever. If the timeout
+     * mechanism regresses, this test times out at 30s rather than hanging the whole build.
+     */
+    @Test(timeout = 30_000)
+    fun `checkCredentials times out instead of hanging forever when the SDK call blocks`() = runTest {
+        val neverCountsDown = java.util.concurrent.CountDownLatch(1)
+        every { mobileClient.credentials } answers {
+            neverCountsDown.await()
+            error("unreachable — latch never counts down")
+        }
+        coEvery { authRecoveryManager.attemptSilentReauth(context) } returns false
+
+        val util = Util(authRecoveryManager)
+
+        assertThrows(CredentialExpiredException::class.java) {
+            runBlocking {
+                util.generates3ShareUrl(context, "/tmp/file.zip", "some/upload/path.zip")
+            }
+        }
+    }
 }

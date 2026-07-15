@@ -17,6 +17,9 @@ import com.amazonaws.services.s3.model.ResponseHeaderOverrides
 import com.screenlake.BuildConfig
 import com.screenlake.data.repository.NativeLib
 import com.screenlake.recorder.authentication.AuthRecoveryManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runInterruptible
+import kotlinx.coroutines.withTimeout
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
@@ -86,7 +89,7 @@ class Util @Inject constructor(private val authRecoveryManager: AuthRecoveryMana
         val s3client: AmazonS3? = getS3Client(applicationContext)
 
         try {
-            AWSMobileClient.getInstance().credentials
+            checkCredentials()
         } catch (credEx: Exception) {
             Timber.tag(TAG).w("Credential refresh failed before URL generation: ${credEx.message}")
 
@@ -99,7 +102,7 @@ class Util @Inject constructor(private val authRecoveryManager: AuthRecoveryMana
             }
 
             try {
-                AWSMobileClient.getInstance().credentials
+                checkCredentials()
             } catch (retryEx: Exception) {
                 throw CredentialExpiredException(
                     "Cognito credentials still invalid after silent reauth.",
@@ -125,6 +128,24 @@ class Util @Inject constructor(private val authRecoveryManager: AuthRecoveryMana
         } catch (e: Exception) {
             Timber.d("Error generating presigned URL: $e")
             ""
+        }
+    }
+
+    /**
+     * Forces a Cognito credential fetch/refresh with a bounded timeout.
+     *
+     * AWSMobileClient.getCredentials() can block indefinitely on an internal, un-timed-out
+     * latch when the session has been revoked server-side (confirmed by decompiling the SDK).
+     * runInterruptible translates coroutine cancellation into a real Thread.interrupt(), which
+     * that latch's CountDownLatch.await() does respect, so a stuck credential check surfaces as
+     * a timeout instead of hanging the caller (and, transitively, UploadWorker's shared mutex)
+     * forever.
+     */
+    private suspend fun checkCredentials() {
+        withTimeout(15_000) {
+            runInterruptible(Dispatchers.IO) {
+                AWSMobileClient.getInstance().credentials
+            }
         }
     }
 

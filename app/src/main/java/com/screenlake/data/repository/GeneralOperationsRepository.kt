@@ -274,6 +274,70 @@ class GeneralOperationsRepository @Inject constructor(
         return prefs.getInt(CREDENTIAL_FAILURE_COUNT_KEY, 0)
     }
 
+    /**
+     * Forces a sign-out and clears the local user record after credential recovery has
+     * permanently failed (the consecutive-failure notification threshold), so the app routes to
+     * the login screen the next time it's opened. Pending screenshot/upload data is deliberately
+     * left in place here -- it's only wiped later, in [reconcilePendingReauthUser], if a
+     * DIFFERENT user ends up logging back in.
+     */
+    suspend fun forceSignOutForCredentialExpiry(currentUserEmail: String?) {
+        recordPendingReauthUser(currentUserEmail)
+        cloudAuthentication.signOut(MainActivity.isLoggedOut)
+        MainActivity.isLoggedIn.postValue(false)
+        deleteUser()
+    }
+
+    /**
+     * Called after a fresh login completes. If a prior forced sign-out (see
+     * [forceSignOutForCredentialExpiry]) is pending reconciliation, compares the newly signed-in
+     * user's email against the one that was signed out. A different user logging in wipes the
+     * previous participant's pending research data, since it may contain sensitive screen
+     * captures; the same user reconnecting leaves it untouched so uploads can resume normally.
+     */
+    suspend fun reconcilePendingReauthUser(newEmail: String) {
+        val prefs = context.getSharedPreferences(CREDENTIAL_RECOVERY_PREFS, Context.MODE_PRIVATE)
+        val pendingUser = prefs.getString(PENDING_REAUTH_USER_KEY, null) ?: return
+
+        if (pendingUser != newEmail) {
+            Timber.tag("ReconcilePendingReauthUser").w(
+                "Different user logged in after a forced credential-expiry sign-out; wiping pending research data."
+            )
+            wipePendingResearchData()
+        }
+
+        prefs.edit().remove(PENDING_REAUTH_USER_KEY).apply()
+    }
+
+    private fun recordPendingReauthUser(email: String?) {
+        if (email.isNullOrBlank()) return
+        val prefs = context.getSharedPreferences(CREDENTIAL_RECOVERY_PREFS, Context.MODE_PRIVATE)
+        prefs.edit().putString(PENDING_REAUTH_USER_KEY, email).apply()
+    }
+
+    private suspend fun wipePendingResearchData() {
+        val path = context.filesDir?.path
+
+        if (path != null) {
+            File(path).walk().filter {
+                it.name.endsWith("jpg")
+                        || it.name.endsWith("zip")
+                        || it.name.endsWith("csv")
+                        || (it.name.endsWith("json") && it.name.contains("screenshot_data"))
+            }.forEach {
+                it.delete()
+                Timber.tag("ReconcilePendingReauthUser").d("Deleted file ${it.name} from phone.")
+            }
+        }
+
+        deleteAllScreenshot()
+        deleteAllScreenshotZip()
+        deleteAllPanels()
+        deleteAllSessions()
+        deleteAllAppSegments()
+        deleteAllAccessibilityEvents()
+    }
+
     private suspend fun saveScreenshots(screenshots: List<ScreenshotEntity>) {
         screenshots.forEach {
             screenshotDao.insertScreenshot(it)
@@ -430,5 +494,6 @@ class GeneralOperationsRepository @Inject constructor(
     companion object {
         private const val CREDENTIAL_RECOVERY_PREFS = "credential_recovery_prefs"
         private const val CREDENTIAL_FAILURE_COUNT_KEY = "consecutive_credential_failures"
+        private const val PENDING_REAUTH_USER_KEY = "pending_reauth_user_email"
     }
 }

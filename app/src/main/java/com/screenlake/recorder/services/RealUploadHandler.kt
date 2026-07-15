@@ -69,7 +69,7 @@ class RealUploadHandler @Inject constructor(
                 Timber.tag(TAG).e("Presigned URL is empty for ${file.name}; skipping upload. Possible credential expiry.")
             }
         } catch (credError: CredentialExpiredException) {
-            handleCredentialFailure(credError, file)
+            handleCredentialFailure(credError, file, user)
         } catch (error: Exception) {
             // Log upload failure
             if (file.extension != "csv") ScreenshotService.lastUploadSuccessful.postValue(false)
@@ -85,11 +85,13 @@ class RealUploadHandler @Inject constructor(
     /**
      * Handles a credential refresh failure that silent re-authentication could not recover.
      *
-     * Tracks consecutive failures and escalates to a user notification once the threshold
-     * (ConstantSettings.CREDENTIAL_FAILURE_NOTIFICATION_THRESHOLD) is reached, then rethrows
-     * so the caller (UploadWorker) knows this upload attempt did not succeed.
+     * Tracks consecutive failures and escalates once the threshold
+     * (ConstantSettings.CREDENTIAL_FAILURE_NOTIFICATION_THRESHOLD) is reached: shows a
+     * notification, and forces a sign-out so the app routes to the login screen next time it's
+     * opened (see GeneralOperationsRepository.forceSignOutForCredentialExpiry). Then rethrows so
+     * the caller (UploadWorker) knows this upload attempt did not succeed.
      */
-    private suspend fun handleCredentialFailure(credError: CredentialExpiredException, file: File): Nothing {
+    private suspend fun handleCredentialFailure(credError: CredentialExpiredException, file: File, user: UserEntity?): Nothing {
         if (file.extension != "csv") ScreenshotService.lastUploadSuccessful.postValue(false)
 
         val failureCount = generalOperationsRepository.incrementCredentialFailureCount()
@@ -108,6 +110,7 @@ class RealUploadHandler @Inject constructor(
                 "We're having trouble uploading your data. Please open the app and log in again.",
                 ConstantSettings.CREDENTIAL_EXPIRED_NOTIFICATION_ID
             )
+            generalOperationsRepository.forceSignOutForCredentialExpiry(user?.email)
         }
 
         throw credError

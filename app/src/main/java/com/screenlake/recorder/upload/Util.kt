@@ -23,6 +23,7 @@ import timber.log.Timber
 import java.net.URL
 import java.util.*
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -82,6 +83,8 @@ class Util @Inject constructor(private val authRecoveryManager: AuthRecoveryMana
      * @return The presigned URL as a string.
      */
     suspend fun generates3ShareUrl(applicationContext: Context, path: String?, uploadPath: String): String {
+        val s3client: AmazonS3? = getS3Client(applicationContext)
+
         try {
             AWSMobileClient.getInstance().credentials
         } catch (credEx: Exception) {
@@ -104,8 +107,6 @@ class Util @Inject constructor(private val authRecoveryManager: AuthRecoveryMana
                 )
             }
         }
-
-        val s3client: AmazonS3? = getS3Client(applicationContext)
 
         return try {
             val expiration = Date()
@@ -163,8 +164,12 @@ class Util @Inject constructor(private val authRecoveryManager: AuthRecoveryMana
             })
 
             try {
-                latch.await()
-                sMobileClient = AWSMobileClient.getInstance()
+                val completed = latch.await(15, TimeUnit.SECONDS)
+                if (completed) {
+                    sMobileClient = AWSMobileClient.getInstance()
+                } else {
+                    Timber.e("Timed out waiting for AWSMobileClient to initialize.")
+                }
             } catch (e: InterruptedException) {
                 e.printStackTrace()
             }

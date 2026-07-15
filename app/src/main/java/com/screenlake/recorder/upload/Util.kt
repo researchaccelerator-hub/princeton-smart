@@ -18,6 +18,7 @@ import com.screenlake.BuildConfig
 import com.screenlake.data.repository.NativeLib
 import com.screenlake.recorder.authentication.AuthRecoveryManager
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.withTimeout
 import org.json.JSONArray
@@ -111,20 +112,34 @@ class Util @Inject constructor(private val authRecoveryManager: AuthRecoveryMana
             }
         }
 
+        val expiration = Date()
+        var msec = expiration.time
+        msec += 1000 * 60 * 60.toLong() // 1 hour.
+        expiration.time = msec
+        val overrideHeader = ResponseHeaderOverrides()
+        overrideHeader.contentType = getMimeType(path)
+        val generatePresignedUrlRequest = GeneratePresignedUrlRequest(BuildConfig.AMAZON_BUCKET_NAME, uploadPath, HttpMethod.PUT)
+        generatePresignedUrlRequest.method = HttpMethod.PUT // Default.
+        generatePresignedUrlRequest.expiration = expiration
+        generatePresignedUrlRequest.responseHeaders = overrideHeader
+
         return try {
-            val expiration = Date()
-            var msec = expiration.time
-            msec += 1000 * 60 * 60.toLong() // 1 hour.
-            expiration.time = msec
-            val overrideHeader = ResponseHeaderOverrides()
-            overrideHeader.contentType = getMimeType(path)
-            val generatePresignedUrlRequest = GeneratePresignedUrlRequest(BuildConfig.AMAZON_BUCKET_NAME, uploadPath, HttpMethod.PUT)
-            generatePresignedUrlRequest.method = HttpMethod.PUT // Default.
-            generatePresignedUrlRequest.expiration = expiration
-            generatePresignedUrlRequest.responseHeaders = overrideHeader
-            val url = s3client?.generatePresignedUrl(generatePresignedUrlRequest).toString()
-            Timber.tag(TAG).d("Generated Url - $url")
-            url
+            // generatePresignedUrl() internally calls the credentials provider (AWSMobileClient)
+            // to sign the request, which can hit the same blocking SDK path as checkCredentials()
+            // above -- bound it with the same timeout/interrupt pattern rather than leaving it
+            // as the one remaining unprotected call into that code.
+            withTimeout(15_000) {
+                val url = runInterruptible(Dispatchers.IO) {
+                    s3client?.generatePresignedUrl(generatePresignedUrlRequest).toString()
+                }
+                Timber.tag(TAG).d("Generated Url - $url")
+                url
+            }
+        } catch (timeoutEx: TimeoutCancellationException) {
+            throw CredentialExpiredException(
+                "Presigned URL generation timed out waiting on Cognito credentials.",
+                timeoutEx
+            )
         } catch (e: Exception) {
             Timber.d("Error generating presigned URL: $e")
             ""

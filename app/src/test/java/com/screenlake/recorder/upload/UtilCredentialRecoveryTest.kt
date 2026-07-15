@@ -16,6 +16,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -96,5 +97,40 @@ class UtilCredentialRecoveryTest {
                 util.generates3ShareUrl(context, "/tmp/file.zip", "some/upload/path.zip")
             }
         }
+    }
+
+    /**
+     * Regression test for a second real hang site found in review: generatePresignedUrl()
+     * internally calls the credentials provider (the same mocked AWSMobileClient instance) to
+     * sign the request, which can hang identically to checkCredentials()'s own call. Succeeds
+     * the first credentials call (so checkCredentials() passes and execution reaches the presign
+     * step), then hangs on the second call to prove that specific call site's timeout works too.
+     */
+    @Test(timeout = 30_000)
+    fun `presign generation times out instead of hanging when the signing credentials call blocks`() = runTest {
+        val neverCountsDown = java.util.concurrent.CountDownLatch(1)
+        var callCount = 0
+        every { mobileClient.credentials } answers {
+            callCount++
+            if (callCount == 1) {
+                mockk<com.amazonaws.auth.AWSCredentials>(relaxed = true)
+            } else {
+                neverCountsDown.await()
+                error("unreachable — latch never counts down")
+            }
+        }
+
+        val util = Util(authRecoveryManager)
+
+        val exception = assertThrows(CredentialExpiredException::class.java) {
+            runBlocking {
+                util.generates3ShareUrl(context, "/tmp/file.zip", "some/upload/path.zip")
+            }
+        }
+
+        assertTrue(
+            "expected the presign timeout message, got: ${exception.message}",
+            exception.message?.contains("Presigned URL generation timed out") == true
+        )
     }
 }

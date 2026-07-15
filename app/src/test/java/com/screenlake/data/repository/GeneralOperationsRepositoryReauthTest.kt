@@ -126,4 +126,50 @@ class GeneralOperationsRepositoryReauthTest {
         coVerify(exactly = 0) { screenshotDao.nukeTable() }
         coVerify(exactly = 0) { userDao.deleteUser() }
     }
+
+    @Test
+    fun `same user reconnecting with different email casing is not treated as a different user`() = runTest {
+        val repo = buildRepository()
+        repo.forceSignOutForCredentialExpiry("Participant@Example.com")
+
+        repo.reconcilePendingReauthUser("participant@example.com")
+
+        coVerify(exactly = 0) { screenshotDao.nukeTable() }
+    }
+
+    @Test
+    fun `same user reconnecting with surrounding whitespace is not treated as a different user`() = runTest {
+        val repo = buildRepository()
+        repo.forceSignOutForCredentialExpiry("participant@example.com")
+
+        repo.reconcilePendingReauthUser("  participant@example.com  ")
+
+        coVerify(exactly = 0) { screenshotDao.nukeTable() }
+    }
+
+    @Test
+    fun `reconciling with a blank incoming email does not wipe or clear the marker`() = runTest {
+        val repo = buildRepository()
+        repo.forceSignOutForCredentialExpiry("participant@example.com")
+
+        repo.reconcilePendingReauthUser("")
+
+        coVerify(exactly = 0) { screenshotDao.nukeTable() }
+        // Marker should still be pending -- a real reconciliation should still catch a mismatch later.
+        repo.reconcilePendingReauthUser("someone-else@example.com")
+        coVerify(exactly = 1) { screenshotDao.nukeTable() }
+    }
+
+    @Test
+    fun `forceSignOutForCredentialExpiry resets the consecutive failure counter`() = runTest {
+        val repo = buildRepository()
+        repo.incrementCredentialFailureCount()
+        repo.incrementCredentialFailureCount()
+
+        repo.forceSignOutForCredentialExpiry("participant@example.com")
+
+        assert(repo.getCredentialFailureCount() == 0) {
+            "expected failure count to reset to 0, was ${repo.getCredentialFailureCount()}"
+        }
+    }
 }

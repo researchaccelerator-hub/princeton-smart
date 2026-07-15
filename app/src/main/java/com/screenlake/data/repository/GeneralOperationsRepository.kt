@@ -280,12 +280,17 @@ class GeneralOperationsRepository @Inject constructor(
      * the login screen the next time it's opened. Pending screenshot/upload data is deliberately
      * left in place here -- it's only wiped later, in [reconcilePendingReauthUser], if a
      * DIFFERENT user ends up logging back in.
+     *
+     * Resets the failure counter so this doesn't re-fire (re-signing-out an already-signed-out
+     * session, re-showing the same notification) on every subsequent attempt while the user has
+     * not yet re-logged in -- it escalates again only after another full run of failures.
      */
     suspend fun forceSignOutForCredentialExpiry(currentUserEmail: String?) {
         recordPendingReauthUser(currentUserEmail)
         cloudAuthentication.signOut(MainActivity.isLoggedOut)
         MainActivity.isLoggedIn.postValue(false)
         deleteUser()
+        resetCredentialFailureCount()
     }
 
     /**
@@ -295,11 +300,18 @@ class GeneralOperationsRepository @Inject constructor(
      * previous participant's pending research data, since it may contain sensitive screen
      * captures; the same user reconnecting leaves it untouched so uploads can resume normally.
      */
-    suspend fun reconcilePendingReauthUser(newEmail: String) {
+    suspend fun reconcilePendingReauthUser(newEmail: String?) {
         val prefs = context.getSharedPreferences(CREDENTIAL_RECOVERY_PREFS, Context.MODE_PRIVATE)
         val pendingUser = prefs.getString(PENDING_REAUTH_USER_KEY, null) ?: return
 
-        if (pendingUser != newEmail) {
+        if (newEmail.isNullOrBlank()) {
+            Timber.tag("ReconcilePendingReauthUser").w(
+                "Cannot reconcile pending reauth user: incoming user has no email. Leaving pending research data and marker untouched."
+            )
+            return
+        }
+
+        if (pendingUser != normalizeEmail(newEmail)) {
             Timber.tag("ReconcilePendingReauthUser").w(
                 "Different user logged in after a forced credential-expiry sign-out; wiping pending research data."
             )
@@ -312,8 +324,13 @@ class GeneralOperationsRepository @Inject constructor(
     private fun recordPendingReauthUser(email: String?) {
         if (email.isNullOrBlank()) return
         val prefs = context.getSharedPreferences(CREDENTIAL_RECOVERY_PREFS, Context.MODE_PRIVATE)
-        prefs.edit().putString(PENDING_REAUTH_USER_KEY, email).apply()
+        prefs.edit().putString(PENDING_REAUTH_USER_KEY, normalizeEmail(email)).apply()
     }
+
+    // Emails are compared case- and whitespace-insensitively so the same participant retyping
+    // their email with different casing on re-login isn't misidentified as a different user,
+    // which would otherwise wipe their own legitimate pending research data.
+    private fun normalizeEmail(email: String) = email.trim().lowercase()
 
     private suspend fun wipePendingResearchData() {
         val path = context.filesDir?.path

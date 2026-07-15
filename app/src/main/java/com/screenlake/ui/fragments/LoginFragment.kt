@@ -32,7 +32,6 @@ import com.screenlake.recorder.authentication.CloudAuthentication
 import com.screenlake.data.database.entity.LogEventEntity
 import com.screenlake.data.database.entity.UserEntity
 import com.screenlake.data.repository.AmplifyRepository
-import com.screenlake.data.repository.GeneralOperationsRepository
 import com.screenlake.recorder.services.util.ScreenshotData
 import com.screenlake.recorder.utilities.HardwareChecks
 import androidx.core.view.ViewCompat
@@ -59,9 +58,6 @@ class LoginFragment : Fragment() {
 
     @Inject
     lateinit var cloudAuthentication: CloudAuthentication
-
-    @Inject
-    lateinit var generalOperationsRepository: GeneralOperationsRepository
 
     private val mainViewModel: MainViewModel by activityViewModels()
     private val userModel: UserViewModel by viewModels()
@@ -282,7 +278,6 @@ class LoginFragment : Fragment() {
 
             val userEmail = user?.email
             if (!userEmail.isNullOrBlank()) {
-                generalOperationsRepository.reconcilePendingReauthUser(userEmail)
                 userModel.insertUser(user)
                 MainActivity.isLoggedOut.postValue(false)
                 findNavController().navigate(R.id.screenRecordFragment)

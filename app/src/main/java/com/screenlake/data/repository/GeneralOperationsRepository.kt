@@ -1,6 +1,7 @@
 package com.screenlake.data.repository
 
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
 import com.screenlake.MainActivity
 import com.screenlake.R
@@ -291,13 +292,28 @@ class GeneralOperationsRepository @Inject constructor(
      * Resets the failure counter so this doesn't re-fire (re-signing-out an already-signed-out
      * session, re-showing the same notification) on every subsequent attempt while the user has
      * not yet re-logged in -- it escalates again only after another full run of failures.
+     *
+     * Also force-stops any in-progress recording session, the same way SettingsFragment's manual
+     * sign-out does (ACTION_STOP_SERVICE). This runs from a background WorkManager task with no
+     * Activity/Fragment, so it can't rely on ScreenRecordFragment's own isLoggedIn observer, which
+     * only stops recording if that fragment happens to still be alive -- without this, capture
+     * would keep running under a signed-out (or about-to-switch) identity, bypassing the
+     * invite-code/setup checks that only run when a NEW recording session starts.
      */
     suspend fun forceSignOutForCredentialExpiry(currentUser: UserEntity?) {
         recordPendingReauthUser(currentUser)
         cloudAuthentication.signOut(MainActivity.isLoggedOut)
         MainActivity.isLoggedIn.postValue(false)
+        stopActiveRecording()
         deleteUser()
         resetCredentialFailureCount()
+    }
+
+    private fun stopActiveRecording() {
+        Intent(context, ScreenshotService::class.java).apply {
+            action = ConstantSettings.ACTION_STOP_SERVICE
+            context.startService(this)
+        }
     }
 
     /**

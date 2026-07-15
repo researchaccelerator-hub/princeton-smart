@@ -20,9 +20,14 @@ import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
+import android.app.Application
+import com.screenlake.recorder.constants.ConstantSettings
+import com.screenlake.recorder.services.ScreenshotService
 
 /**
  * Covers the same-user/different-user reconciliation added alongside the credential-expiry
@@ -99,6 +104,19 @@ class GeneralOperationsRepositoryReauthTest {
 
         verify { cloudAuthentication.signOut(any()) }
         coVerify { userDao.deleteUser() }
+    }
+
+    @Test
+    fun `forceSignOutForCredentialExpiry stops any in-progress recording`() = runTest {
+        val repo = buildRepository()
+        val context: Application = ApplicationProvider.getApplicationContext()
+
+        repo.forceSignOutForCredentialExpiry(outgoingUser("participant@example.com"))
+
+        val startedService = shadowOf(context).nextStartedService
+        assertNotNull("expected a stop-service Intent to be sent", startedService)
+        assertEquals(ScreenshotService::class.java.name, startedService.component?.className)
+        assertEquals(ConstantSettings.ACTION_STOP_SERVICE, startedService.action)
     }
 
     @Test

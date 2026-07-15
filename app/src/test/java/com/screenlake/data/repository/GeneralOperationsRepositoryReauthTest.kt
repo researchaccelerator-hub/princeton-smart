@@ -21,6 +21,7 @@ import io.mockk.verify
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -107,9 +108,10 @@ class GeneralOperationsRepositoryReauthTest {
     }
 
     @Test
-    fun `forceSignOutForCredentialExpiry stops any in-progress recording`() = runTest {
+    fun `forceSignOutForCredentialExpiry stops recording when it is active`() = runTest {
         val repo = buildRepository()
         val context: Application = ApplicationProvider.getApplicationContext()
+        ScreenshotService.isRunning.value = true
 
         repo.forceSignOutForCredentialExpiry(outgoingUser("participant@example.com"))
 
@@ -117,6 +119,20 @@ class GeneralOperationsRepositoryReauthTest {
         assertNotNull("expected a stop-service Intent to be sent", startedService)
         assertEquals(ScreenshotService::class.java.name, startedService.component?.className)
         assertEquals(ConstantSettings.ACTION_STOP_SERVICE, startedService.action)
+    }
+
+    @Test
+    fun `forceSignOutForCredentialExpiry does not start the service when recording is not active`() = runTest {
+        val repo = buildRepository()
+        val context: Application = ApplicationProvider.getApplicationContext()
+        ScreenshotService.isRunning.value = false
+
+        repo.forceSignOutForCredentialExpiry(outgoingUser("participant@example.com"))
+
+        // Must not cold-start the foreground service just to stop it -- doing so from this
+        // background WorkManager context would throw ForegroundServiceStartNotAllowedException
+        // on Android 12+, crashing the retry path this fix exists to protect.
+        assertNull("expected no service Intent when recording is not active", shadowOf(context).nextStartedService)
     }
 
     @Test

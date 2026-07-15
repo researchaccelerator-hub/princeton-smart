@@ -299,6 +299,11 @@ class GeneralOperationsRepository @Inject constructor(
      * only stops recording if that fragment happens to still be alive -- without this, capture
      * would keep running under a signed-out (or about-to-switch) identity, bypassing the
      * invite-code/setup checks that only run when a NEW recording session starts.
+     *
+     * [stopActiveRecording] is fire-and-forget: it does not wait for the service's own async
+     * session-save to finish before [deleteUser] runs right after. This is currently safe only
+     * because that save reads the in-memory ScreenshotService.user, not the DB row being deleted
+     * here -- if that ever changes, this ordering would need to become dependent instead.
      */
     suspend fun forceSignOutForCredentialExpiry(currentUser: UserEntity?) {
         recordPendingReauthUser(currentUser)
@@ -310,6 +315,14 @@ class GeneralOperationsRepository @Inject constructor(
     }
 
     private fun stopActiveRecording() {
+        // Only send this when the service is actually running. Sending it unconditionally would
+        // cold-start ScreenshotService (a FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION foreground
+        // service) purely to stop it -- and starting a foreground service from this background
+        // WorkManager context throws ForegroundServiceStartNotAllowedException on Android 12+,
+        // uncaught by the worker's own try/catch, crashing the exact retry path this fix exists
+        // to protect.
+        if (ScreenshotService.isRunning.value != true) return
+
         Intent(context, ScreenshotService::class.java).apply {
             action = ConstantSettings.ACTION_STOP_SERVICE
             context.startService(this)

@@ -276,8 +276,9 @@ class LoginFragment : Fragment() {
         if (!userExist) {
             val user = getUserFromDatastore(email)
 
-            if (!user?.email.isNullOrBlank()) {
-                userModel.insertUser(user!!)
+            val userEmail = user?.email
+            if (!userEmail.isNullOrBlank()) {
+                userModel.insertUser(user)
                 MainActivity.isLoggedOut.postValue(false)
                 findNavController().navigate(R.id.screenRecordFragment)
             } else {

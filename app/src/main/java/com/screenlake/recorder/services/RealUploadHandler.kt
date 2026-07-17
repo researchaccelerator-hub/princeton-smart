@@ -8,6 +8,7 @@ import com.screenlake.data.database.entity.ScreenshotZipEntity
 import com.screenlake.data.database.entity.UserEntity
 import com.screenlake.data.repository.GeneralOperationsRepository
 import com.screenlake.recorder.services.util.ScreenshotData
+import com.screenlake.recorder.upload.CredentialExpiredException
 import com.screenlake.recorder.upload.Util
 import com.screenlake.recorder.utilities.HardwareChecks
 import com.screenlake.recorder.viewmodels.WorkerProgressManager
@@ -27,7 +28,8 @@ import javax.inject.Singleton
 class RealUploadHandler @Inject constructor(
     private val context: Context,
     private val awsService: AwsService,
-    private val generalOperationsRepository: GeneralOperationsRepository
+    private val generalOperationsRepository: GeneralOperationsRepository,
+    private val util: Util
 ) : UploadHandler {
     private var zipsToUpload: List<ScreenshotZipEntity>? = mutableListOf()
     companion object {
@@ -42,13 +44,26 @@ class RealUploadHandler @Inject constructor(
         test: Boolean,
         testContext: Context?
     ) {
+        if (isMissingPanelistInfo(user)) {
+            generalOperationsRepository.saveLog(
+                "UPLOAD_MISSING_PANELIST_INFO",
+                "Skipping upload for ${file.name}: missing invite code or tenant/panel assignment " +
+                    "(emailHash=${user?.emailHash}, tenantId=${user?.tenantId}, panelId=${user?.panelId}). " +
+                    "Uploading now would misfile the data or send it to an invalid path."
+            )
+            Timber.tag(TAG).e(
+                "Upload skipped for ${file.name}: participant has no invite code / panel assignment yet."
+            )
+            return
+        }
+
         val uploadPath = buildUploadPath(file, user, test)
 
         Timber.tag(TAG).d("Upload path -> $uploadPath")
 
         try {
             // Generate a signed URL for S3 upload
-            val urlFromS3 = Util().generates3ShareUrl(testContext ?: context, file.path, uploadPath)
+            val urlFromS3 = util.generates3ShareUrl(testContext ?: context, file.path, uploadPath)
             if (!urlFromS3.isNullOrEmpty()) {
                 val requestFile = file.asRequestBody()
 
@@ -66,6 +81,8 @@ class RealUploadHandler @Inject constructor(
                 )
                 Timber.tag(TAG).e("Presigned URL is empty for ${file.name}; skipping upload. Possible credential expiry.")
             }
+        } catch (credError: CredentialExpiredException) {
+            handleCredentialFailure(credError, file, user)
         } catch (error: Exception) {
             // Log upload failure
             if (file.extension != "csv") ScreenshotService.lastUploadSuccessful.postValue(false)
@@ -76,6 +93,40 @@ class RealUploadHandler @Inject constructor(
             Timber.tag(TAG).e(error, "Upload failed")
             WorkerProgressManager.updateProgress("Upload failed -> ${error.message}")
         }
+    }
+
+    /**
+     * Handles a credential refresh failure that silent re-authentication could not recover.
+     *
+     * Tracks consecutive failures and escalates once the threshold
+     * (ConstantSettings.CREDENTIAL_FAILURE_NOTIFICATION_THRESHOLD) is reached: shows a
+     * notification, and forces a sign-out so the app routes to the login screen next time it's
+     * opened (see GeneralOperationsRepository.forceSignOutForCredentialExpiry). Then rethrows so
+     * the caller (UploadWorker) knows this upload attempt did not succeed.
+     */
+    private suspend fun handleCredentialFailure(credError: CredentialExpiredException, file: File, user: UserEntity?): Nothing {
+        if (file.extension != "csv") ScreenshotService.lastUploadSuccessful.postValue(false)
+
+        val failureCount = generalOperationsRepository.incrementCredentialFailureCount()
+        generalOperationsRepository.saveLog(
+            ConstantSettings.UPLOAD_CREDENTIAL_FAILURE,
+            "Credential refresh and silent reauth both failed for file: ${file.name} (consecutive failures: $failureCount) -> ${credError.message}"
+        )
+        Timber.tag(TAG).e(credError, "Upload skipped: credentials could not be recovered")
+        WorkerProgressManager.updateProgress("Upload failed -> credentials expired")
+
+        if (failureCount >= ConstantSettings.CREDENTIAL_FAILURE_NOTIFICATION_THRESHOLD) {
+            val notificationHelper = NotificationHelper(context)
+            notificationHelper.createNotificationChannel()
+            notificationHelper.showNotification(
+                "Screenlake",
+                "We're having trouble uploading your data. Please open the app and log in again.",
+                ConstantSettings.CREDENTIAL_EXPIRED_NOTIFICATION_ID
+            )
+            generalOperationsRepository.forceSignOutForCredentialExpiry(user)
+        }
+
+        throw credError
     }
 
     /**
@@ -146,7 +197,7 @@ class RealUploadHandler @Inject constructor(
 
         try {
             // Generate a signed URL for S3 upload
-            val urlFromS3 = Util().generates3ShareUrl(testContext ?: context, file.path, uploadPath)
+            val urlFromS3 = util.generates3ShareUrl(testContext ?: context, file.path, uploadPath)
             if (!urlFromS3.isNullOrEmpty()) {
                 val requestFile = file.asRequestBody()
 
@@ -172,6 +223,17 @@ class RealUploadHandler @Inject constructor(
             )
             Timber.tag(TAG).e(error, "Upload failed")
         }
+    }
+
+    /**
+     * True when the participant hasn't been assigned an invite code / tenant / panel yet -- a
+     * fresh login only ever populates email (see GeneralOperationsRepository.recordPendingReauthUser
+     * for why), so uploading before this is filled in would either write to a placeholder path or,
+     * for the invite code specifically, a path containing the literal string "null".
+     */
+    private fun isMissingPanelistInfo(user: UserEntity?): Boolean {
+        if (user == null) return true
+        return user.emailHash.isNullOrBlank() || user.tenantId.isNullOrBlank() || user.panelId.isNullOrBlank()
     }
 
     /**
@@ -233,6 +295,9 @@ class RealUploadHandler @Inject constructor(
             entryId?.let { generalOperationsRepository.deleteZip(it) }
             if (test) UploadWorker.uploadFeedback.postValue("Upload succeeded -> $uploadPath")
             Timber.tag(TAG).d("Upload succeeded")
+
+            generalOperationsRepository.resetCredentialFailureCount()
+            NotificationHelper(context).cancelNotification(ConstantSettings.CREDENTIAL_EXPIRED_NOTIFICATION_ID)
         } else {
             val code = result?.code() ?: -1
             val msg = result?.message() ?: "no message"

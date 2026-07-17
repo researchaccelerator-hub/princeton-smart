@@ -52,6 +52,10 @@ class NotificationHelper(private val context: Context) {
         NotificationManagerCompat.from(context).notify(notificationId, builder.build())
     }
 
+    fun cancelNotification(notificationId: Int) {
+        NotificationManagerCompat.from(context).cancel(notificationId)
+    }
+
     fun getMainActivityPendingIntent() : PendingIntent {
 
         val intent = Intent(context, MainActivity::class.java).apply {

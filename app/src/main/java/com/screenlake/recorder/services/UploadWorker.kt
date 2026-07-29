@@ -103,6 +103,11 @@ class UploadWorker @AssistedInject constructor(
      * after successful uploads.
      */
     private suspend fun uploadZipFilesAsync() = withContext(Dispatchers.IO) {
+        if (!generalOperationsRepository.userExists()) {
+            Timber.tag(TAG).d("No user registered yet. Skipping this upload run.")
+            return@withContext
+        }
+
         // Fetch the list of zips to upload and the user information
         zipsToUpload = generalOperationsRepository.getZipsToUpload().take(10)?.toMutableList()
         user = generalOperationsRepository.getUser()

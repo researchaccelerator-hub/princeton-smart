@@ -13,8 +13,12 @@ import com.screenlake.data.database.dao.SessionDao
 import com.screenlake.data.database.dao.UploadDailyDao
 import com.screenlake.data.database.dao.UploadHistoryDao
 import com.screenlake.data.database.dao.UserDao
+import io.mockk.coEvery
 import io.mockk.mockk
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -22,8 +26,11 @@ import org.robolectric.RobolectricTestRunner
 @RunWith(RobolectricTestRunner::class)
 class GeneralOperationsRepositoryCredentialFailureTest {
 
+    private lateinit var userDao: UserDao
+
     private fun buildRepository(): GeneralOperationsRepository {
         val context: Context = ApplicationProvider.getApplicationContext()
+        userDao = mockk(relaxed = true)
         return GeneralOperationsRepository(
             context = context,
             logEventDao = mockk(relaxed = true),
@@ -33,7 +40,7 @@ class GeneralOperationsRepositoryCredentialFailureTest {
             sessionDao = mockk<SessionDao>(relaxed = true),
             screenshotDao = mockk<ScreenshotDao>(relaxed = true),
             screenshotZipDao = mockk<ScreenshotZipDao>(relaxed = true),
-            userDao = mockk<UserDao>(relaxed = true),
+            userDao = userDao,
             uploadHistoryDao = mockk<UploadHistoryDao>(relaxed = true),
             uploadDailyDao = mockk<UploadDailyDao>(relaxed = true),
             restrictedAppDao = mockk<RestrictedAppDao>(relaxed = true),
@@ -65,5 +72,17 @@ class GeneralOperationsRepositoryCredentialFailureTest {
         repo.resetCredentialFailureCount()
 
         assertEquals(0, repo.getCredentialFailureCount())
+    }
+
+    @Test
+    fun `userExists delegates to the DAO`() = runTest {
+        val repo = buildRepository()
+        coEvery { userDao.userExists() } returns false
+
+        assertFalse(repo.userExists())
+
+        coEvery { userDao.userExists() } returns true
+
+        assertTrue(repo.userExists())
     }
 }

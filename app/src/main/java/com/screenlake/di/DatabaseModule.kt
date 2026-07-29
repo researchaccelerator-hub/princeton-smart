@@ -19,8 +19,11 @@ import com.screenlake.data.database.dao.UploadHistoryDao
 import com.screenlake.data.database.dao.UserDao
 import com.screenlake.data.repository.AwsService
 import com.screenlake.data.repository.GeneralOperationsRepository
+import com.screenlake.recorder.authentication.CognitoSessionAuthenticator
+import com.screenlake.recorder.authentication.RealCognitoSessionAuthenticator
 import com.screenlake.recorder.services.RealUploadHandler
 import com.screenlake.recorder.services.UploadHandler
+import com.screenlake.recorder.upload.Util
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -46,9 +49,20 @@ object DatabaseModule {
     fun provideUploadHandler(
         context: Context,
         awsService: AwsService,
-        generalOperationsRepository: GeneralOperationsRepository
+        generalOperationsRepository: GeneralOperationsRepository,
+        util: Util
     ): UploadHandler {
-        return RealUploadHandler(context, awsService, generalOperationsRepository)
+        return RealUploadHandler(context, awsService, generalOperationsRepository, util)
+    }
+
+    // Fixes a pre-existing gap from Task 3 of the AC-1043 plan: CognitoSessionAuthenticator
+    // (interface) and RealCognitoSessionAuthenticator (impl) were added without ever wiring a
+    // Hilt binding between them. This went unnoticed because nothing routed Util through Hilt
+    // until this task, so the AuthRecoveryManager -> CognitoSessionAuthenticator chain was never
+    // actually resolved by the DI graph before now.
+    @Provides
+    fun provideCognitoSessionAuthenticator(impl: RealCognitoSessionAuthenticator): CognitoSessionAuthenticator {
+        return impl
     }
 
     @Provides

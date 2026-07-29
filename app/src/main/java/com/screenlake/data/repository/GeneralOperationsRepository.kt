@@ -1,6 +1,8 @@
 package com.screenlake.data.repository
 
 import android.content.Context
+import android.content.Intent
+import android.content.SharedPreferences
 import com.screenlake.MainActivity
 import com.screenlake.R
 import com.screenlake.data.database.dao.AccessibilityEventDao
@@ -257,6 +259,169 @@ class GeneralOperationsRepository @Inject constructor(
         return userDao.getUser()
     }
 
+    fun incrementCredentialFailureCount(): Int {
+        val prefs = context.getSharedPreferences(CREDENTIAL_RECOVERY_PREFS, Context.MODE_PRIVATE)
+        val next = prefs.getInt(CREDENTIAL_FAILURE_COUNT_KEY, 0) + 1
+        prefs.edit().putInt(CREDENTIAL_FAILURE_COUNT_KEY, next).apply()
+        return next
+    }
+
+    fun resetCredentialFailureCount() {
+        val prefs = context.getSharedPreferences(CREDENTIAL_RECOVERY_PREFS, Context.MODE_PRIVATE)
+        prefs.edit().putInt(CREDENTIAL_FAILURE_COUNT_KEY, 0).apply()
+    }
+
+    fun getCredentialFailureCount(): Int {
+        val prefs = context.getSharedPreferences(CREDENTIAL_RECOVERY_PREFS, Context.MODE_PRIVATE)
+        return prefs.getInt(CREDENTIAL_FAILURE_COUNT_KEY, 0)
+    }
+
+    /**
+     * Forces a sign-out and clears the local user record after credential recovery has
+     * permanently failed (the consecutive-failure notification threshold), so the app routes to
+     * the login screen the next time it's opened. Pending screenshot/upload data is deliberately
+     * left in place here -- it's only wiped later, in [reconcilePendingReauthUser], if a
+     * DIFFERENT user ends up logging back in.
+     *
+     * Also records the outgoing user's invite code (emailHash) and tenant/panel assignment, since
+     * a fresh login only ever creates a bare UserEntity with just an email (LoginFragment does not
+     * fetch the rest of the profile from the backend) -- without this, the same participant
+     * reconnecting would lose their invite code and have to be re-prompted, and until then any
+     * upload would go out under a missing/placeholder identifier.
+     *
+     * Resets the failure counter so this doesn't re-fire (re-signing-out an already-signed-out
+     * session, re-showing the same notification) on every subsequent attempt while the user has
+     * not yet re-logged in -- it escalates again only after another full run of failures.
+     *
+     * Also force-stops any in-progress recording session, the same way SettingsFragment's manual
+     * sign-out does (ACTION_STOP_SERVICE). This runs from a background WorkManager task with no
+     * Activity/Fragment, so it can't rely on ScreenRecordFragment's own isLoggedIn observer, which
+     * only stops recording if that fragment happens to still be alive -- without this, capture
+     * would keep running under a signed-out (or about-to-switch) identity, bypassing the
+     * invite-code/setup checks that only run when a NEW recording session starts.
+     *
+     * [stopActiveRecording] is fire-and-forget: it does not wait for the service's own async
+     * session-save to finish before [deleteUser] runs right after. This is currently safe only
+     * because that save reads the in-memory ScreenshotService.user, not the DB row being deleted
+     * here -- if that ever changes, this ordering would need to become dependent instead.
+     */
+    suspend fun forceSignOutForCredentialExpiry(currentUser: UserEntity?) {
+        recordPendingReauthUser(currentUser)
+        cloudAuthentication.signOut(MainActivity.isLoggedOut)
+        MainActivity.isLoggedIn.postValue(false)
+        stopActiveRecording()
+        deleteUser()
+        resetCredentialFailureCount()
+    }
+
+    private fun stopActiveRecording() {
+        // Only send this when the service is actually running. Sending it unconditionally would
+        // cold-start ScreenshotService (a FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION foreground
+        // service) purely to stop it -- and starting a foreground service from this background
+        // WorkManager context throws ForegroundServiceStartNotAllowedException on Android 12+,
+        // uncaught by the worker's own try/catch, crashing the exact retry path this fix exists
+        // to protect.
+        if (ScreenshotService.isRunning.value != true) return
+
+        Intent(context, ScreenshotService::class.java).apply {
+            action = ConstantSettings.ACTION_STOP_SERVICE
+            context.startService(this)
+        }
+    }
+
+    /**
+     * Called after a fresh login completes, before the new [UserEntity] is inserted. If a prior
+     * forced sign-out (see [forceSignOutForCredentialExpiry]) is pending reconciliation, compares
+     * the newly signed-in user's email against the one that was signed out:
+     * - Same user: restores their invite code (emailHash) and tenant/panel assignment onto [user]
+     *   in place (a fresh login only populates email), so they aren't silently uploading under a
+     *   missing/placeholder identifier and don't have to re-enter their invite code. Pending
+     *   research data is left untouched.
+     * - Different user: wipes the previous participant's pending research data, since it may
+     *   contain sensitive screen captures, and leaves [user] as-is -- a genuinely new participant
+     *   is expected to (re-)enter their own invite code through the normal flow.
+     */
+    suspend fun reconcilePendingReauthUser(user: UserEntity) {
+        val prefs = context.getSharedPreferences(CREDENTIAL_RECOVERY_PREFS, Context.MODE_PRIVATE)
+        val pendingUser = prefs.getString(PENDING_REAUTH_USER_KEY, null) ?: return
+
+        val newEmail = user.email
+        if (newEmail.isNullOrBlank()) {
+            Timber.tag("ReconcilePendingReauthUser").w(
+                "Cannot reconcile pending reauth user: incoming user has no email. Leaving pending research data and marker untouched."
+            )
+            return
+        }
+
+        if (pendingUser == normalizeEmail(newEmail)) {
+            user.emailHash = prefs.getString(PENDING_REAUTH_EMAIL_HASH_KEY, null)
+            user.tenantId = prefs.getString(PENDING_REAUTH_TENANT_ID_KEY, null) ?: user.tenantId
+            user.tenantName = prefs.getString(PENDING_REAUTH_TENANT_NAME_KEY, null) ?: user.tenantName
+            user.panelId = prefs.getString(PENDING_REAUTH_PANEL_ID_KEY, null) ?: user.panelId
+            user.panelName = prefs.getString(PENDING_REAUTH_PANEL_NAME_KEY, null) ?: user.panelName
+        } else {
+            Timber.tag("ReconcilePendingReauthUser").w(
+                "Different user logged in after a forced credential-expiry sign-out; wiping pending research data."
+            )
+            wipePendingResearchData()
+        }
+
+        clearPendingReauthMarkers(prefs)
+    }
+
+    private fun recordPendingReauthUser(user: UserEntity?) {
+        val email = user?.email
+        if (email.isNullOrBlank()) return
+        val prefs = context.getSharedPreferences(CREDENTIAL_RECOVERY_PREFS, Context.MODE_PRIVATE)
+        prefs.edit()
+            .putString(PENDING_REAUTH_USER_KEY, normalizeEmail(email))
+            .putString(PENDING_REAUTH_EMAIL_HASH_KEY, user.emailHash)
+            .putString(PENDING_REAUTH_TENANT_ID_KEY, user.tenantId)
+            .putString(PENDING_REAUTH_TENANT_NAME_KEY, user.tenantName)
+            .putString(PENDING_REAUTH_PANEL_ID_KEY, user.panelId)
+            .putString(PENDING_REAUTH_PANEL_NAME_KEY, user.panelName)
+            .apply()
+    }
+
+    private fun clearPendingReauthMarkers(prefs: SharedPreferences) {
+        prefs.edit()
+            .remove(PENDING_REAUTH_USER_KEY)
+            .remove(PENDING_REAUTH_EMAIL_HASH_KEY)
+            .remove(PENDING_REAUTH_TENANT_ID_KEY)
+            .remove(PENDING_REAUTH_TENANT_NAME_KEY)
+            .remove(PENDING_REAUTH_PANEL_ID_KEY)
+            .remove(PENDING_REAUTH_PANEL_NAME_KEY)
+            .apply()
+    }
+
+    // Emails are compared case- and whitespace-insensitively so the same participant retyping
+    // their email with different casing on re-login isn't misidentified as a different user,
+    // which would otherwise wipe their own legitimate pending research data.
+    private fun normalizeEmail(email: String) = email.trim().lowercase()
+
+    private suspend fun wipePendingResearchData() {
+        val path = context.filesDir?.path
+
+        if (path != null) {
+            File(path).walk().filter {
+                it.name.endsWith("jpg")
+                        || it.name.endsWith("zip")
+                        || it.name.endsWith("csv")
+                        || (it.name.endsWith("json") && it.name.contains("screenshot_data"))
+            }.forEach {
+                it.delete()
+                Timber.tag("ReconcilePendingReauthUser").d("Deleted file ${it.name} from phone.")
+            }
+        }
+
+        deleteAllScreenshot()
+        deleteAllScreenshotZip()
+        deleteAllPanels()
+        deleteAllSessions()
+        deleteAllAppSegments()
+        deleteAllAccessibilityEvents()
+    }
+
     private suspend fun saveScreenshots(screenshots: List<ScreenshotEntity>) {
         screenshots.forEach {
             screenshotDao.insertScreenshot(it)
@@ -408,5 +573,16 @@ class GeneralOperationsRepository @Inject constructor(
             // Subsequent queries - get records with ID > lastId
             screenshotDao.getScreenshotsBatchByTimeAndId(start, lastId, limit)
         }
+    }
+
+    companion object {
+        private const val CREDENTIAL_RECOVERY_PREFS = "credential_recovery_prefs"
+        private const val CREDENTIAL_FAILURE_COUNT_KEY = "consecutive_credential_failures"
+        private const val PENDING_REAUTH_USER_KEY = "pending_reauth_user_email"
+        private const val PENDING_REAUTH_EMAIL_HASH_KEY = "pending_reauth_email_hash"
+        private const val PENDING_REAUTH_TENANT_ID_KEY = "pending_reauth_tenant_id"
+        private const val PENDING_REAUTH_TENANT_NAME_KEY = "pending_reauth_tenant_name"
+        private const val PENDING_REAUTH_PANEL_ID_KEY = "pending_reauth_panel_id"
+        private const val PENDING_REAUTH_PANEL_NAME_KEY = "pending_reauth_panel_name"
     }
 }

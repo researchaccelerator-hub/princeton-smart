@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Binder
 import com.screenlake.data.database.dao.ScreenshotDao
 import com.screenlake.data.repository.AmplifyRepository
+import com.screenlake.recorder.authentication.AuthRecoveryManager
 import com.screenlake.recorder.authentication.CloudAuthentication
 import com.screenlake.recorder.constants.ConstantSettings
 import com.screenlake.recorder.constants.ConstantSettings.IS_CONNECTED
@@ -28,7 +29,8 @@ class ScreenCollectorSvc @Inject constructor(
     private val amplifyRepository: AmplifyRepository,
     private val screenshotDao: ScreenshotDao,
     private val generalOperationsRepository: GeneralOperationsRepository,
-    private val screenCollector: ScreenCollector
+    private val screenCollector: ScreenCollector,
+    private val authRecoveryManager: AuthRecoveryManager
 ) {
 
     @Inject
@@ -145,7 +147,11 @@ class ScreenCollectorSvc @Inject constructor(
      */
     private fun checkCredentials() {
         if (credentialCounter >= ConstantSettings.getCredentialInterval()) {
-            cloudAuthentication.fetchCurrentAuthSession()
+            cloudAuthentication.fetchCurrentAuthSession(onBadSession = {
+                CoroutineScope(Dispatchers.IO).launch {
+                    authRecoveryManager.attemptSilentReauth(context)
+                }
+            })
             credentialCounter = 0L
         } else {
             credentialCounter += nextIncrement

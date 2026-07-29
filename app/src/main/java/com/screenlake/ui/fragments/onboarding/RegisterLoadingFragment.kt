@@ -13,14 +13,13 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKeys
 import com.screenlake.MainActivity
 import com.screenlake.R
 import com.screenlake.recorder.constants.ConstantSettings
 import com.screenlake.data.database.entity.UserEntity
 import com.screenlake.data.repository.AmplifyRepository
 import com.screenlake.recorder.authentication.CloudAuthentication
+import com.screenlake.recorder.authentication.EncryptedCredentialsStore
 import com.screenlake.recorder.services.util.SharedPreferencesUtil
 import com.screenlake.recorder.utilities.BaseUtility
 import com.screenlake.recorder.viewmodels.UserViewModel
@@ -41,6 +40,9 @@ class RegisterLoadingFragment : Fragment() {
 
     @Inject
     lateinit var cloudAuthentication: CloudAuthentication
+
+    @Inject
+    lateinit var encryptedCredentialsStore: EncryptedCredentialsStore
 
     private val userViewModel: UserViewModel by viewModels()
 
@@ -116,7 +118,9 @@ class RegisterLoadingFragment : Fragment() {
 
         context?.let { SharedPreferencesUtil.setLimitDataUsage(it, true) }
 
-        user.email?.let { createAndEncryptPassword(it, amplifyRepository.password) }
+        user.email?.let {
+            encryptedCredentialsStore.storeCredentials(WeakReference(requireContext()), it, amplifyRepository.password)
+        }
 
         isUserSetupCompleted.postValue(true)
     }
@@ -128,24 +132,6 @@ class RegisterLoadingFragment : Fragment() {
             // Save user locally
             userViewModel.insertUser(user)
         }
-    }
-
-    private fun createAndEncryptPassword(email: String, password: String){
-        val keyGenParameterSpec = MasterKeys.AES256_GCM_SPEC
-        val masterKeyAlias = MasterKeys.getOrCreate(keyGenParameterSpec)
-
-        val sharedPreferences = EncryptedSharedPreferences.create(
-            "shared_preferences_filename",
-            masterKeyAlias,
-            this.requireContext(),
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
-
-        sharedPreferences.edit().apply {
-            putString("email", email)
-            putString("password", password)
-        }.apply()
     }
 
     override fun onCreateView(

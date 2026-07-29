@@ -259,6 +259,10 @@ class GeneralOperationsRepository @Inject constructor(
         return userDao.getUser()
     }
 
+    suspend fun userExists(): Boolean {
+        return userDao.userExists()
+    }
+
     fun incrementCredentialFailureCount(): Int {
         val prefs = context.getSharedPreferences(CREDENTIAL_RECOVERY_PREFS, Context.MODE_PRIVATE)
         val next = prefs.getInt(CREDENTIAL_FAILURE_COUNT_KEY, 0) + 1

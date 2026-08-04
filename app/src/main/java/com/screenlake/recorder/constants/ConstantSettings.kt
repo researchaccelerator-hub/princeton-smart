@@ -3,7 +3,7 @@ package com.screenlake.recorder.constants
 object ConstantSettings {
     const val IS_PRODUCTION = true
     // Increment this whenever any CSV column is added, renamed, or removed in any exported file.
-    const val DATA_SCHEMA_VERSION = 2
+    const val DATA_SCHEMA_VERSION = 3
     const val PERMISSIONS_REQUEST_CODE = 0
     const val ACTION_START_OR_RESUME_SERVICE = "ACTION_START_OR_RESUME_SERVICE"
     const val ACTION_PAUSE_SERVICE = "ACTION_PAUSE_SERVICE"

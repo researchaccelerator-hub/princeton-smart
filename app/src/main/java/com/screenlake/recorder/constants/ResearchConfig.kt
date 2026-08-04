@@ -122,6 +122,22 @@ object ResearchConfig {
      *   )
      */
     val ALLOWED_APPS_OVERRIDE: List<String> = emptyList()
+
+    // -----------------------------------------------------------------------------------------
+    // PACKAGE INSTALL/UNINSTALL/REPLACE TRACKING
+    // -----------------------------------------------------------------------------------------
+
+    /**
+     * When false (default), package install/uninstall/replace events are logged for the
+     * participant's entire enrollment window, regardless of screen/session state. When
+     * true, only events that occur during an active accessibility session are logged.
+     *
+     * Whole-enrollment logging captures package activity even while the phone is locked or
+     * idle, which is a broader footprint than screenshot/accessibility capture. Confirm
+     * this default is covered by your study's consent language/IRB protocol before
+     * building.
+     */
+    val LOG_PACKAGE_EVENTS_SESSION_ONLY: Boolean = false
 }
 
 /**

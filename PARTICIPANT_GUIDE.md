@@ -76,6 +76,8 @@ Once all three permissions are granted, the app is ready. Tap **Start** to begin
 
 After setup, the app runs silently in the background. You do not need to open or interact with it. A small notification will appear in your status bar to indicate the app is active. You can continue using your phone normally.
 
+Occasionally you may be asked to confirm a permission again, such as screen recording, even though you already granted it before. This is normal behavior built into Android to protect your privacy, not a sign that anything is wrong. Just tap to confirm again and the app will keep running.
+
 ---
 
 ## Battery and performance

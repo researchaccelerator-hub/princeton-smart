@@ -113,13 +113,13 @@ class ZipFileWorker @AssistedInject constructor(
         val path = (if (testing) file?.path else applicationContext.filesDir?.path) ?: ""
         writeLogsToCsv(path)
 
-        userObj = userObj ?: withContext(Dispatchers.IO) { generalOperationsRepository.getUser() }
         processPendingPackageEvents(path)
 
         // Initial offset and count tracking
         var lastProcessedId: Int? = null
 
         if (screenshotCount > 0) {
+            userObj = userObj ?: withContext(Dispatchers.IO) { generalOperationsRepository.getUser() }
             var hasMoreScreenshots = true
 
             // Loop until all screenshots are processed
@@ -341,6 +341,8 @@ class ZipFileWorker @AssistedInject constructor(
     private suspend fun processPendingPackageEvents(path: String) {
         val packageEvents = generalOperationsRepository.getPendingPackageEvents()
         if (packageEvents.isEmpty()) return
+
+        userObj = userObj ?: withContext(Dispatchers.IO) { generalOperationsRepository.getUser() }
 
         val zipFileId = UUID.randomUUID()
         val csvFiles = mutableListOf<File>()

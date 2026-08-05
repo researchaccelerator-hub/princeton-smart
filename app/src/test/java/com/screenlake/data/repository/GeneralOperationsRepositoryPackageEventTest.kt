@@ -135,7 +135,7 @@ class GeneralOperationsRepositoryPackageEventTest {
         coEvery { userDao.userExists() } returns true
         mockkObject(ResearchConfig)
         every { ResearchConfig.LOG_PACKAGE_EVENTS_SESSION_ONLY } returns true
-        coEvery { accessibilityEventDao.getMostRecentAccessibilityEvent() } returns null
+        coEvery { accessibilityEventDao.getMostRecentSessionBoundaryEvent() } returns null
 
         repo.recordPackageEvent("com.example.app", "Example", PackageEventType.INSTALLED, 1000L, false)
 
@@ -149,7 +149,7 @@ class GeneralOperationsRepositoryPackageEventTest {
         coEvery { userDao.getUser() } returns com.screenlake.data.database.entity.UserEntity(emailHash = "hash123")
         mockkObject(ResearchConfig)
         every { ResearchConfig.LOG_PACKAGE_EVENTS_SESSION_ONLY } returns true
-        coEvery { accessibilityEventDao.getMostRecentAccessibilityEvent() } returns
+        coEvery { accessibilityEventDao.getMostRecentSessionBoundaryEvent() } returns
             com.screenlake.data.database.entity.AccessibilityEventEntity(eventType = "SESSION_START")
 
         repo.recordPackageEvent("com.example.app", "Example", PackageEventType.INSTALLED, 1000L, false)
@@ -160,7 +160,7 @@ class GeneralOperationsRepositoryPackageEventTest {
     @Test
     fun `isSessionActive is false when no accessibility events have been recorded`() = runTest {
         val repo = buildRepository()
-        coEvery { accessibilityEventDao.getMostRecentAccessibilityEvent() } returns null
+        coEvery { accessibilityEventDao.getMostRecentSessionBoundaryEvent() } returns null
 
         assertFalse(repo.isSessionActive())
     }

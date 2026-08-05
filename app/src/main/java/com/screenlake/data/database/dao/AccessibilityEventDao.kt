@@ -79,10 +79,15 @@ interface AccessibilityEventDao {
     suspend fun nukeTable()
 
     /**
-     * Retrieves the single most recently recorded AccessibilityEvent, if any.
+     * Retrieves the most recently recorded session-boundary event (SESSION_START or
+     * SESSION_END), if any. Used to determine whether a session is currently active.
+     * Note: TouchAccessibilityService also writes many other event types (APP_RESTRICTED,
+     * SCREEN_TEXT, URL, IMAGE_METADATA) into this same table roughly every few seconds
+     * during active use -- this query deliberately excludes those so it reflects only
+     * session boundaries, not general activity.
      *
-     * @return The most recent AccessibilityEvent, or null if none exist.
+     * @return The most recent SESSION_START/SESSION_END event, or null if none exist.
      */
-    @Query("SELECT * FROM accessibility_event ORDER BY eventTime DESC LIMIT 1")
-    suspend fun getMostRecentAccessibilityEvent(): AccessibilityEventEntity?
+    @Query("SELECT * FROM accessibility_event WHERE eventType IN ('SESSION_START', 'SESSION_END') ORDER BY eventTime DESC LIMIT 1")
+    suspend fun getMostRecentSessionBoundaryEvent(): AccessibilityEventEntity?
 }

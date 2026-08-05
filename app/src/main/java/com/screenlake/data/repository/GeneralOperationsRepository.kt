@@ -121,6 +121,8 @@ class GeneralOperationsRepository @Inject constructor(
 
         deleteAllAccessibilityEvents()
 
+        deleteAllPackageEvents()
+
         ScreenshotService.postInitialValues()
 
         saveLog(ConstantSettings.LOGGED_OUT)
@@ -233,6 +235,10 @@ class GeneralOperationsRepository @Inject constructor(
 
     private suspend fun deleteAllAccessibilityEvents() {
         accessibilityEventDao.deleteAccessibilityEvents()
+    }
+
+    private suspend fun deleteAllPackageEvents() {
+        packageEventDao.nukeTable()
     }
 
     suspend fun saveLog(event: String, msg: String = "") = silence {
@@ -509,6 +515,7 @@ class GeneralOperationsRepository @Inject constructor(
         deleteAllSessions()
         deleteAllAppSegments()
         deleteAllAccessibilityEvents()
+        deleteAllPackageEvents()
     }
 
     private suspend fun saveScreenshots(screenshots: List<ScreenshotEntity>) {

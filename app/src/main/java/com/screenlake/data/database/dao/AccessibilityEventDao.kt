@@ -77,4 +77,12 @@ interface AccessibilityEventDao {
      */
     @Query("DELETE FROM accessibility_event")
     suspend fun nukeTable()
+
+    /**
+     * Retrieves the single most recently recorded AccessibilityEvent, if any.
+     *
+     * @return The most recent AccessibilityEvent, or null if none exist.
+     */
+    @Query("SELECT * FROM accessibility_event ORDER BY eventTime DESC LIMIT 1")
+    suspend fun getMostRecentAccessibilityEvent(): AccessibilityEventEntity?
 }

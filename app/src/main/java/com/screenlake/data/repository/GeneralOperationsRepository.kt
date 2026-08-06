@@ -280,6 +280,21 @@ class GeneralOperationsRepository @Inject constructor(
         return prefs.getInt(CREDENTIAL_FAILURE_COUNT_KEY, 0)
     }
 
+    fun markSessionActive() {
+        val prefs = context.getSharedPreferences(SESSION_STATE_PREFS, Context.MODE_PRIVATE)
+        prefs.edit().putBoolean(SESSION_ACTIVE_KEY, true).apply()
+    }
+
+    fun markSessionInactive() {
+        val prefs = context.getSharedPreferences(SESSION_STATE_PREFS, Context.MODE_PRIVATE)
+        prefs.edit().putBoolean(SESSION_ACTIVE_KEY, false).apply()
+    }
+
+    fun isSessionActive(): Boolean {
+        val prefs = context.getSharedPreferences(SESSION_STATE_PREFS, Context.MODE_PRIVATE)
+        return prefs.getBoolean(SESSION_ACTIVE_KEY, false)
+    }
+
     /**
      * Forces a sign-out and clears the local user record after credential recovery has
      * permanently failed (the consecutive-failure notification threshold), so the app routes to
@@ -588,5 +603,7 @@ class GeneralOperationsRepository @Inject constructor(
         private const val PENDING_REAUTH_TENANT_NAME_KEY = "pending_reauth_tenant_name"
         private const val PENDING_REAUTH_PANEL_ID_KEY = "pending_reauth_panel_id"
         private const val PENDING_REAUTH_PANEL_NAME_KEY = "pending_reauth_panel_name"
+        private const val SESSION_STATE_PREFS = "session_state_prefs"
+        private const val SESSION_ACTIVE_KEY = "session_active"
     }
 }

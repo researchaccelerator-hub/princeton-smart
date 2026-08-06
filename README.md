@@ -55,6 +55,7 @@ The contents of this repository enable you (a researcher) to create an Android a
 - **App Segment Data:** Tracks and logs data showing the last five apps that were on the screen before the current one.
 - **Smartphone Session Data:** Monitors smartphone session data, logging the time that the phone is unlocked to when it’s locked.
 - **Accessibility Root View Data:** Captures so-named accessibility data from the root view of the app to enhance data collection. Essentially, all XML and actions.
+- **Package Install/Uninstall/Replace Data (opt-in, off by default):** When enabled via `LOG_PACKAGE_EVENTS`, records when apps are installed, uninstalled, or updated on the device, with a timestamp.
 - **Cloud Upload & Configuration:** All collected data is uploaded to the cloud. The app is configurable to work with your own cloud infrastructure, specifically AWS. The repository also includes scripts that can be used to unpack and organize data uploaded to the cloud.
 
 ### Technical Constraints for Participants' Data Privacy
@@ -62,6 +63,8 @@ The contents of this repository enable you (a researcher) to create an Android a
 In its original form, this repository does not include a default/hard-coded cloud destination for data sent off of participants' smartphones. You, the researcher, must configure and designate a data destination for the system to work, i.e., the cloud infrastructure of the researcher's home instution. Collected data only goes where you configure the app to send that data.
 
 In its orignal form, this app is not capable of accessing the microphone, camera, speakers, or location services of the smartphone.
+
+If you enable `LOG_PACKAGE_EVENTS` with `LOG_PACKAGE_EVENTS_SESSION_ONLY` left at its default (`false`), package install/uninstall/replace events are logged for the participant's entire enrollment window, including while the phone is locked or idle — a broader footprint than the screenshot/accessibility capture described above. Confirm your study's consent language and IRB protocol cover this before enabling it.
 
 ### Setup Walkthrough videos
 - [SRK Build Tutorial pt1: Setup and Build](https://youtube.com/video/XDHoJhoESPc) (illustrates [Section 3](#build-and-distribute-the-app-using-android-studio-and-firebase))
@@ -285,6 +288,8 @@ The table below summarizes every configurable setting and its default:
 | `STORAGE_PRESSURE_THRESHOLD_PERCENT` | `95.0` | Triggers an out-of-schedule upload when device storage exceeds this percentage. Lower this for low-storage devices. |
 | `ADDITIONAL_BLOCKED_APPS` | `emptyList()` | Package names to block in addition to the built-in sensitive-app list. |
 | `ALLOWED_APPS_OVERRIDE` | `emptyList()` | Package names to allow even if they appear on the built-in block list. Use with caution. |
+| `LOG_PACKAGE_EVENTS` | `false` | Master switch for app install/uninstall/replace tracking. Off by default; must be explicitly enabled. |
+| `LOG_PACKAGE_EVENTS_SESSION_ONLY` | `false` | When true (and `LOG_PACKAGE_EVENTS` is also true), restricts logging to active accessibility sessions only. See the privacy note below before enabling either setting. |
 
 #### Screenshot Capture Presets
 

@@ -50,6 +50,7 @@ class SystemAccessibilityEventReceiver(private val mContext: Context? = null) : 
      */
     private fun handleScreenOff() {
         TouchAccessibilityService.isScreenOn.postValue(false)
+        generalOperationsRepository.markAccessibilitySessionInactive()
         if (sessionStart) {
             saveSessionEnd()
         }
@@ -96,7 +97,6 @@ class SystemAccessibilityEventReceiver(private val mContext: Context? = null) : 
         val endTime = Instant.now().toEpochMilli()
         save("SESSION_END", endTime)
         sessionStart = false
-        generalOperationsRepository.markAccessibilitySessionInactive()
     }
 
     /**

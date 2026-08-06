@@ -21,7 +21,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
 @RunWith(RobolectricTestRunner::class)
-class GeneralOperationsRepositorySessionActiveTest {
+class GeneralOperationsRepositoryAccessibilitySessionActiveTest {
 
     private fun buildRepository(): GeneralOperationsRepository {
         val context: Context = ApplicationProvider.getApplicationContext()
@@ -42,29 +42,29 @@ class GeneralOperationsRepositorySessionActiveTest {
     }
 
     @Test
-    fun `isSessionActive defaults to false when never set`() {
+    fun `isAccessibilitySessionActive defaults to false when never set`() {
         val repo = buildRepository()
 
-        assertFalse(repo.isSessionActive())
+        assertFalse(repo.isAccessibilitySessionActive())
     }
 
     @Test
-    fun `markSessionActive makes isSessionActive return true`() {
+    fun `markAccessibilitySessionActive makes isAccessibilitySessionActive return true`() {
         val repo = buildRepository()
 
-        repo.markSessionActive()
+        repo.markAccessibilitySessionActive()
 
-        assertTrue(repo.isSessionActive())
+        assertTrue(repo.isAccessibilitySessionActive())
     }
 
     @Test
-    fun `markSessionInactive makes isSessionActive return false`() {
+    fun `markAccessibilitySessionInactive makes isAccessibilitySessionActive return false`() {
         val repo = buildRepository()
-        repo.markSessionActive()
+        repo.markAccessibilitySessionActive()
 
-        repo.markSessionInactive()
+        repo.markAccessibilitySessionInactive()
 
-        assertFalse(repo.isSessionActive())
+        assertFalse(repo.isAccessibilitySessionActive())
     }
 
     @Test
@@ -84,7 +84,7 @@ class GeneralOperationsRepositorySessionActiveTest {
             uploadDailyDao = mockk<UploadDailyDao>(relaxed = true),
             restrictedAppDao = mockk<RestrictedAppDao>(relaxed = true),
         )
-        repo1.markSessionActive()
+        repo1.markAccessibilitySessionActive()
 
         val repo2 = GeneralOperationsRepository(
             context = context,
@@ -104,6 +104,6 @@ class GeneralOperationsRepositorySessionActiveTest {
         // Confirms the flag lives in SharedPreferences (survives a fresh repository
         // instance, e.g. a different process/object graph reading the same disk-backed
         // prefs file), not in an in-memory field on the repository object itself.
-        assertTrue(repo2.isSessionActive())
+        assertTrue(repo2.isAccessibilitySessionActive())
     }
 }

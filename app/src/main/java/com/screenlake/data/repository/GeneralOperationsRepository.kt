@@ -286,7 +286,7 @@ class GeneralOperationsRepository @Inject constructor(
     ) {
         if (!userDao.userExists()) return
         if (isPackageRestricted(packageName)) return
-        if (ResearchConfig.LOG_PACKAGE_EVENTS_SESSION_ONLY && !isSessionActive()) return
+        if (ResearchConfig.LOG_PACKAGE_EVENTS_SESSION_ONLY && !isAccessibilitySessionActive()) return
 
         val user = userDao.getUser()
         packageEventDao.save(
@@ -303,28 +303,6 @@ class GeneralOperationsRepository @Inject constructor(
 
     suspend fun getPendingPackageEvents(): List<PackageEventEntity> {
         return packageEventDao.getAllPackageEvents(500)
-    }
-
-    /**
-     * Determines whether a recording session is currently open, using the most recently
-     * recorded session-boundary event as a real-time liveness signal. `session_table` rows are
-     * only written when a session ENDS (see [buildCurrentSession]), so it can never confirm a
-     * still-running session; the accessibility_event table gets a SESSION_START row the instant
-     * a session begins and a SESSION_END row when it ends, so the most recent such row reflects
-     * whether a session is open right now.
-     *
-     * Note: accessibility_event also receives many other event types (APP_RESTRICTED,
-     * SCREEN_TEXT, URL, IMAGE_METADATA) roughly every few seconds during active use -- it is
-     * NOT exclusively session-boundary rows. [AccessibilityEventDao.getMostRecentSessionBoundaryEvent]
-     * filters those out explicitly so this check reflects only SESSION_START/SESSION_END.
-     *
-     * A null most-recent-event (e.g. right after ZipFileWorker has just flushed all
-     * accessibility events for this cycle) is treated as "not active" -- fails closed, under-
-     * collecting rather than over-collecting, which is the correct direction for this
-     * privacy-sensitive toggle.
-     */
-    suspend fun isSessionActive(): Boolean {
-        return accessibilityEventDao.getMostRecentSessionBoundaryEvent()?.eventType == "SESSION_START"
     }
 
     suspend fun deletePackageEvents(ids: List<Int>) {

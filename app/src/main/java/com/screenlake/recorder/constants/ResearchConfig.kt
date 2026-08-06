@@ -128,6 +128,15 @@ object ResearchConfig {
     // -----------------------------------------------------------------------------------------
 
     /**
+     * Master switch for package install/uninstall/replace event tracking.
+     *
+     * When false (default), the feature is fully inactive: no events are recorded, and no
+     * package-event data is queried or written anywhere in the pipeline. A deliberate
+     * researcher action (setting this to true and rebuilding) is required to enable it.
+     */
+    val LOG_PACKAGE_EVENTS: Boolean = false
+
+    /**
      * When false (default), package install/uninstall/replace events are logged for the
      * participant's entire enrollment window, regardless of screen/session state. When
      * true, only events that occur during an active accessibility session are logged.

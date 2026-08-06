@@ -10,6 +10,7 @@ import com.screenlake.data.database.entity.ScreenshotEntity
 import com.screenlake.data.database.entity.ScreenshotZipEntity
 import com.screenlake.data.database.entity.UserEntity
 import com.screenlake.data.repository.GeneralOperationsRepository
+import com.screenlake.recorder.constants.ResearchConfig
 import com.screenlake.recorder.screenshot.DataTransformation
 import com.screenlake.recorder.utilities.TimeUtility
 import com.screenlake.recorder.utilities.ZipFile
@@ -339,6 +340,8 @@ class ZipFileWorker @AssistedInject constructor(
      * @param path The path where the CSV/zip should be written.
      */
     private suspend fun processPendingPackageEvents(path: String) {
+        if (!ResearchConfig.LOG_PACKAGE_EVENTS) return
+
         val packageEvents = generalOperationsRepository.getPendingPackageEvents()
         if (packageEvents.isEmpty()) return
 

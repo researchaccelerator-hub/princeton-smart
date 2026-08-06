@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import com.screenlake.data.enums.PackageEventType
 import com.screenlake.data.repository.GeneralOperationsRepository
+import com.screenlake.recorder.constants.ResearchConfig
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,8 +22,7 @@ import javax.inject.Inject
  * Manifest-registered (not dynamically registered like SystemAccessibilityEventReceiver)
  * because these three actions are exempt from Android's API 26+ implicit-broadcast
  * background restrictions, so this still fires while the app is backgrounded or the
- * device is in Doze -- see claude-docs/superpowers/specs/2026-07-30-package-install-uninstall-tracking-design.md
- * section 4 for the alternatives considered.
+ * device is in Doze.
  */
 @AndroidEntryPoint
 class PackageEventReceiver : BroadcastReceiver() {
@@ -31,6 +31,8 @@ class PackageEventReceiver : BroadcastReceiver() {
     lateinit var generalOperationsRepository: GeneralOperationsRepository
 
     override fun onReceive(context: Context, intent: Intent) {
+        if (!ResearchConfig.LOG_PACKAGE_EVENTS) return
+
         val packageName = intent.data?.schemeSpecificPart ?: return
         val eventType = when (intent.action) {
             Intent.ACTION_PACKAGE_ADDED -> PackageEventType.INSTALLED

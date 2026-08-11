@@ -92,6 +92,7 @@ class TouchAccessibilityService() : AccessibilityService() {
     private val workCoordinatorMutex = Mutex()
 
     private var mReceiver: BroadcastReceiver? = null
+    private var mPackageEventReceiver: BroadcastReceiver? = null
     private var workCoordinatorCounter = 0L
     private var job: Job? = null
 
@@ -125,6 +126,7 @@ class TouchAccessibilityService() : AccessibilityService() {
 
         // Register broadcast receiver to listen for screen state changes
         registerScreenStateReceiver()
+        registerPackageEventReceiver()
 
         Handler(Looper.getMainLooper()).post {
             // Call observeForever on the main thread
@@ -144,6 +146,7 @@ class TouchAccessibilityService() : AccessibilityService() {
     override fun onDestroy() {
         // Unregister broadcast receiver and remove observer
         mReceiver?.let { context?.get()?.unregisterReceiver(it) }
+        mPackageEventReceiver?.let { context?.get()?.unregisterReceiver(it) }
         Handler(Looper.getMainLooper()).post {
             // Call observeForever on the main thread
             isScreenOn.removeObserver(customObserver)
@@ -160,6 +163,18 @@ class TouchAccessibilityService() : AccessibilityService() {
         mReceiver = SystemAccessibilityEventReceiver(context?.get())
         context?.get()?. let { ctx ->
             ContextCompat.registerReceiver(ctx, mReceiver, filter, ContextCompat.RECEIVER_EXPORTED)
+        }
+    }
+
+    private fun registerPackageEventReceiver() {
+        val filter = IntentFilter(Intent.ACTION_PACKAGE_ADDED).apply {
+            addAction(Intent.ACTION_PACKAGE_REMOVED)
+            addAction(Intent.ACTION_PACKAGE_REPLACED)
+            addDataScheme("package")
+        }
+        mPackageEventReceiver = PackageEventReceiver()
+        context?.get()?.let { ctx ->
+            ContextCompat.registerReceiver(ctx, mPackageEventReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
         }
     }
 

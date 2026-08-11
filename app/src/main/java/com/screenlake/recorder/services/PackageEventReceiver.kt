@@ -19,10 +19,16 @@ import javax.inject.Inject
  * (PACKAGE_ADDED / PACKAGE_REMOVED / PACKAGE_REPLACED) and delegates all gating,
  * filtering, and persistence to GeneralOperationsRepository.recordPackageEvent().
  *
- * Manifest-registered (not dynamically registered like SystemAccessibilityEventReceiver)
- * because these three actions are exempt from Android's API 26+ implicit-broadcast
- * background restrictions, so this still fires while the app is backgrounded or the
- * device is in Doze.
+ * Dynamically registered from TouchAccessibilityService (not manifest-declared) --
+ * on-device testing showed these actions are NOT reliably delivered to a manifest
+ * receiver on current Android, despite older guidance suggesting they were exempt
+ * from the API 26+ implicit-broadcast background restrictions. Google's current
+ * documentation confirms ACTION_PACKAGE_REPLACED is explicitly not exempt, and
+ * ACTION_PACKAGE_ADDED/REMOVED aren't listed as exempt either. Dynamic registration
+ * was never subject to that restriction, and since TouchAccessibilityService's
+ * accessibility service stays bound continuously (independent of screen/session
+ * state) for as long as the accessibility permission is granted, this preserves
+ * whole-enrollment capture including while the phone is locked.
  */
 @AndroidEntryPoint
 class PackageEventReceiver : BroadcastReceiver() {

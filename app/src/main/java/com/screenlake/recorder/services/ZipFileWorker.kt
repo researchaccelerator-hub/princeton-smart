@@ -10,6 +10,7 @@ import com.screenlake.data.database.entity.ScreenshotEntity
 import com.screenlake.data.database.entity.ScreenshotZipEntity
 import com.screenlake.data.database.entity.UserEntity
 import com.screenlake.data.repository.GeneralOperationsRepository
+import com.screenlake.recorder.constants.ResearchConfig
 import com.screenlake.recorder.screenshot.DataTransformation
 import com.screenlake.recorder.utilities.TimeUtility
 import com.screenlake.recorder.utilities.ZipFile
@@ -112,6 +113,8 @@ class ZipFileWorker @AssistedInject constructor(
 
         val path = (if (testing) file?.path else applicationContext.filesDir?.path) ?: ""
         writeLogsToCsv(path)
+
+        processPendingPackageEvents(path)
 
         // Initial offset and count tracking
         var lastProcessedId: Int? = null
@@ -325,6 +328,40 @@ class ZipFileWorker @AssistedInject constructor(
             csvFiles.add(File(path, appSegmentCSVFile))
             generalOperationsRepository.deleteAppSegments(appSegments.map { it.id.toString() })
         }
+    }
+
+    /**
+     * Flushes any pending package install/uninstall/replace events into their own CSV and
+     * zip. Unlike processAccessibilityEvents/processSessions/processAppSegments, this does
+     * NOT run only when screenshotCount > 0 -- package events can occur with zero
+     * screenshots pending (e.g. while the phone is locked), and must still reach the
+     * upload pipeline on every worker run.
+     *
+     * @param path The path where the CSV/zip should be written.
+     */
+    private suspend fun processPendingPackageEvents(path: String) {
+        if (!ResearchConfig.LOG_PACKAGE_EVENTS) return
+
+        val packageEvents = generalOperationsRepository.getPendingPackageEvents()
+        if (packageEvents.isEmpty()) return
+
+        userObj = userObj ?: withContext(Dispatchers.IO) { generalOperationsRepository.getUser() }
+
+        val zipFileId = UUID.randomUUID()
+        val csvFiles = mutableListOf<File>()
+
+        val packageEventCsv = DataTransformation.createPackageEventCSV(packageEvents)
+        val packageEventCsvFile = "package_event_data_csv_${zipFileId}.csv"
+        writeFileOnInternalStorage(packageEventCsvFile, packageEventCsv, path)
+        csvFiles.add(File(path, packageEventCsvFile))
+
+        val manifestFile = writeManifestCsv(path, zipFileId)
+        csvFiles.add(manifestFile)
+
+        createCsvZipFile(csvFiles, path, zipFileId)
+        csvFiles.forEach { it.withLogging("Zip Worker", "Delete") { file -> file.delete() } }
+
+        generalOperationsRepository.deletePackageEvents(packageEvents.mapNotNull { it.id })
     }
 
     private fun writeManifestCsv(path: String, zipFileId: UUID): File {

@@ -6,6 +6,7 @@ import com.screenlake.data.database.ScreenshotDatabase
 import com.screenlake.data.database.dao.AccessibilityEventDao
 import com.screenlake.data.database.dao.AppSegmentDao
 import com.screenlake.data.database.dao.LogEventDao
+import com.screenlake.data.database.dao.PackageEventDao
 import com.screenlake.data.database.dao.PanelDao
 import com.screenlake.data.database.dao.RestrictedAppDao
 import com.screenlake.data.database.dao.ScreenshotDao
@@ -133,5 +134,10 @@ object DatabaseModule {
     @Provides
     fun provideTopicSeenDao(database: ScreenshotDatabase): TopicSeenDao {
         return database.getTopicSeenDao()
+    }
+
+    @Provides
+    fun providePackageEventDao(database: ScreenshotDatabase): PackageEventDao {
+        return database.getPackageEventDao()
     }
 }

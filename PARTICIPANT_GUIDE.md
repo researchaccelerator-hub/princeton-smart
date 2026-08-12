@@ -22,6 +22,7 @@ While the app is running, it collects:
 - **App history** — a record of recent app switching (the last few apps you had open)
 - **Accessibility data** — information about the layout and content of the screen
 - **Session times** — when your phone screen turns on and off
+- **App install/uninstall/update events** *(only if enabled for this study)* — records when apps are added, removed, or updated on your device, with a timestamp
 
 ---
 

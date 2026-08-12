@@ -8,6 +8,7 @@ import com.screenlake.R
 import com.screenlake.data.database.dao.AccessibilityEventDao
 import com.screenlake.data.database.dao.AppSegmentDao
 import com.screenlake.data.database.dao.LogEventDao
+import com.screenlake.data.database.dao.PackageEventDao
 import com.screenlake.data.database.dao.PanelDao
 import com.screenlake.data.database.dao.RestrictedAppDao
 import com.screenlake.data.database.dao.ScreenshotDao
@@ -21,6 +22,7 @@ import com.screenlake.data.database.dao.UserDao
 import com.screenlake.data.database.entity.AccessibilityEventEntity
 import com.screenlake.data.database.entity.AppSegmentEntity
 import com.screenlake.data.database.entity.LogEventEntity
+import com.screenlake.data.database.entity.PackageEventEntity
 import com.screenlake.data.database.entity.RestrictedAppPersistentEntity
 import com.screenlake.data.database.entity.ScreenshotEntity
 import com.screenlake.data.database.entity.ScreenshotZipEntity
@@ -31,9 +33,12 @@ import com.screenlake.data.database.entity.TopicSeenIntervalEntity
 import com.screenlake.data.database.entity.UploadDailyEntity
 import com.screenlake.data.database.entity.UploadHistoryEntity
 import com.screenlake.data.database.entity.UserEntity
+import com.screenlake.data.enums.PackageEventType
 import com.screenlake.recorder.authentication.CloudAuthentication
 import com.screenlake.recorder.constants.ConstantSettings
+import com.screenlake.recorder.constants.ConstantSettings.RESTRICTED_APPS
 import com.screenlake.recorder.constants.ConstantSettings.SCREENSHOT_MAPPING
+import com.screenlake.recorder.constants.ResearchConfig
 import com.screenlake.recorder.screenshot.DataTransformation
 import com.screenlake.recorder.services.ScreenshotService
 import com.screenlake.recorder.utilities.TimeUtility
@@ -62,6 +67,7 @@ class GeneralOperationsRepository @Inject constructor(
     private val uploadHistoryDao: UploadHistoryDao,
     private val uploadDailyDao: UploadDailyDao,
     private val restrictedAppDao: RestrictedAppDao,
+    private val packageEventDao: PackageEventDao,
 ) {
 
     @Inject
@@ -114,6 +120,8 @@ class GeneralOperationsRepository @Inject constructor(
         deleteAllAppSegments()
 
         deleteAllAccessibilityEvents()
+
+        deleteAllPackageEvents()
 
         ScreenshotService.postInitialValues()
 
@@ -229,6 +237,10 @@ class GeneralOperationsRepository @Inject constructor(
         accessibilityEventDao.deleteAccessibilityEvents()
     }
 
+    private suspend fun deleteAllPackageEvents() {
+        packageEventDao.nukeTable()
+    }
+
     suspend fun saveLog(event: String, msg: String = "") = silence {
         logEventDao.saveException(
             LogEventEntity(event, msg, amplifyRepository.email)
@@ -253,6 +265,48 @@ class GeneralOperationsRepository @Inject constructor(
 
     suspend fun getASEvents(): List<AccessibilityEventEntity> {
         return accessibilityEventDao.getAllAccessibilityEvents(500)
+    }
+
+    suspend fun isPackageRestricted(packageName: String): Boolean {
+        if (ResearchConfig.ALLOWED_APPS_OVERRIDE.contains(packageName)) return false
+
+        if (RESTRICTED_APPS.contains(packageName) || ResearchConfig.ADDITIONAL_BLOCKED_APPS.contains(packageName)) {
+            return true
+        }
+
+        return restrictedAppDao.getRestrictedAppByPackageName(packageName).any { it.isUserRestricted }
+    }
+
+    suspend fun recordPackageEvent(
+        packageName: String,
+        appName: String?,
+        eventType: PackageEventType,
+        eventTime: Long,
+        isReplacing: Boolean
+    ) {
+        if (!userDao.userExists()) return
+        if (isPackageRestricted(packageName)) return
+        if (ResearchConfig.LOG_PACKAGE_EVENTS_SESSION_ONLY && !isAccessibilitySessionActive()) return
+
+        val user = userDao.getUser()
+        packageEventDao.save(
+            PackageEventEntity(
+                user = user.emailHash,
+                packageName = packageName,
+                appName = appName,
+                eventType = eventType.name,
+                eventTime = eventTime,
+                isReplacing = isReplacing
+            )
+        )
+    }
+
+    suspend fun getPendingPackageEvents(): List<PackageEventEntity> {
+        return packageEventDao.getAllPackageEvents(500)
+    }
+
+    suspend fun deletePackageEvents(ids: List<Int>) {
+        packageEventDao.deletePackageEvents(ids)
     }
 
     suspend fun getUser(): UserEntity {
@@ -439,6 +493,7 @@ class GeneralOperationsRepository @Inject constructor(
         deleteAllSessions()
         deleteAllAppSegments()
         deleteAllAccessibilityEvents()
+        deleteAllPackageEvents()
     }
 
     private suspend fun saveScreenshots(screenshots: List<ScreenshotEntity>) {

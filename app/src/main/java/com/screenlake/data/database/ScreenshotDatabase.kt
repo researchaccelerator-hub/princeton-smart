@@ -6,6 +6,7 @@ import com.screenlake.data.database.dao.AccessibilityEventDao
 import com.screenlake.data.database.dao.AppSegmentDao
 import com.screenlake.data.database.dao.LogEventDao
 import com.screenlake.data.database.dao.PanelDao
+import com.screenlake.data.database.dao.PackageEventDao
 import com.screenlake.data.database.dao.RestrictedAppDao
 import com.screenlake.data.database.dao.ScreenshotDao
 import com.screenlake.data.database.dao.ScreenshotZipDao
@@ -19,6 +20,7 @@ import com.screenlake.data.database.dao.UserDao
 import com.screenlake.data.database.entity.AccessibilityEventEntity
 import com.screenlake.data.database.entity.AppSegmentEntity
 import com.screenlake.data.database.entity.LogEventEntity
+import com.screenlake.data.database.entity.PackageEventEntity
 import com.screenlake.data.database.entity.PanelInviteEntity
 import com.screenlake.data.database.entity.RestrictedAppPersistentEntity
 import com.screenlake.data.database.entity.ScrollEventSegmentEntity
@@ -47,7 +49,8 @@ import com.screenlake.recorder.constants.ConstantSettings
         AppSegmentEntity::class,
         AccessibilityEventEntity::class,
         ScrollEventSegmentEntity::class,
-        TopicSeenIntervalEntity::class
+        TopicSeenIntervalEntity::class,
+        PackageEventEntity::class
     ],
     version = ConstantSettings.DATA_SCHEMA_VERSION
 )
@@ -66,6 +69,7 @@ abstract class ScreenshotDatabase : RoomDatabase() {
     abstract fun getAccessibilityEventDao(): AccessibilityEventDao
     abstract fun getScrollEventDao(): ScrollEventDao
     abstract fun getTopicSeenDao(): TopicSeenDao
+    abstract fun getPackageEventDao(): PackageEventDao
 
     companion object {
         const val DATABASE_NAME = "the_lake"

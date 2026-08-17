@@ -998,7 +998,8 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         isScreenLocked.set(true)
 
         CoroutineScope(Dispatchers.IO).launch {
-            saveSessionSegmentsInBackground()
+            // Segment-building now happens inside beginOcr() (called below), which covers
+            // this path too -- no need to duplicate it here.
             generalOperationsRepository.buildCurrentSession(framesPerSecondConst, "SCREEN_OFF")
             generalOperationsRepository.saveSession(generalOperationsRepository.currentSession)
             // Create a new session.
@@ -1046,6 +1047,12 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
     }
 
     private fun beginOcr() = CoroutineScope(Dispatchers.IO).launch {
+        // Screenshots only become zip-eligible once they belong to an app segment (see
+        // ScreenshotDao's batch queries). The manual-upload trigger (button2 -> uploadCommand())
+        // calls straight into this function without going through a session-ending event first,
+        // so segments must be built here rather than assumed to already exist.
+        generalOperationsRepository.saveAllSessionSegments()
+
         val screenshots = generalOperationsRepository.getScreenshotsToOcr(1000)
         Timber.tag(TAG).d("Starting OCR: Processing ${screenshots.size} images.")
         processedCount = 0

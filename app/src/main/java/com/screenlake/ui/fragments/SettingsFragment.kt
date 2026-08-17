@@ -8,7 +8,6 @@ import android.os.Bundle
 import android.preference.PreferenceManager
 import android.view.View
 import androidx.activity.OnBackPressedCallback
-import androidx.datastore.preferences.preferencesDataStore
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
@@ -29,8 +28,6 @@ import kotlin.collections.get
 
 @AndroidEntryPoint
 class SettingsFragment : PreferenceFragmentCompat() {
-    // Create an extension property for DataStore
-    private val Context.dataStore by preferencesDataStore(name = "settings")
 
     @Inject
     lateinit var generalOperationsRepository: GeneralOperationsRepository

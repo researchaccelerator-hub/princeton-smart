@@ -4,6 +4,7 @@ import com.screenlake.data.model.AppSegmentResult
 import com.screenlake.data.database.entity.AccessibilityEventEntity
 import com.screenlake.data.database.entity.AppSegmentEntity
 import com.screenlake.data.database.entity.LogEventEntity
+import com.screenlake.data.database.entity.PackageEventEntity
 import com.screenlake.data.database.entity.ScreenshotEntity
 import com.screenlake.data.database.entity.SessionEntity
 import com.screenlake.recorder.utilities.TimeUtility.getFormattedDate
@@ -156,6 +157,29 @@ object DataTransformation {
         }
 
         return sessionCsv
+    }
+
+    fun createPackageEventCSV(packageEvents: List<PackageEventEntity>): String {
+        return csvOf(
+            listOf(
+                "id_user",
+                "apk",
+                "app_name",
+                "event_type",
+                "t_unix_ts_ms",
+                "is_replacing"
+            ),
+            packageEvents
+        ) {
+            listOf(
+                it.user.toString(),
+                it.packageName.toString(),
+                it.appName.toString(),
+                it.eventType.toString(),
+                it.eventTime.toString(),
+                it.isReplacing.toString()
+            )
+        }
     }
 
      fun getAndSaveLogs(logs: List<LogEventEntity>) : String{

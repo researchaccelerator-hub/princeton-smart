@@ -47,7 +47,6 @@ okHttpBom = "5.3.2"
 retrofit = "3.0.0"
 robolectric = "4.16.1"
 room = "2.8.4"
-secrets = "2.0.1"
 tesseract4Android = "4.9.0"
 timber = "4.7.1"
 truth = "1.4.5"
@@ -115,7 +114,6 @@ datastore-preferences = { group = "androidx.datastore", name = "datastore-prefer
 android-application = { id = "com.android.application", version.ref = "android" }
 devtools-ksp = { id = "com.google.devtools.ksp", version.ref = "devtoolsKsp" }
 firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "firebaseCrashlytics" }
-google-secrets = { id = "com.google.android.libraries.mapsplatform.secrets-gradle-plugin", version.ref = "secrets" }
 google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
 hilt-android = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }

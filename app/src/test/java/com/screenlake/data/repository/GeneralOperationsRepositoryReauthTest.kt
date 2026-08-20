@@ -5,6 +5,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.screenlake.data.database.dao.AccessibilityEventDao
 import com.screenlake.data.database.dao.AppSegmentDao
 import com.screenlake.data.database.dao.LogEventDao
+import com.screenlake.data.database.dao.PackageEventDao
 import com.screenlake.data.database.dao.PanelDao
 import com.screenlake.data.database.dao.RestrictedAppDao
 import com.screenlake.data.database.dao.ScreenshotDao
@@ -74,6 +75,7 @@ class GeneralOperationsRepositoryReauthTest {
             uploadHistoryDao = mockk<UploadHistoryDao>(relaxed = true),
             uploadDailyDao = mockk<UploadDailyDao>(relaxed = true),
             restrictedAppDao = mockk<RestrictedAppDao>(relaxed = true),
+            packageEventDao = mockk<PackageEventDao>(relaxed = true),
         )
         repo.cloudAuthentication = cloudAuthentication
         return repo

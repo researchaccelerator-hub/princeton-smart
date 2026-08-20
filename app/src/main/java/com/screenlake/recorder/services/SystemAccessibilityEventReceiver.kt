@@ -50,6 +50,7 @@ class SystemAccessibilityEventReceiver(private val mContext: Context? = null) : 
      */
     private fun handleScreenOff() {
         TouchAccessibilityService.isScreenOn.postValue(false)
+        generalOperationsRepository.markAccessibilitySessionInactive()
         if (sessionStart) {
             saveSessionEnd()
         }
@@ -81,6 +82,7 @@ class SystemAccessibilityEventReceiver(private val mContext: Context? = null) : 
         sessionStart = true
         screenOff = false
         TouchAccessibilityService.isScreenOn.postValue(true)
+        generalOperationsRepository.markAccessibilitySessionActive()
 
         // Save the session start event in the database
         save("SESSION_START", startTime)

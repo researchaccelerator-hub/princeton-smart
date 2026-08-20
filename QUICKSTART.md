@@ -29,6 +29,12 @@ Participants receive an email from Firebase with a link to install the app. Afte
 2. Complete a one-time permission-granting flow (usage access, battery optimization, accessibility service) — this requires navigating system settings on their phone, guided by the app
 3. The app then runs passively in the background with no further interaction required
 
+**Note on repeated prompts:** Some participants may occasionally see a permission or screen-recording prompt reappear, even though it was already granted. This is expected Android behavior, not a bug in the app:
+- **Screen recording prompt:** Since Android 14, the OS requires a fresh confirmation any time the recording session is interrupted, for example if it closes the app in the background to save memory or battery.
+- **Accessibility permission:** Because the app is installed directly rather than through the Play Store, Android can periodically re-lock the Accessibility toggle ("Restricted settings"), which requires the participant to unlock it again through a settings menu.
+
+Neither of these can be disabled from within the app. They are Android privacy protections that apply to any app in this situation. Let participants know that an occasional one-tap re-confirmation is normal and does not mean anything is wrong.
+
 ---
 
 ## What do you need before starting?

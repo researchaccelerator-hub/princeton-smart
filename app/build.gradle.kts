@@ -6,7 +6,6 @@ plugins {
     alias(libs.plugins.devtools.ksp)
     alias(libs.plugins.firebase.crashlytics)
     alias(libs.plugins.google.services)
-    alias(libs.plugins.google.secrets)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.kotlin.android)
     id("kotlin-kapt")
@@ -22,8 +21,8 @@ android {
         applicationId = "com.screenlake"
         minSdk = 28
         targetSdk = 35
-        versionCode = 51
-        versionName = "1.50.0"
+        versionCode = 52
+        versionName = "1.51.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -58,8 +57,8 @@ android {
 
     buildTypes {
         release {
-//            isMinifyEnabled = true
-//            isDebuggable = false
+            isMinifyEnabled = true
+            isDebuggable = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

@@ -24,22 +24,13 @@ body:
       required: false
   # Intentionally not a list of literal version numbers, which would go stale every release.
   # Mirrors SECURITY.md's "only the latest release is supported" policy.
-  - type: dropdown
+  - type: input
     id: app-version
     attributes:
-      label: App version
-      options:
-        - Latest release
-        - Previous version (specify below)
-    validations:
-      required: true
-  - type: input
-    id: previous-version
-    attributes:
-      label: If "Previous version," which one?
+      label: Affected app version?
       placeholder: e.g. 1.50.1
     validations:
-      required: false
+      required: true
   - type: textarea
     id: affected-devices
     attributes:
@@ -50,13 +41,13 @@ body:
   - type: dropdown
     id: reporter-role
     attributes:
-      label: Are you a researcher/developer or a study participant?
+      label: Are you a researcher, developer or a study participant?
       options:
-        - Researcher/developer
+        - Researcher
+        - Developer
         - Study participant
-        - Not sure
     validations:
-      required: false
+      required: true
   - type: textarea
     id: logs
     attributes:

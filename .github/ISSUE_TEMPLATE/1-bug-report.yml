@@ -22,6 +22,8 @@ body:
       label: Expected behavior
     validations:
       required: false
+  # Intentionally not a list of literal version numbers, which would go stale every release.
+  # Mirrors SECURITY.md's "only the latest release is supported" policy.
   - type: dropdown
     id: app-version
     attributes:

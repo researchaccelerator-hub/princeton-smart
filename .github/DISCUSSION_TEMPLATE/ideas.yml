@@ -1,3 +1,4 @@
+# Filename must match the "Ideas" discussion category's slug ("ideas") exactly, or GitHub will not attach this form to the category.
 title: "[Idea]: "
 body:
   - type: textarea

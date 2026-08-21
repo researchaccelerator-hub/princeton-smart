@@ -1,0 +1,57 @@
+name: Bug Report
+description: Report a problem with the SMART app or its setup/build tooling
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+    validations:
+      required: false
+  # Intentionally not a list of literal version numbers, which would go stale every release.
+  # Mirrors SECURITY.md's "only the latest release is supported" policy.
+  - type: input
+    id: app-version
+    attributes:
+      label: Affected app version?
+      placeholder: e.g. 1.50.1
+    validations:
+      required: true
+  - type: textarea
+    id: affected-devices
+    attributes:
+      label: Affected device(s) and Android version(s)
+      placeholder: "Pixel 7, Android 14; Galaxy S21, Android 13"
+    validations:
+      required: true
+  - type: dropdown
+    id: reporter-role
+    attributes:
+      label: Are you a researcher, developer or a study participant?
+      options:
+        - Researcher
+        - Developer
+        - Study participant
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Do not attach real participant screen-capture data. It may contain sensitive information this app exists to protect.
+    validations:
+      required: false

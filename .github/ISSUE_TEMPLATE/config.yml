@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Feature Request
+    url: https://github.com/researchaccelerator-hub/princeton-smart/discussions/categories/ideas
+    about: Suggest a new feature or capability for SMART
+  - name: Report a Security Vulnerability
+    url: https://github.com/researchaccelerator-hub/princeton-smart/blob/main/SECURITY.md
+    about: Do not report vulnerabilities as public issues, see our security policy for how to report privately
+  - name: Questions / General Discussion
+    url: https://github.com/researchaccelerator-hub/princeton-smart/discussions
+    about: Ask a question or start a general discussion

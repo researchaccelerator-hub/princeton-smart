@@ -1,0 +1,30 @@
+name: Documentation Issue
+description: Report something wrong, unclear, or missing in the README, Quickstart, Participant Guide, or other docs
+title: "[Docs]: "
+labels:
+  - documentation
+body:
+  - type: dropdown
+    id: which-doc
+    attributes:
+      label: Which doc?
+      options:
+        - README.md
+        - QUICKSTART.md
+        - PARTICIPANT_GUIDE.md
+        - SECURITY.md
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: whats-wrong
+    attributes:
+      label: What's wrong or unclear?
+    validations:
+      required: true
+  - type: textarea
+    id: suggested-fix
+    attributes:
+      label: Suggested fix
+    validations:
+      required: false

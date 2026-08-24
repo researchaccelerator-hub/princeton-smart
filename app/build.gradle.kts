@@ -11,6 +11,11 @@ plugins {
     id("kotlin-kapt")
 }
 
+// google-services.json is gitignored, like local.properties, and absent in CI. Without it, the
+// Google Services plugin's own per-variant task hard-fails with no built-in optional mode.
+// Disabled below when it's missing; a real build with the file present is unaffected.
+val googleServicesJsonExists = project.file("google-services.json").exists()
+
 android {
 
     namespace = "com.screenlake"
@@ -57,7 +62,17 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = true
+            // Left off: full-mode R8 currently fails independent of anything in this repo,
+            // even with a real google-services.json present. Firebase Crashlytics's mapping-
+            // file-upload task (created automatically whenever this is on) throws "Google-Services
+            // plugin not found" — a NoClassDefFoundError on com.google.gms.googleservices.
+            // GoogleServicesTask when Crashlytics's AppIdFetcher looks it up, even though that
+            // class is present in the resolved google-services 4.4.4 jar and plugin declaration
+            // order doesn't affect it. Looks like a genuine version-compatibility gap between
+            // firebase-crashlytics-gradle 3.0.6 and google-services 4.4.4/AGP 8.13.2. Re-enable
+            // only after confirming a working plugin version combination with a full
+            // `./gradlew assembleRelease` (minified) locally first.
+            isMinifyEnabled = false
             isDebuggable = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -71,6 +86,11 @@ android {
             buildConfigField("String", "COGNITO_IDENTITY_POOL_ID", "\"$cognitoIdentityPoolId\"")
             buildConfigField("String", "COGNITO_POOL_ID", "\"$cognitoUserPoolId\"")
             buildConfigField("String", "COGNITO_APP_CLIENT_ID", "\"$cognitoAppClientId\"")
+
+            // ZipFileWorker references this unconditionally; its check is always guarded by
+            // `BuildConfig.DEBUG &&` so the value here is unreachable, but the release variant
+            // still needs the symbol to exist to compile.
+            buildConfigField("Boolean", "DEBUG_ZIP_EXPORT", "false")
         }
 
         debug {
@@ -129,6 +149,15 @@ android {
         viewBinding = true
         dataBinding = true
         buildConfig = true
+    }
+}
+
+// The Google Services plugin's own per-variant task hard-fails when google-services.json is
+// absent, with no built-in optional mode. Disable it in that case (CI/CodeQL); a real build with
+// the file present is unaffected.
+if (!googleServicesJsonExists) {
+    tasks.matching { it.name.matches(Regex("process.*GoogleServices")) }.configureEach {
+        enabled = false
     }
 }
 

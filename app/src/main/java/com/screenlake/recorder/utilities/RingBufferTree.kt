@@ -27,10 +27,12 @@ object RingBufferTree : Timber.Tree() {
             android.util.Log.ERROR -> "E"
             else -> "?"
         }
-        val timestamp = dateFormat.format(Date())
-        val line = "$timestamp $priorityLabel/${tag ?: "Screenlake"}: $message"
-
         synchronized(lock) {
+            // dateFormat.format() must run inside the lock: SimpleDateFormat mutates a
+            // shared internal Calendar and is not thread-safe, and this tree is fed from
+            // multiple concurrent background threads/services in production.
+            val timestamp = dateFormat.format(Date())
+            val line = "$timestamp $priorityLabel/${tag ?: "Screenlake"}: $message"
             lines.addLast(line)
             if (t != null) lines.addLast(t.stackTraceToString())
             while (lines.size > ResearchConfig.SEND_LOGS_MAX_LINES) {

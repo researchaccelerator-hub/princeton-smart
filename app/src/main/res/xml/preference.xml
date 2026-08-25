@@ -74,4 +74,10 @@
             android:title="Logout of SRK"
             android:key="@string/logout"
             />
+
+        <Preference
+            android:title="Send Logs"
+            android:key="send_logs"
+            android:summary="Send recent app logs to help diagnose an issue."
+            app:isPreferenceVisible="false" />
 </PreferenceScreen>

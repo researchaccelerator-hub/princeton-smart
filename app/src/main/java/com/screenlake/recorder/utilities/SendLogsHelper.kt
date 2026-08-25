@@ -28,7 +28,10 @@ object SendLogsHelper {
             appendLine("----------------------------------------")
         }
 
-        val dir = File(context.filesDir, "send_logs").apply { mkdirs() }
+        val dir = File(context.filesDir, "send_logs")
+        if (!dir.exists() && !dir.mkdirs()) {
+            throw java.io.IOException("Could not create directory: ${dir.absolutePath}")
+        }
         val file = File(dir, FILE_NAME)
         file.writeText(metadata + RingBufferTree.dumpAsText())
         return file

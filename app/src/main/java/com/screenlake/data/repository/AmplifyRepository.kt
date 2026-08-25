@@ -141,12 +141,7 @@ class AmplifyRepository @Inject constructor(
     private suspend fun getAuth() : String? {
         val session = Amplify.Auth.fetchAuthSession()
         val authSession = (session as AWSCognitoAuthSession)
-        val id = authSession.userPoolTokens.value?.idToken
-        val test = authSession.awsCredentials.value
-        val test2 = authSession.identityId
-
-        Timber.d("HERE $test $test2 $id")
-        return id
+        return authSession.userPoolTokens.value?.idToken
     }
 
     private suspend fun RestOptions.patch(apiName: String) : Boolean {

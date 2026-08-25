@@ -23,7 +23,7 @@ While the app is running, it collects:
 - **Accessibility data** — information about the layout and content of the screen
 - **Session times** — when your phone screen turns on and off
 - **App install/uninstall/update events** *(only if enabled for this study)* — records when apps are added, removed, or updated on your device, with a timestamp
-- **Recent app log output** *(only if enabled for this study)* — while the app is running, it temporarily keeps a small in-memory record of recent app activity (not saved to disk, and cleared when the app restarts). It is only ever shared if you choose to tap "Send Logs" in Settings, to help researchers diagnose a problem you report.
+- **Recent app log output** *(only if enabled for this study)* — while the app is running, it temporarily keeps a small in-memory record of recent app activity, cleared when the app restarts. It is only written to a file on your device, and only ever shared, if you choose to tap "Send Logs" in Settings, to help researchers diagnose a problem you report.
 
 ---
 

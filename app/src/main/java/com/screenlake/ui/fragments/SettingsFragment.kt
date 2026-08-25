@@ -7,6 +7,7 @@ import android.content.SharedPreferences
 import android.os.Bundle
 import android.preference.PreferenceManager
 import android.view.View
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.activityViewModels
@@ -26,6 +27,7 @@ import com.screenlake.recorder.utilities.SendLogsHelper
 import com.screenlake.recorder.viewmodels.MainViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
+import timber.log.Timber
 import javax.inject.Inject
 import kotlin.collections.get
 
@@ -193,20 +195,25 @@ class SettingsFragment : PreferenceFragmentCompat() {
      * Builds the log export file and hands it to the OS share sheet.
      */
     private fun sendLogs() {
-        val context = requireContext()
-        val file = SendLogsHelper.buildLogFile(context)
-        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        try {
+            val context = requireContext()
+            val file = SendLogsHelper.buildLogFile(context)
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
 
-        val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(Intent.EXTRA_STREAM, uri)
-            if (ResearchConfig.SEND_LOGS_DESTINATION_EMAIL.isNotBlank()) {
-                putExtra(Intent.EXTRA_EMAIL, arrayOf(ResearchConfig.SEND_LOGS_DESTINATION_EMAIL))
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                if (ResearchConfig.SEND_LOGS_DESTINATION_EMAIL.isNotBlank()) {
+                    putExtra(Intent.EXTRA_EMAIL, arrayOf(ResearchConfig.SEND_LOGS_DESTINATION_EMAIL))
+                }
+                putExtra(Intent.EXTRA_SUBJECT, "Princeton SMART logs")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            putExtra(Intent.EXTRA_SUBJECT, "Princeton SMART logs")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            startActivity(Intent.createChooser(intent, "Send Logs"))
+        } catch (e: Exception) {
+            Timber.tag("SettingsFragment").e(e, "Failed to send logs")
+            Toast.makeText(requireContext(), "Couldn't send logs: ${e.message}", Toast.LENGTH_LONG).show()
         }
-        startActivity(Intent.createChooser(intent, "Send Logs"))
     }
 
     /**

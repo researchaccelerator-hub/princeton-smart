@@ -68,23 +68,22 @@ class RingBufferTreeTest {
     }
 
     @Test
-    fun `low-priority entries are evicted before a higher-priority entry under capacity pressure`() {
+    fun `low-priority entries are evicted before an older higher-priority entry under capacity pressure`() {
         val max = ResearchConfig.SEND_LOGS_MAX_LINES
 
-        for (i in 1..(max - 1)) {
+        Timber.tag("Important").w("warn-old")
+        for (i in 1..max) {
             Timber.d("debug-$i")
         }
-        Timber.tag("Important").w("warn-1")
-        // Buffer is now exactly at max: (max - 1) debug entries + 1 warn entry.
-
-        Timber.d("debug-overflow")
-        // One more low-priority entry pushes past capacity; a debug entry should be
-        // evicted to make room, not the warn entry.
+        // warn-old is the OLDEST entry in the buffer at this point. Plain oldest-first
+        // FIFO eviction (the pre-fix behavior) would have dropped it to make room for
+        // the debug lines that follow; priority-aware eviction must drop a debug line
+        // instead and keep it, which is what this test actually discriminates.
 
         val dump = RingBufferTree.dumpAsText()
         val lines = dump.split("\n")
 
         assertEquals(max, lines.size)
-        assertTrue(dump.contains("W/Important: warn-1"))
+        assertTrue(dump.contains("W/Important: warn-old"))
     }
 }

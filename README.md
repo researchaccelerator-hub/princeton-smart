@@ -290,6 +290,9 @@ The table below summarizes every configurable setting and its default:
 | `ALLOWED_APPS_OVERRIDE` | `emptyList()` | Package names to allow even if they appear on the built-in block list. Use with caution. |
 | `LOG_PACKAGE_EVENTS` | `false` | Master switch for app install/uninstall/replace tracking. Off by default; must be explicitly enabled. |
 | `LOG_PACKAGE_EVENTS_SESSION_ONLY` | `false` | When true (and `LOG_PACKAGE_EVENTS` is also true), restricts logging to active accessibility sessions only. See the privacy note below before enabling either setting. |
+| `SEND_LOGS_ENABLED` | `false` | Master switch for the "Send Logs" button in Settings. Off by default; must be explicitly enabled. |
+| `SEND_LOGS_MAX_LINES` | `1500` | How many recent log lines are kept in memory for export when SEND_LOGS_ENABLED is true. |
+| `SEND_LOGS_DESTINATION_EMAIL` | `""` | Optional email pre-filled when sending logs. Blank by default -- no destination is tied to a shared/monitored inbox out of the box. |
 
 #### Screenshot Capture Presets
 

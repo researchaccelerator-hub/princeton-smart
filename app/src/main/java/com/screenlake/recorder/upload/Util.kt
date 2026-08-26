@@ -126,13 +126,13 @@ class Util @Inject constructor(private val authRecoveryManager: AuthRecoveryMana
         return try {
             // generatePresignedUrl() internally calls the credentials provider (AWSMobileClient)
             // to sign the request, which can hit the same blocking SDK path as checkCredentials()
-            // above -- bound it with the same timeout/interrupt pattern rather than leaving it
+            // above, so bound it with the same timeout/interrupt pattern rather than leaving it
             // as the one remaining unprotected call into that code.
             withTimeout(15_000) {
                 val url = runInterruptible(Dispatchers.IO) {
                     s3client?.generatePresignedUrl(generatePresignedUrlRequest).toString()
                 }
-                Timber.tag(TAG).d("Generated Url - $url")
+                Timber.tag(TAG).d("Generated presigned URL for upload")
                 url
             }
         } catch (timeoutEx: TimeoutCancellationException) {

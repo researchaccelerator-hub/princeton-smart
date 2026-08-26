@@ -98,7 +98,7 @@ class AmplifyRepository @Inject constructor(
             .get(context, INTERNAL_API)
 
         val jsonString = panelInvite?.data?.let { String(it.rawBytes) }
-        Timber.tag("DoWork").d("GET succeeded: $jsonString")
+        Timber.tag("DoWork").d("GET succeeded, response length=${jsonString?.length ?: 0}")
 
         return if (panelInvite?.code?.isSuccessful == true){
 
@@ -122,7 +122,7 @@ class AmplifyRepository @Inject constructor(
             .get(context, INTERNAL_API)
 
         val jsonString = userString?.data?.let { String(it.rawBytes) }
-        Timber.tag("DoWork").d("GET succeeded: $jsonString")
+        Timber.tag("DoWork").d("GET succeeded, response length=${jsonString?.length ?: 0}")
 
         return if(!jsonString.isNullOrBlank()){
             val gson= GsonBuilder().excludeFieldsWithoutExposeAnnotation().create()

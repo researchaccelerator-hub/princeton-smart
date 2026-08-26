@@ -56,7 +56,7 @@ The contents of this repository enable you (a researcher) to create an Android a
 - **Smartphone Session Data:** Monitors smartphone session data, logging the time that the phone is unlocked to when it’s locked.
 - **Accessibility Root View Data:** Captures so-named accessibility data from the root view of the app to enhance data collection. Essentially, all XML and actions.
 - **Package Install/Uninstall/Replace Data (opt-in, off by default):** When enabled via `LOG_PACKAGE_EVENTS`, records when apps are installed, uninstalled, or updated on the device, with a timestamp.
-- **Send Logs (opt-in, off by default):** When enabled via `SEND_LOGS_ENABLED`, adds a "Send Logs" button to Settings that lets a participant or researcher export recent app diagnostic output (not participant content; screenshots, OCR text, etc. are never included) and share it via any app on the device, to help diagnose problems.
+- **Send Logs (opt-in, off by default):** When enabled via `SEND_LOGS_ENABLED`, adds a "Send Logs" button to Settings that lets a participant or researcher export recent app diagnostic output (log lines, not screenshots or OCR images) and share it via any app on the device, to help diagnose problems. See the privacy note below for what this can contain.
 - **Cloud Upload & Configuration:** All collected data is uploaded to the cloud. The app is configurable to work with your own cloud infrastructure, specifically AWS. The repository also includes scripts that can be used to unpack and organize data uploaded to the cloud.
 
 ### Technical Constraints for Participants' Data Privacy

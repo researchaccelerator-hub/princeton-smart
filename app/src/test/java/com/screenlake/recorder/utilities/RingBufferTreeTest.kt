@@ -11,7 +11,7 @@ import timber.log.Timber
 class RingBufferTreeTest {
 
     // RingBufferTree overrides Timber.Tree's `log(priority, tag, message, t)`, which
-    // Timber declares `protected abstract` -- it cannot be called directly from an
+    // Timber declares `protected abstract`, so it cannot be called directly from an
     // external test class (Kotlin keeps override visibility matching the overridden
     // member by default, and there is no compile error, just silent resolution to a
     // different public Timber.Tree.log(...) overload with different parameter meaning).

@@ -171,7 +171,7 @@ object ResearchConfig {
     /**
      * Optional email address pre-filled as the recipient when a participant/researcher
      * taps "Send Logs" and picks a mail app from the share sheet. Left blank by default
-     * so the app ships with no destination tied to a monitored inbox or process -- set
+     * so the app ships with no destination tied to a monitored inbox or process. Set
      * this to your own study's address if you want it pre-filled.
      */
     val SEND_LOGS_DESTINATION_EMAIL: String = ""

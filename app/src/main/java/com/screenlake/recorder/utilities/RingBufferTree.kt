@@ -11,7 +11,7 @@ import java.util.Locale
  * (see Settings -> Send Logs). Bounded by ResearchConfig.SEND_LOGS_MAX_LINES. When
  * full, the oldest low-priority (below WARN) entry is dropped first, so a burst of
  * routine DEBUG/INFO activity cannot evict the WARN/ERROR lines that are usually
- * what a researcher actually needs -- only falls back to dropping the oldest entry
+ * what a researcher actually needs, only falling back to dropping the oldest entry
  * outright once every remaining entry is already WARN or above. Only planted when
  * ResearchConfig.SEND_LOGS_ENABLED is true.
  */

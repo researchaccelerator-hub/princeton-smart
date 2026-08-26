@@ -150,7 +150,7 @@ class AmplifyRepository @Inject constructor(
             try {
                 val response = Amplify.API.patch(this, apiName)
                 val json = String(response.data.rawBytes)
-                Timber.tag("DoWork").d("Patch succeeded: $json")
+                Timber.tag("DoWork").d("Patch succeeded, response length=${json.length}")
 
                 val isSuccess = GsonBuilder().excludeFieldsWithoutExposeAnnotation().create().fromJson(json, SimpleResponse::class.java)?.message == "Success"
                 isSuccess

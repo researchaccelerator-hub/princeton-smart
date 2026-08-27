@@ -98,7 +98,7 @@ class AmplifyRepository @Inject constructor(
             .get(context, INTERNAL_API)
 
         val jsonString = panelInvite?.data?.let { String(it.rawBytes) }
-        Timber.tag("DoWork").d("GET succeeded: $jsonString")
+        Timber.tag("DoWork").d("GET succeeded, response length=${jsonString?.length ?: 0}")
 
         return if (panelInvite?.code?.isSuccessful == true){
 
@@ -122,7 +122,7 @@ class AmplifyRepository @Inject constructor(
             .get(context, INTERNAL_API)
 
         val jsonString = userString?.data?.let { String(it.rawBytes) }
-        Timber.tag("DoWork").d("GET succeeded: $jsonString")
+        Timber.tag("DoWork").d("GET succeeded, response length=${jsonString?.length ?: 0}")
 
         return if(!jsonString.isNullOrBlank()){
             val gson= GsonBuilder().excludeFieldsWithoutExposeAnnotation().create()
@@ -141,12 +141,7 @@ class AmplifyRepository @Inject constructor(
     private suspend fun getAuth() : String? {
         val session = Amplify.Auth.fetchAuthSession()
         val authSession = (session as AWSCognitoAuthSession)
-        val id = authSession.userPoolTokens.value?.idToken
-        val test = authSession.awsCredentials.value
-        val test2 = authSession.identityId
-
-        Timber.d("HERE $test $test2 $id")
-        return id
+        return authSession.userPoolTokens.value?.idToken
     }
 
     private suspend fun RestOptions.patch(apiName: String) : Boolean {
@@ -155,7 +150,7 @@ class AmplifyRepository @Inject constructor(
             try {
                 val response = Amplify.API.patch(this, apiName)
                 val json = String(response.data.rawBytes)
-                Timber.tag("DoWork").d("Patch succeeded: $json")
+                Timber.tag("DoWork").d("Patch succeeded, response length=${json.length}")
 
                 val isSuccess = GsonBuilder().excludeFieldsWithoutExposeAnnotation().create().fromJson(json, SimpleResponse::class.java)?.message == "Success"
                 isSuccess

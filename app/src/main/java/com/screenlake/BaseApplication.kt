@@ -7,6 +7,8 @@ import com.amplifyframework.AmplifyException
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.screenlake.data.database.dao.RestrictedAppDao
 import com.screenlake.recorder.ocr.Assets
+import com.screenlake.recorder.constants.ResearchConfig
+import com.screenlake.recorder.utilities.RingBufferTree
 import dagger.hilt.android.HiltAndroidApp
 import timber.log.Timber
 import java.lang.ref.WeakReference
@@ -48,5 +50,9 @@ class BaseApplication : Application(), Configuration.Provider {
                     super.log(priority, "Screenlake$tag", message, t)
             }
         })
+
+        if (ResearchConfig.SEND_LOGS_ENABLED) {
+            Timber.plant(RingBufferTree)
+        }
     }
 }

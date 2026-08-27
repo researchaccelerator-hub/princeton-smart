@@ -7,22 +7,27 @@ import android.content.SharedPreferences
 import android.os.Bundle
 import android.preference.PreferenceManager
 import android.view.View
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.preference.*
+import androidx.core.content.FileProvider
 import com.screenlake.R
 import com.screenlake.MainActivity
 import com.screenlake.data.repository.GeneralOperationsRepository
 import com.screenlake.recorder.authentication.CloudAuthentication
 import com.screenlake.recorder.constants.ConstantSettings
 import com.screenlake.recorder.constants.ConstantSettings.SCREENSHOT_MAPPING
+import com.screenlake.recorder.constants.ResearchConfig
 import com.screenlake.recorder.services.ScreenshotService
+import com.screenlake.recorder.utilities.SendLogsHelper
 import com.screenlake.recorder.viewmodels.MainViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
+import timber.log.Timber
 import javax.inject.Inject
 import kotlin.collections.get
 
@@ -116,6 +121,14 @@ class SettingsFragment : PreferenceFragmentCompat() {
                 showSignOutDialog()
                 true
             }
+
+        findPreference<Preference>("send_logs")?.apply {
+            isVisible = ResearchConfig.SEND_LOGS_ENABLED
+            onPreferenceClickListener = Preference.OnPreferenceClickListener {
+                sendLogs()
+                true
+            }
+        }
     }
 
 
@@ -176,6 +189,31 @@ class SettingsFragment : PreferenceFragmentCompat() {
             }
             .setNegativeButton("No", null)
             .show()
+    }
+
+    /**
+     * Builds the log export file and hands it to the OS share sheet.
+     */
+    private fun sendLogs() {
+        try {
+            val context = requireContext()
+            val file = SendLogsHelper.buildLogFile(context)
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                if (ResearchConfig.SEND_LOGS_DESTINATION_EMAIL.isNotBlank()) {
+                    putExtra(Intent.EXTRA_EMAIL, arrayOf(ResearchConfig.SEND_LOGS_DESTINATION_EMAIL))
+                }
+                putExtra(Intent.EXTRA_SUBJECT, "Princeton SMART logs")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            startActivity(Intent.createChooser(intent, "Send Logs"))
+        } catch (e: Exception) {
+            Timber.tag("SettingsFragment").e(e, "Failed to send logs")
+            Toast.makeText(requireContext(), "Couldn't send logs: ${e.message}", Toast.LENGTH_LONG).show()
+        }
     }
 
     /**

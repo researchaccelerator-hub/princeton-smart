@@ -147,6 +147,34 @@ object ResearchConfig {
      * building.
      */
     val LOG_PACKAGE_EVENTS_SESSION_ONLY: Boolean = false
+
+    // -----------------------------------------------------------------------------------------
+    // SEND LOGS (SETTINGS)
+    // -----------------------------------------------------------------------------------------
+
+    /**
+     * Master switch for the "Send Logs" feature in Settings.
+     *
+     * When false (default), the feature is fully inactive: no "Send Logs" preference is
+     * shown, and no log buffer is captured or held in memory. A deliberate researcher
+     * action (setting this to true and rebuilding) is required to enable it.
+     */
+    val SEND_LOGS_ENABLED: Boolean = false
+
+    /**
+     * Maximum number of recent log lines kept in memory for export when SEND_LOGS_ENABLED
+     * is true. Oldest lines are dropped once this cap is reached. Higher values capture
+     * more history at the cost of memory while the app is running.
+     */
+    const val SEND_LOGS_MAX_LINES: Int = 1500
+
+    /**
+     * Optional email address pre-filled as the recipient when a participant/researcher
+     * taps "Send Logs" and picks a mail app from the share sheet. Left blank by default
+     * so the app ships with no destination tied to a monitored inbox or process. Set
+     * this to your own study's address if you want it pre-filled.
+     */
+    val SEND_LOGS_DESTINATION_EMAIL: String = ""
 }
 
 /**

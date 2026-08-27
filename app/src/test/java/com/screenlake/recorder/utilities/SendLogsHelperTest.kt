@@ -3,6 +3,7 @@ package com.screenlake.recorder.utilities
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -41,6 +42,7 @@ class SendLogsHelperTest {
         assertTrue(contents.contains("OS version: Android"))
         assertTrue(contents.contains("Device:"))
         assertTrue(contents.contains("I/TagA: hello from the buffer"))
+        assertTrue(file.name.matches(Regex("""SRK_\d{8}_\d{6}_logs\.txt""")))
     }
 
     @Test
@@ -51,7 +53,7 @@ class SendLogsHelperTest {
     }
 
     @Test
-    fun `buildLogFile overwrites any previous export`() {
+    fun `buildLogFile replaces any previous export, leaving only the latest file on disk`() {
         Timber.tag("TagA").i("first run")
         SendLogsHelper.buildLogFile(context)
 
@@ -62,5 +64,6 @@ class SendLogsHelperTest {
         val contents = file.readText()
         assertTrue(contents.contains("second run"))
         assertFalse(contents.contains("first run"))
+        assertEquals(1, file.parentFile?.listFiles()?.size)
     }
 }

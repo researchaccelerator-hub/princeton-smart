@@ -1,3 +1,4 @@
+import groovy.json.JsonSlurper
 import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
@@ -11,10 +12,29 @@ plugins {
     id("kotlin-kapt")
 }
 
-// google-services.json is gitignored, like local.properties, and absent in CI. Without it, the
-// Google Services plugin's own per-variant task hard-fails with no built-in optional mode.
-// Disabled below when it's missing; a real build with the file present is unaffected.
-val googleServicesJsonExists = project.file("google-services.json").exists()
+// google-services.json is gitignored, like local.properties. Without it, the Google Services
+// plugin's own per-variant task hard-fails with no built-in optional mode, so it's disabled below
+// for any variant the file doesn't cover.
+val googleServicesJsonFile = project.file("google-services.json")
+val googleServicesJsonExists = googleServicesJsonFile.exists()
+
+// The plugin also hard-fails if the file exists but has no client entry for a variant's exact
+// applicationId. The debug build type appends ".debug" (AC-528) for side-by-side installs, so a
+// google-services.json that only registers the release package name (e.g. a stale CI secret)
+// fails processDebugGoogleServices even though the file is present. Read the package names it
+// actually covers so that check can be done per variant instead of assuming all-or-nothing.
+val googleServicesPackageNames: Set<String> = if (googleServicesJsonExists) {
+    val parsed = JsonSlurper().parse(googleServicesJsonFile) as? Map<*, *>
+    (parsed?.get("client") as? List<*>)
+        ?.mapNotNull { client ->
+            val clientInfo = (client as? Map<*, *>)?.get("client_info") as? Map<*, *>
+            (clientInfo?.get("android_client_info") as? Map<*, *>)?.get("package_name") as? String
+        }
+        ?.toSet()
+        ?: emptySet()
+} else {
+    emptySet()
+}
 
 android {
 
@@ -152,12 +172,17 @@ android {
     }
 }
 
-// The Google Services plugin's own per-variant task hard-fails when google-services.json is
-// absent, with no built-in optional mode. Disable it in that case (CI/CodeQL); a real build with
-// the file present is unaffected.
-if (!googleServicesJsonExists) {
-    tasks.matching { it.name.matches(Regex("process.*GoogleServices")) }.configureEach {
-        enabled = false
+// Disable each variant's processGoogleServices task unless google-services.json actually has a
+// client entry for that variant's applicationId (covers both the file being fully absent, e.g.
+// CI/CodeQL, and it being present but missing a suffixed variant like debug).
+androidComponents {
+    onVariants { variant ->
+        if (variant.applicationId.orNull !in googleServicesPackageNames) {
+            val taskName = "process${variant.name.replaceFirstChar { it.uppercase() }}GoogleServices"
+            tasks.matching { it.name == taskName }.configureEach {
+                enabled = false
+            }
+        }
     }
 }
 

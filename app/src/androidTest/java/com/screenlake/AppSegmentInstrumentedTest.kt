@@ -98,7 +98,7 @@ class AppSegmentInstrumentedTest {
     @Test
     fun useAppContext() {
         // Context of the app under test.
-        assertEquals("com.screenlake", appContext.packageName)
+        assertEquals(BuildConfig.APPLICATION_ID, appContext.packageName)
     }
 
     // TODO: fix race condition in test

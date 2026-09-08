@@ -131,8 +131,10 @@ class UploadWorkerInstrumentedTest {
         // Run the worker
         val result = uploadWorkerLocal.doWork()
 
-        // Assert that the result is success (or retry, depending on your implementation)
-        assertEquals(ListenableWorker.Result.failure(), result)
+        // No network is retried rather than failed outright, so a later run can pick the
+        // upload back up once connectivity returns (see "Gracefully handle auth expiration
+        // with retry" (#9)).
+        assertEquals(ListenableWorker.Result.retry(), result)
     }
 
     /**
@@ -239,10 +241,13 @@ class UploadWorkerInstrumentedTest {
         val zipsToUpload = insertZipsToUpload(user)
         createDummyZipFiles(zipsToUpload)
 
-        // genOp is a relaxed mock, not backed by the real DAO the helpers above write to,
-        // so it must be stubbed here or the upload loop sees an empty list and never
-        // invokes the upload handler at all.
+        // genOp is a relaxed mock, not backed by the real DAO the helpers above write to, so
+        // it must be stubbed here or the upload loop sees an empty list and never invokes the
+        // upload handler at all. userExists() also needs stubbing since its unstubbed relaxed
+        // default (false) trips UploadWorker's "no user registered yet" guard before the
+        // upload handler is ever reached.
         coEvery { genOp.getZipsToUpload() } returns zipsToUpload
+        coEvery { genOp.userExists() } returns true
 
         val result = uploadWorkerLocal.doWork()
 

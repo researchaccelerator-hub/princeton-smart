@@ -66,6 +66,7 @@ class ZipFile {
             if (!it.endsWith(File.separator)) "$it${File.separator}"
             else it
         }
+        val locationCanonicalPath = location.canonicalPath
 
         var zipEntry: ZipEntry?
         var unzipFile: File
@@ -73,6 +74,14 @@ class ZipFile {
 
         while (inStream.nextEntry.also { zipEntry = it } != null) {
             unzipFile = File(locationPath + zipEntry!!.name)
+
+            val entryCanonicalPath = unzipFile.canonicalPath
+            if (entryCanonicalPath != locationCanonicalPath &&
+                !entryCanonicalPath.startsWith(locationCanonicalPath + File.separator)
+            ) {
+                throw SecurityException("Zip entry is outside of the target directory: ${zipEntry!!.name}")
+            }
+
             if (zipEntry!!.isDirectory) {
                 if (!unzipFile.isDirectory) unzipFile.mkdirs()
             } else {

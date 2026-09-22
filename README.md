@@ -56,15 +56,20 @@ The contents of this repository enable you (a researcher) to create an Android a
 - **Smartphone Session Data:** Monitors smartphone session data, logging the time that the phone is unlocked to when it’s locked.
 - **Accessibility Root View Data:** Captures so-named accessibility data from the root view of the app to enhance data collection. Essentially, all XML and actions.
 - **Package Install/Uninstall/Replace Data (opt-in, off by default):** When enabled via `LOG_PACKAGE_EVENTS`, records when apps are installed, uninstalled, or updated on the device, with a timestamp.
+- **Send Logs (opt-in, off by default):** When enabled via `SEND_LOGS_ENABLED`, adds a "Send Logs" button to Settings that lets a participant or researcher export recent app diagnostic output (log lines, not screenshots or OCR images) and share it via any app on the device, to help diagnose problems. See the privacy note below for what this can contain.
 - **Cloud Upload & Configuration:** All collected data is uploaded to the cloud. The app is configurable to work with your own cloud infrastructure, specifically AWS. The repository also includes scripts that can be used to unpack and organize data uploaded to the cloud.
 
 ### Technical Constraints for Participants' Data Privacy
 
 In its original form, this repository does not include a default/hard-coded cloud destination for data sent off of participants' smartphones. You, the researcher, must configure and designate a data destination for the system to work, i.e., the cloud infrastructure of the researcher's home instution. Collected data only goes where you configure the app to send that data.
 
+The one exception is the opt-in Send Logs feature described above: if you enable `SEND_LOGS_ENABLED`, a participant who taps "Send Logs" chooses their own destination (any app installed on their device) for that specific diagnostic export, independent of your configured cloud destination.
+
 In its orignal form, this app is not capable of accessing the microphone, camera, speakers, or location services of the smartphone.
 
 If you enable `LOG_PACKAGE_EVENTS` with `LOG_PACKAGE_EVENTS_SESSION_ONLY` left at its default (`false`), package install/uninstall/replace events are logged for the participant's entire enrollment window, including while the phone is locked or idle — a broader footprint than the screenshot/accessibility capture described above. Confirm your study's consent language and IRB protocol cover this before enabling it.
+
+If you enable `SEND_LOGS_ENABLED`, the exported file contains raw application log output at all severity levels from wherever Timber logging is called throughout the app, not a curated or redacted subset. Review your codebase for any logging of sensitive values before enabling this in a real study, and confirm your consent language covers a participant being able to share this file with a destination of their own choosing.
 
 ### Setup Walkthrough videos
 - [SRK Build Tutorial pt1: Setup and Build](https://youtube.com/video/XDHoJhoESPc) (illustrates [Section 3](#build-and-distribute-the-app-using-android-studio-and-firebase))
@@ -290,6 +295,9 @@ The table below summarizes every configurable setting and its default:
 | `ALLOWED_APPS_OVERRIDE` | `emptyList()` | Package names to allow even if they appear on the built-in block list. Use with caution. |
 | `LOG_PACKAGE_EVENTS` | `false` | Master switch for app install/uninstall/replace tracking. Off by default; must be explicitly enabled. |
 | `LOG_PACKAGE_EVENTS_SESSION_ONLY` | `false` | When true (and `LOG_PACKAGE_EVENTS` is also true), restricts logging to active accessibility sessions only. See the privacy note below before enabling either setting. |
+| `SEND_LOGS_ENABLED` | `false` | Master switch for the "Send Logs" button in Settings. Off by default; must be explicitly enabled. |
+| `SEND_LOGS_MAX_LINES` | `1500` | How many recent log lines are kept in memory for export when SEND_LOGS_ENABLED is true. |
+| `SEND_LOGS_DESTINATION_EMAIL` | `""` | Optional email pre-filled when sending logs. Blank by default, so no destination is tied to a shared/monitored inbox out of the box. |
 
 #### Screenshot Capture Presets
 

@@ -244,6 +244,12 @@ dependencies {
     implementation("androidx.sqlite:sqlite-framework:2.4.0")
     implementation("androidx.sqlite:sqlite-ktx:2.4.0")
 
+    // Robolectric pulls a vulnerable bcprov-jdk18on 1.81 transitively; constrain it to the
+    // patched version Snyk flags (test-only, never shipped in the app).
+    constraints {
+        testImplementation(libs.bouncycastle.bcprov.jdk18on)
+    }
+
     testRuntimeOnly(libs.junit.jupiter.engine)
     testImplementation(libs.junit)
 //    testImplementation(libs.junit.jupiter.api)

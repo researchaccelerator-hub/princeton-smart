@@ -4,6 +4,9 @@ amplify = "1.37.10"
 amplifyCoreKotlin = "0.21.3"
 android = "8.13.2"
 androidxAnnotation = "1.9.1"
+# Robolectric pulls a vulnerable bcprov-jdk18on 1.81 transitively (test-only). Snyk flags
+# 15+ findings on that version; constrained up to 1.85 below, which resolves all of them.
+bouncycastleBcprov = "1.85"
 androidxPreference = "1.2.1"
 androidxSecurityCrypto = "1.0.0"
 androidxTestCoreKtx = "1.6.1"
@@ -82,6 +85,7 @@ androidx-test-ext-junit-ktx = { group = "androidx.test.ext", name = "junit-ktx",
 androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "androidxWork" }
 androidx-work-testing = { group = "androidx.work", name = "work-testing", version.ref = "androidxWork" }
 apache-commons-csv = { group = "org.apache.commons", name = "commons-csv", version.ref = "commonsCsv" }
+bouncycastle-bcprov-jdk18on = { group = "org.bouncycastle", name = "bcprov-jdk18on", version.ref = "bouncycastleBcprov" }
 devrel-easy-permissions = { group = "pub.devrel", name = "easypermissions", version.ref = "easyPermissions" }
 devtools-ksp = { group = "com.google.devtools.ksp", name = "symbol-processing-api", version.ref = "devtoolsKsp" }
 firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics" }

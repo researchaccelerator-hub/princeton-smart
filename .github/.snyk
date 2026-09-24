@@ -118,6 +118,321 @@ ignore:
           test infrastructure.
         expires: 2027-01-01T00:00:00.000Z
         created: 2026-02-25T00:00:00.000Z
+  SNYK-JAVA-IONETTY-15789756:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-15789758:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-16425695:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-16438322:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-16438737:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-16438923:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-16438926:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-16438929:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-16438930:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-16438934:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-16438935:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-17254117:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-17254120:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-17254661:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-17260879:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-17311220:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-17334567:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-17337010:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-17337012:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-18170202:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-18170204:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-18170206:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-18170213:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-18230935:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-18231070:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-18233079:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-18233081:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-18233107:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-18233111:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-18956131:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-19005879:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-19233598:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-19233599:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-19652372:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
+  SNYK-JAVA-IONETTY-19778369:
+    - '*':
+        reason: >
+          Transitive via com.android.tools.utp / com.google.testing.platform (AGP/UTP only,
+          via grpc-netty). Not included in the shipped APK. Ignored per team decision to defer
+          remediation until the planned AGP upgrade (bundled with Android 17 support), which is
+          expected to bring in patched Netty versions.
+        expires: 2027-01-01T00:00:00.000Z
+        created: 2026-09-24T00:00:00.000Z
   'snyk:lic:maven:com.googlecode.juniversalchardet:juniversalchardet:MPL-2.0':
     - '*':
         reason: >

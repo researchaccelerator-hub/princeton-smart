@@ -1069,7 +1069,10 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         if ((screenshots.size >= OCR_IMAGE_THRESHOLD && isOlderThanTwoHours(lastOcrTime)) || manualOcr.value == true) {
             lastOcrTime = System.currentTimeMillis()
 
-            WorkerProgressManager.clear()
+            // A manual request already started a fresh log with its request entry.
+            if (manualOcr.value != true) {
+                WorkerProgressManager.clear()
+            }
             try {
                 initializeTesseract()  // Initialize Tesseract for OCR
                 delay(3000)

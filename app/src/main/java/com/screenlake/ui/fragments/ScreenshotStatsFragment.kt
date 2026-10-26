@@ -34,9 +34,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -88,6 +85,8 @@ class ScreenshotStatsFragment : Fragment() {
 
         uploadButton.setOnClickListener {
             if(ScreenshotService.isRunning.value == true) {
+                WorkerProgressManager.clear()
+                WorkerProgressManager.updateProgress("Manual OCR zip and upload requested.")
                 ScreenshotService.manualOcr.postValue(true)
                 uploadButton.isEnabled = false
             } else {
@@ -98,13 +97,13 @@ class ScreenshotStatsFragment : Fragment() {
         ScreenshotService.manualOcr.observe(viewLifecycleOwner) { manualOcr ->
             uploadButton.isEnabled = !manualOcr
 
-            if (manualOcr) {
-                uploadButton.text = "Uploading..."
-                viewUploadProgressTextView.visibility = View.VISIBLE
-            } else {
-                uploadButton.text = "Upload"
-                viewUploadProgressTextView.visibility = View.INVISIBLE
-            }
+            uploadButton.text = if (manualOcr) "Uploading..." else "Upload"
+            updateUploadProgressLinkVisibility()
+        }
+
+        // Background uploads add to the log too, so show the link as soon as it has entries.
+        WorkerProgressManager.progressUpdates.observe(viewLifecycleOwner) {
+            updateUploadProgressLinkVisibility()
         }
 
         // Setup RecyclerView
@@ -115,35 +114,7 @@ class ScreenshotStatsFragment : Fragment() {
         viewUploadProgressTextView = view.findViewById<TextView>(R.id.tv_view_upload_progress)
 
         viewUploadProgressTextView.setOnClickListener {
-            // For demo, pass a static or dynamic log string
-            val sampleLogs = """
-            [10:01 AM] Starting upload...
-            [10:02 AM] 50% complete
-            [10:03 AM] 100% complete
-            [10:04 AM] Upload successful!
-                        [10:01 AM] Starting upload...
-            [10:02 AM] 50% complete
-            [10:03 AM] 100% complete
-            [10:04 AM] Upload successful!
-                        [10:01 AM] Starting upload...
-            [10:02 AM] 50% complete
-            [10:03 AM] 100% complete
-            [10:04 AM] Upload successful!
-                        [10:01 AM] Starting upload...
-            [10:02 AM] 50% complete
-            [10:03 AM] 100% complete
-            [10:04 AM] Upload successful!
-                        [10:01 AM] Starting upload...
-            [10:02 AM] 50% complete
-            [10:03 AM] 100% complete
-            [10:04 AM] Upload successful!
-                        [10:01 AM] Starting upload...
-            [10:02 AM] 50% complete
-            [10:03 AM] 100% complete
-            [10:04 AM] Upload successful!
-        """.trimIndent()
-
-            showUploadProgressDialog(sampleLogs)
+            showUploadProgressDialog(WorkerProgressManager.progressUpdates.value.orEmpty())
         }
 
         val batteryOptimizationSwitch = view.findViewById<SwitchCompat>(R.id.switch_battery_optimization)
@@ -174,8 +145,6 @@ class ScreenshotStatsFragment : Fragment() {
         WorkerProgressManager.progressUpdates.observe(viewLifecycleOwner) { logString ->
             updateLogDisplay(logsTextView, logString)
         }
-
-        WorkerProgressManager
 
         // Build the AlertDialog
         AlertDialog.Builder(requireContext())
@@ -263,15 +232,15 @@ class ScreenshotStatsFragment : Fragment() {
         return "Image count: $imageCount, Zip count: $zipCount"
     }
 
-    private fun updateLogDisplay(logTextView: TextView, logString: String) {
-        val logs = logString.split(",").filter { it.isNotBlank() }
-        val formattedLogs = logs.joinToString("\n") { log ->
-            val timestamp = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
-            "[$timestamp] $log"
-        }
+    private fun updateUploadProgressLinkVisibility() {
+        val hasLog = !WorkerProgressManager.progressUpdates.value.isNullOrBlank()
+        viewUploadProgressTextView.visibility =
+            if (ScreenshotService.manualOcr.value == true || hasLog) View.VISIBLE else View.INVISIBLE
+    }
 
-        // Update the TextView with the formatted logs
-        logTextView.text = formattedLogs
+    private fun updateLogDisplay(logTextView: TextView, logString: String) {
+        // Each message already carries the time it was logged.
+        logTextView.text = logString
 
         // Auto-scroll to the bottom
         val scrollView = logTextView.parent as? ScrollView

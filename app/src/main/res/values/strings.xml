@@ -276,7 +276,12 @@
     <string name="password_must_include_a_lower_case">Password must include a lower case</string>
     <string name="password_must_include_a_upper_case">Password must include a upper case</string>
     <string name="password_must_include_a_number">Password must include a number</string>
-    <string name="password_must_include_a_special_character">Password must include a special character</string>
+    <string name="password_must_include_a_special_character" formatted="false">Password must include a special character, such as @ # $ % ^ &amp; + ! =</string>
+    <string name="password_requirements_heading">Password must have...</string>
+    <string name="password_requirement_length">- have at least 8 characters</string>
+    <string name="password_requirement_digit_special" formatted="false">- have 1 digit and 1 special character, such as @ # $ % ^ &amp; + ! =</string>
+    <string name="password_requirement_case">- have 1 lowercase and 1 uppercase character</string>
+    <string name="confirmation_code_sent">A six digit code was sent to your email...</string>
     <string name="password_must_be_8_characters_long">Password must be 8 characters long</string>
     <string name="for_screenlake_to_work_properly_we_need_you_to_accept_accessibility_settings">For SRK to work properly, we need you to grant Accessibility Settings.</string>
     <string name="screenlake">SRK</string>

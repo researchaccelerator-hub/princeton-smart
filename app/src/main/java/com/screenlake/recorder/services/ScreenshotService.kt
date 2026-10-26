@@ -49,6 +49,7 @@ import com.screenlake.recorder.services.util.ScreenshotData
 import com.screenlake.recorder.utilities.BaseUtility.getForegroundTaskPackageName
 import com.screenlake.recorder.utilities.TimeUtility
 import com.screenlake.recorder.utilities.record
+import com.screenlake.recorder.utilities.ScreenshotBitmap
 import com.screenlake.recorder.viewmodels.WorkerProgressManager
 import dagger.hilt.android.AndroidEntryPoint
 import jakarta.inject.Inject
@@ -837,18 +838,10 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
             var fileOutputStream: FileOutputStream? = null
 
             try {
-                val planes = image.planes
-                val buffer = planes[0].buffer
-                val pixelStride = planes[0].pixelStride
-                val rowStride = planes[0].rowStride
-                val rowPadding = rowStride - pixelStride * width
+                val plane = image.planes[0]
 
-                // Create bitmap
-                bitmap = Bitmap.createBitmap(
-                    width + rowPadding / pixelStride, height,
-                    Bitmap.Config.ARGB_8888
-                )
-                bitmap.copyPixelsFromBuffer(buffer)
+                // Create bitmap, without the ImageReader's row padding
+                bitmap = ScreenshotBitmap.fromPlane(plane.buffer, plane.pixelStride, plane.rowStride, width, height)
 
                 // Create file
                 val dateFormat = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.getDefault())

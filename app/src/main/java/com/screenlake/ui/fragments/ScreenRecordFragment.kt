@@ -769,9 +769,9 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
     }
 
     private fun stopRecording() {
-        // The service clears isRunning itself once the session is saved and capture stops,
-        // so the UI only shows "not recording" after recording has really stopped.
-        ScreenshotService.isPaused.postValue(false)
+        // The service clears isRunning and isPaused itself once capture stops, so the UI only
+        // shows "not recording" after recording has really stopped, and a paused session never
+        // captures while it is being saved.
         stopForegroundService()
         Toast.makeText(activity, getString(R.string.recording_stopped), Toast.LENGTH_LONG).show()
         lifecycleScope.launch { saveLog(RECORD_TRIGGERED, "false") }

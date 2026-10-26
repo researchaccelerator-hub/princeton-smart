@@ -322,11 +322,19 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
             if (intent != null) {
                 when (intent.action) {
                     ACTION_STOP_SERVICE -> {
+                        // Stop the pause countdown first so it cannot end the pause mid-save.
+                        countDownTimer?.cancel()
+                        countDownTimer = null
                         coroutineScope.launch {
                             saveSessionSegmentsInBackground()
                             generalOperationsRepository.buildCurrentSession(framesPerSecondConst, "USER_STOP")
                             generalOperationsRepository.saveSession(generalOperationsRepository.currentSession)
                             stopCapturing()
+                            // Clear the pause only after capture is cancelled, so a paused session
+                            // never takes screenshots while it is being saved. Not done in
+                            // stopCapturing(), which also runs before error restarts.
+                            isPaused.postValue(false)
+                            pausedTimer.postValue("")
                         }
                     }
                     ACTION_PAUSE_SERVICE -> handlePauseService()

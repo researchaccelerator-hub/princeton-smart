@@ -655,9 +655,16 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
 
         lifecycleScope.launch {
             val user = userDao.getUser()
-            if(user.emailHash.isNullOrEmpty()) {
+            if (user.emailHash.isNullOrEmpty()) {
                 showMissingIdDialog()
-            }else{
+                return@launch
+            }
+
+            // The button tag can lag behind the service; never start a second capture
+            // while one is already running.
+            if (ScreenshotService.isRunning.value == true) {
+                stopRecording()
+            } else {
                 requestPermissions()
                 requestPackageUsageStatsPermissions()
                 startRecording()
@@ -762,7 +769,9 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
     }
 
     private fun stopRecording() {
-        ScreenshotService.isRunning.postValue(false)
+        // The service clears isRunning and isPaused itself once capture stops, so the UI only
+        // shows "not recording" after recording has really stopped, and a paused session never
+        // captures while it is being saved.
         stopForegroundService()
         Toast.makeText(activity, getString(R.string.recording_stopped), Toast.LENGTH_LONG).show()
         lifecycleScope.launch { saveLog(RECORD_TRIGGERED, "false") }
@@ -780,11 +789,11 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
     }
 
     override fun onPermissionsGranted(p0: Int, p1: MutableList<String>) {
-        TODO("Not yet implemented")
+        // Nothing to do; startRecording() checks the permissions it needs.
     }
 
     override fun onPermissionsDenied(p0: Int, p1: MutableList<String>) {
-        TODO("Not yet implemented")
+        showPermissionDeniedMessage()
     }
 
     private fun showPermissionDeniedMessage() {

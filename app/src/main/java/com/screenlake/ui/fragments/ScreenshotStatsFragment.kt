@@ -97,14 +97,13 @@ class ScreenshotStatsFragment : Fragment() {
         ScreenshotService.manualOcr.observe(viewLifecycleOwner) { manualOcr ->
             uploadButton.isEnabled = !manualOcr
 
-            if (manualOcr) {
-                uploadButton.text = "Uploading..."
-                viewUploadProgressTextView.visibility = View.VISIBLE
-            } else {
-                uploadButton.text = "Upload"
-                viewUploadProgressTextView.visibility =
-                    if (WorkerProgressManager.progressUpdates.value.isNullOrBlank()) View.INVISIBLE else View.VISIBLE
-            }
+            uploadButton.text = if (manualOcr) "Uploading..." else "Upload"
+            updateUploadProgressLinkVisibility()
+        }
+
+        // Background uploads add to the log too, so show the link as soon as it has entries.
+        WorkerProgressManager.progressUpdates.observe(viewLifecycleOwner) {
+            updateUploadProgressLinkVisibility()
         }
 
         // Setup RecyclerView
@@ -231,6 +230,12 @@ class ScreenshotStatsFragment : Fragment() {
 
         // Return the desired string format
         return "Image count: $imageCount, Zip count: $zipCount"
+    }
+
+    private fun updateUploadProgressLinkVisibility() {
+        val hasLog = !WorkerProgressManager.progressUpdates.value.isNullOrBlank()
+        viewUploadProgressTextView.visibility =
+            if (ScreenshotService.manualOcr.value == true || hasLog) View.VISIBLE else View.INVISIBLE
     }
 
     private fun updateLogDisplay(logTextView: TextView, logString: String) {

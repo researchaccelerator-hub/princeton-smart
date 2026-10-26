@@ -1,41 +1,42 @@
 package com.screenlake.recorder.viewmodels
 
-import android.os.Looper
+import androidx.arch.core.executor.ArchTaskExecutor
+import androidx.arch.core.executor.TaskExecutor
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.Shadows.shadowOf
-import org.robolectric.annotation.Config
 
 /**
  * The progress log is shown in the stats screen and is fed by upload, zip, and OCR work for as
  * long as the app runs, so it must stay bounded and keep each message intact.
+ *
+ * LiveData tasks run immediately here (what `InstantTaskExecutorRule` does), so `postValue` is
+ * visible to the assertions without depending on a main looper.
  */
-@RunWith(RobolectricTestRunner::class)
-@Config(sdk = [28])
 class WorkerProgressManagerTest {
 
     @Before
     fun setUp() {
+        ArchTaskExecutor.getInstance().setDelegate(object : TaskExecutor() {
+            override fun executeOnDiskIO(runnable: Runnable) = runnable.run()
+            override fun postToMainThread(runnable: Runnable) = runnable.run()
+            override fun isMainThread() = true
+        })
         WorkerProgressManager.clear()
-        idleMainLooper()
     }
 
     @After
     fun tearDown() {
         WorkerProgressManager.clear()
-        idleMainLooper()
+        ArchTaskExecutor.getInstance().setDelegate(null)
     }
 
     @Test
     fun `messages are kept one per line with their own timestamp`() {
         WorkerProgressManager.updateProgress("Uploading 1 of 3")
         WorkerProgressManager.updateProgress("Upload failed -> Unable to resolve host, retrying")
-        idleMainLooper()
 
         val lines = WorkerProgressManager.progressUpdates.value!!.lines()
         assertEquals(2, lines.size)
@@ -47,7 +48,6 @@ class WorkerProgressManagerTest {
     @Test
     fun `only the most recent 250 messages are kept`() {
         repeat(300) { WorkerProgressManager.updateProgress("message $it") }
-        idleMainLooper()
 
         val lines = WorkerProgressManager.progressUpdates.value!!.lines()
         assertEquals(250, lines.size)
@@ -59,14 +59,10 @@ class WorkerProgressManagerTest {
     fun `clear empties the log`() {
         WorkerProgressManager.updateProgress("Upload has finished.")
         WorkerProgressManager.clear()
-        idleMainLooper()
 
         assertEquals("", WorkerProgressManager.progressUpdates.value)
 
         WorkerProgressManager.updateProgress("Starting OCR batch 1")
-        idleMainLooper()
         assertEquals(1, WorkerProgressManager.progressUpdates.value!!.lines().size)
     }
-
-    private fun idleMainLooper() = shadowOf(Looper.getMainLooper()).idle()
 }

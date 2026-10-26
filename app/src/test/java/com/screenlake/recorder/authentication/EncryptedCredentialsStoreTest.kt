@@ -16,6 +16,9 @@ import org.junit.Assert.assertNotNull
 import org.junit.Before
 import org.junit.Test
 import java.lang.ref.WeakReference
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import kotlin.concurrent.thread
 
 /**
  * Registration writes credentials via [EncryptedCredentialsStore.storeCredentials];
@@ -176,6 +179,58 @@ class EncryptedCredentialsStoreTest {
         assertNotNull(creds)
         assertEquals("", creds.email)
         assertEquals("", creds.password)
+    }
+
+    @Test
+    fun `a failure to delete the storage yields empty credentials instead of crashing`() {
+        val context = fakeContext()
+        every { context.get()!!.deleteSharedPreferences(any()) } throws SecurityException("denied")
+        every {
+            EncryptedSharedPreferences.create(any(), any(), any(), any(), any())
+        } throws corruptKeysetError()
+
+        val store = EncryptedCredentialsStore()
+        store.storeCredentials(context, "a@b.com", "pw")
+        val creds = store.getStoredCredentials(context)
+
+        assertEquals("", creds.email)
+        assertEquals("", creds.password)
+    }
+
+    @Test
+    fun `a delayed read failure does not delete credentials saved by a concurrent recovery`() {
+        val context = fakeContext()
+        every { context.get()!!.deleteSharedPreferences("encrypted_prefs") } answers {
+            fakeBackingMap.clear()
+            true
+        }
+        val readerEntered = CountDownLatch(1)
+        val writerFinished = CountDownLatch(1)
+        val stalePreferences = mockk<SharedPreferences>()
+        every { stalePreferences.getString(any(), any()) } answers {
+            readerEntered.countDown()
+            // Without the lock, the writer recovers the store and saves here, and this failure
+            // then resets the store again. With the lock, the writer waits for this read.
+            writerFinished.await(500, TimeUnit.MILLISECONDS)
+            throw SecurityException("Could not decrypt value")
+        }
+        every { stalePreferences.edit() } throws SecurityException("Could not encrypt value")
+        every {
+            EncryptedSharedPreferences.create(any(), any(), any(), any(), any())
+        } returns stalePreferences andThen fakePreferences
+
+        val store = EncryptedCredentialsStore()
+        val reader = thread { store.getStoredCredentials(context) }
+        readerEntered.await(5, TimeUnit.SECONDS)
+        val writer = thread {
+            store.storeCredentials(context, "a@b.com", "pw")
+            writerFinished.countDown()
+        }
+        reader.join(5_000)
+        writer.join(5_000)
+
+        assertEquals("a@b.com", fakeBackingMap["email"])
+        assertEquals("pw", fakeBackingMap["password"])
     }
 
     private fun corruptKeysetError() =

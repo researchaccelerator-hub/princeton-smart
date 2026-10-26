@@ -25,7 +25,8 @@ import javax.inject.Singleton
  * call is known to corrupt the keyset (Tink then fails to parse it back, surfacing as
  * `InvalidProtocolBufferException: Protocol message contained an invalid tag (zero)`).
  * Serializing creation behind a lock and reusing the cached instance for every subsequent call
- * eliminates that race.
+ * eliminates that race. Reads and writes hold the same lock, so a failure on one caller can never
+ * reset a store that another caller has just recovered and written to.
  *
  * Devices whose keyset was already corrupted (for example, by the race above on an older build)
  * keep failing to create or decrypt the file. In that case the file is deleted and recreated, and
@@ -44,7 +45,7 @@ class EncryptedCredentialsStore @Inject constructor() {
      * @param context The context.
      * @return The email and password data.
      */
-    fun getStoredCredentials(context: WeakReference<Context>): EmailPasswordData {
+    fun getStoredCredentials(context: WeakReference<Context>): EmailPasswordData = synchronized(lock) {
         val sharedPreferences = getEncryptedSharedPreference(context)
             ?: return EmailPasswordData("", "")
         return try {
@@ -65,7 +66,7 @@ class EncryptedCredentialsStore @Inject constructor() {
      * @param email The email to store.
      * @param password The password to store.
      */
-    fun storeCredentials(context: WeakReference<Context>, email: String, password: String) {
+    fun storeCredentials(context: WeakReference<Context>, email: String, password: String) = synchronized(lock) {
         try {
             writeCredentials(getEncryptedSharedPreference(context) ?: return, email, password)
         } catch (error: Exception) {
@@ -88,6 +89,7 @@ class EncryptedCredentialsStore @Inject constructor() {
 
     /**
      * Retrieves the encrypted shared preferences, creating (and caching) them on first use.
+     * Callers must hold [lock].
      *
      * @param context The context.
      * @return The encrypted shared preferences.
@@ -95,22 +97,18 @@ class EncryptedCredentialsStore @Inject constructor() {
     private fun getEncryptedSharedPreference(context: WeakReference<Context>): SharedPreferences? {
         cachedPreferences?.let { return it }
 
-        synchronized(lock) {
-            cachedPreferences?.let { return it }
-
-            val appContext = context.get()?.applicationContext ?: return null
-            return try {
-                createPreferences(appContext).also { cachedPreferences = it }
-            } catch (error: Exception) {
-                Timber.tag(TAG).w(error, "Encrypted credential storage is invalid; recreating it")
-                resetPreferences(appContext)
-            }
+        val appContext = context.get()?.applicationContext ?: return null
+        return try {
+            createPreferences(appContext).also { cachedPreferences = it }
+        } catch (error: Exception) {
+            Timber.tag(TAG).w(error, "Encrypted credential storage is invalid; recreating it")
+            resetPreferences(appContext)
         }
     }
 
     private fun resetPreferences(context: WeakReference<Context>): SharedPreferences? {
         val appContext = context.get()?.applicationContext ?: return null
-        return synchronized(lock) { resetPreferences(appContext) }
+        return resetPreferences(appContext)
     }
 
     /**
@@ -118,12 +116,12 @@ class EncryptedCredentialsStore @Inject constructor() {
      * Callers must hold [lock].
      *
      * @param appContext The application context.
-     * @return The recreated preferences, or null if they still cannot be created.
+     * @return The recreated preferences, or null if they still cannot be deleted or created.
      */
     private fun resetPreferences(appContext: Context): SharedPreferences? {
         cachedPreferences = null
-        appContext.deleteSharedPreferences(FILE_NAME)
         return try {
+            appContext.deleteSharedPreferences(FILE_NAME)
             createPreferences(appContext).also { cachedPreferences = it }
         } catch (error: Exception) {
             Timber.tag(TAG).e(error, "Could not recreate encrypted credential storage")

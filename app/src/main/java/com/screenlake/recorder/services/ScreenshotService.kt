@@ -135,7 +135,8 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         const val CHANNEL_ID = "screenshot_service_channel"
         const val EXTRA_RESULT_CODE = "resultCode"
         const val EXTRA_DATA = "data"
-        private const val SCREENSHOT_INTERVAL_MS = 5000L
+        /** Time between screenshots, from the study's capture preset. */
+        val SCREENSHOT_INTERVAL_MS: Long = ResearchConfig.ACTIVE_PRESET.intervalMs
         const val RESTART_NOTIFICATION_ID = 1338
         private const val MAX_RETRY_ATTEMPTS = 3
         private const val SCREENSHOT_TIMEOUT_MS = 5000L  // 5 seconds timeout for screenshot operations
@@ -407,6 +408,11 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         return START_NOT_STICKY
     }
 
+    private fun screenshotIntervalText(): String {
+        val seconds = (SCREENSHOT_INTERVAL_MS / 1000).toInt()
+        return resources.getQuantityString(com.screenlake.R.plurals.taking_screenshots_every_n_seconds, seconds, seconds)
+    }
+
     private fun startForeground() {
         val notificationIntent = Intent(this, MainActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
@@ -416,7 +422,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Screenshot Service")
-            .setContentText("Taking screenshots every 5 seconds")
+            .setContentText(screenshotIntervalText())
             .setSmallIcon(com.screenlake.R.drawable.logo_just_square_small)
             .setContentIntent(pendingIntent)
             .build()

@@ -172,6 +172,22 @@ python -m pytest tests
 
 ---
 
+## Developer tools
+
+`dev/test_recording_interruption.sh` checks on a test phone that the app notices when Android closes it while recording. Start recording in a debug build, connect the phone with `adb`, then run one scenario:
+
+```bash
+scripts/dev/test_recording_interruption.sh kill       # like a low-memory kill; expect "Study Recording Stopped"
+scripts/dev/test_recording_interruption.sh crash      # Android 11+
+scripts/dev/test_recording_interruption.sh trim       # memory pressure only; recording should keep running
+scripts/dev/test_recording_interruption.sh forcestop  # expect no notification: force stop cancels it
+scripts/dev/test_recording_interruption.sh status
+```
+
+Set `PKG=com.screenlake` to test a release build (the `kill` scenario then needs a rooted phone).
+
+---
+
 ## Cleaning Up
 Temporary files and folders are automatically deleted after processing. The consolidated results remain in the `<query_id>/combined` folder.
 

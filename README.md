@@ -47,7 +47,7 @@ This step-by-step guide is made to match the following tools, including click-by
 - Familiarity with [**Google Play**](https://play.google.com/console/about/topics/get-started/) in case you'd like to make your app publically accessible to potential research participants. The tutorial will only show you how to use Firebase for targetted distribution of the app, i.e., direct-send of an app to someone's email address. Either method of distribution has its advantages, but getting an app onto the Google Play store is a bit more involved.
 
 ### Overview of App Technical Capacities
-The contents of this repository enable you (a researcher) to create an Android application. The Android application is designed to efficiently, continuously, & passively take screenshots of the smartphone device it is installed on, every 5 seconds until manually interrupted, and also perform Optical Character Recognition (OCR) to extract text from the captured images. Additionally, the app collects a variety of data related to the smartphone device and the apps running on it (listed below):
+The contents of this repository enable you (a researcher) to create an Android application. The Android application is designed to efficiently, continuously, & passively take screenshots of the smartphone device it is installed on, at the interval set by the capture preset (every 5 seconds by default) until manually interrupted, and also perform Optical Character Recognition (OCR) to extract text from the captured images. Additionally, the app collects a variety of data related to the smartphone device and the apps running on it (listed below):
 
 - **Screenshots & OCR Processing:** Captures a full-screen screenshot at the interval set by the capture preset (every 5 seconds by default; see [Screenshot Capture Presets](#screenshot-capture-presets)), and uses OCR to extract text from the screenshots.
 - **App Log Data:** Records metadata such as app names and timestamps at the time of each screenshot.
@@ -410,7 +410,8 @@ The session CSV (`session_data_csv_*.csv`) includes a `stop_reason` column (adde
 |-------|---------|
 | `USER_STOP` | Participant explicitly stopped recording via the app (tap or long press on the stop button) |
 | `SCREEN_OFF` | Device screen turned off (locked or display timeout) |
-| `MEDIA_PROJECTION_REVOKED` | System revoked screen capture permission (Android 14+) |
+| `MEDIA_PROJECTION_REVOKED` | Screen sharing ended while the screen was on: the participant stopped it from the status bar, or the system revoked it |
+| `SCREEN_OFF_MEDIA_PROJECTION_REVOKED` | Screen sharing ended while the phone was locked, before the screen-off was recorded (some Android 15+ devices end screen sharing on lock). From version 1.53.0 |
 | `SERVICE_DESTROYED` | OS terminated the recording service (force-stop, reboot, or memory pressure) |
 | `UNKNOWN` | Stop reason could not be determined (hard crash, or data predates schema version 2) |
 
@@ -418,7 +419,20 @@ Note that a single uninterrupted recording will produce multiple session rows, o
 
 **Phone power off and on:** From version 1.53.0, the app also writes a `PHONE_POWER_STATE` row to its event log (uploaded to `academia/log_events_v2/<email hash>/<version>/` in your bucket, or `log_events_v2/<email hash>/<version>/` if image uploads are turned off for the participant; columns `event`, `msg`, `user` (the participant's email address), `timestamp`) when the phone shuts down (`msg` = `POWER_OFF`) and when it finishes starting up (`POWER_ON`). `POWER_OFF` is only recorded while recording is on, because Android delivers the shutdown signal only to a running app. Use these rows to tell a phone that was switched off apart from a session ended by the participant or the system (`SERVICE_DESTROYED`).
 
-**Pause and resume:** The app does not have a true pause state. When a participant stops recording and restarts, each restart creates a new, independent session row with a new `id_session`. There is no identifier linking a stop to its subsequent resume — they appear in the data as two separate sessions from the same participant. When analysing gaps between sessions for the same user, a gap followed by a new session indicates the participant voluntarily stopped and restarted, but this cannot be confirmed from the data alone.
+**Screen sharing and capture events:** From version 1.53.0, the same event log records what happened to screen sharing, so you can explain gaps in the screenshots:
+
+| `event` | `msg` |
+|---|---|
+| `SCREEN_SHARING_STATE` | Each change of capture state, as `OLD->NEW;reason=...` followed by the lock, pause and consent flags at that moment. States: `IDLE`, `STARTING`, `CAPTURING`, `USER_PAUSED`, `SCREEN_LOCKED_CAPTURE_SUSPENDED`, `SCREEN_LOCKED_CONSENT_REQUIRED`, `CONSENT_REQUIRED`, `STOPPED`, `ERROR`. |
+| `SCREEN_SHARING_PROMPT` | The screen sharing consent dialog and its reminder notification: shown, granted, denied. |
+| `SCREENSHOT_STATE` | `ScreenLocked`, `ScreenUnlocked`, `pause start`, `pause end`, `NoScreenSharing` (consent denied). |
+| `SCREEN_CAPTURE_DENIED` | The participant declined the consent dialog after pressing record. |
+| `RECORDING_INTERRUPTED` | The app found that Android had closed it while recording and showed the participant a "Study Recording Stopped" notification. |
+| `PROCESS_EXIT` | Android 11+: the reason Android gave for each earlier app exit (for example `LOW_MEMORY`, `CRASH`, `USER_REQUESTED`). |
+
+When screen sharing ends, the app does not reopen the consent dialog on its own. It shows a "Study Recording Paused" notification (or "Study Recording Stopped" if Android closed the app), and asks for consent again when the participant taps it or opens the app. No screenshots are taken until they do, so a `CONSENT_REQUIRED` state followed by a long gap means the participant had not yet responded. If the participant force-stops the app, Android cancels the app's notifications and scheduled checks, so nothing is recorded until they open it again.
+
+**Pause and resume:** The pause button stops screenshots for the chosen time and logs `pause start` and `pause end` (`SCREENSHOT_STATE`) and the `USER_PAUSED` state; the session continues. When a participant stops recording and restarts, each restart creates a new, independent session row with a new `id_session`. There is no identifier linking a stop to its subsequent restart; they appear in the data as two separate sessions from the same participant. When analysing gaps between sessions for the same user, a gap followed by a new session indicates the participant voluntarily stopped and restarted, but this cannot be confirmed from the data alone.
 
 ---
 

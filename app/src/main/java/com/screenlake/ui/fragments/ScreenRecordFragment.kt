@@ -120,10 +120,18 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
     private val startMediaProjection = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
+        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+            // The service clears the in-flight flag once capture starts.
+            ScreenshotService.suppressMediaProjectionPromptUntilUnlock.set(false)
             startScreenshotService(result.resultCode, result.data)
         } else {
+            ScreenshotService.isMediaProjectionPromptInFlight.set(false)
+            // MainActivity.onResume runs next; don't let it reopen the dialog just denied.
+            ScreenshotService.suppressMediaProjectionPromptUntilUnlock.set(true)
             Toast.makeText(requireContext(), "Screen capture permission denied", Toast.LENGTH_SHORT).show()
+            lifecycleScope.launch {
+                saveLog("SCREEN_CAPTURE_DENIED", "User cancelled or denied the media projection prompt")
+            }
         }
     }
 
@@ -249,8 +257,18 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
 
     private fun requestScreenCapture() {
         val mediaProjectionManager = requireContext().getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        // Shares MainActivity's gate so only one consent dialog can be open.
+        if (!ScreenshotService.isMediaProjectionPromptInFlight.compareAndSet(false, true)) {
+            Timber.d("Screen capture consent dialog already open")
+            return
+        }
         mediaProjectionCallback?.onMediaProjectionRequested()
-        startMediaProjection.launch(mediaProjectionManager.createScreenCaptureIntent())
+        try {
+            startMediaProjection.launch(mediaProjectionManager.createScreenCaptureIntent())
+        } catch (e: Exception) {
+            ScreenshotService.isMediaProjectionPromptInFlight.set(false)
+            throw e
+        }
     }
 
     private fun startScreenshotService(resultCode: Int, data: Intent?) {
@@ -422,7 +440,6 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
     }
 
     private fun pauseRecording() {
-        ScreenshotService.isPaused.postValue(true)
         sendCommandToRecordService(ACTION_PAUSE_SERVICE)
     }
 
@@ -582,7 +599,7 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
                 } else {
                     changeCancelToPause()
                     triggerVibrateRecordOptions()
-                    ScreenshotService.isPaused.postValue(false)
+                    sendCommandToRecordService(ScreenshotService.ACTION_RESUME_SERVICE)
                 }
             },
             textUpdateAction = {

@@ -3,6 +3,7 @@ package com.screenlake.recorder.utilities
 import android.Manifest
 import android.app.Activity
 import android.app.PendingIntent
+import android.app.usage.UsageEvents
 import android.app.usage.UsageStats
 import android.app.usage.UsageStatsManager
 import android.content.Context
@@ -21,6 +22,7 @@ import com.screenlake.recorder.constants.ConstantSettings
 import com.screenlake.data.model.AppInfo
 import com.screenlake.data.database.entity.RestrictedAppPersistentEntity
 import com.screenlake.R
+import com.screenlake.recorder.services.TouchAccessibilityService
 import timber.log.Timber
 import java.io.ByteArrayOutputStream
 import java.util.*
@@ -40,12 +42,22 @@ object BaseUtility {
         val appInfo = AppInfo()
         val usm = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         val time = System.currentTimeMillis()
+        val packageName = TouchAccessibilityService.getLatestPackage(15_000)
+            ?: getLastForegroundPackageName(usm, time)
         val appList =
             usm.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, time - 1000*1000, time)
-        if (appList != null && appList.size > 0) {
+        if (!packageName.isNullOrEmpty()) {
+            appInfo.apk = packageName
+            silence {
+                appInfo.name = getAppNameFromPackage(context, appInfo.apk)
+            }
+            Timber.d("******* ${appInfo.name} *******")
+        } else if (appList != null && appList.size > 0) {
             val mySortedMap: SortedMap<Long, UsageStats> = TreeMap()
             for (usageStats in appList) {
-                mySortedMap[usageStats.lastTimeUsed] = usageStats
+                if (isValidForegroundPackage(usageStats.packageName)) {
+                    mySortedMap[usageStats.lastTimeUsed] = usageStats
+                }
             }
             if (!mySortedMap.isEmpty()) {
                 appInfo.apk = mySortedMap[mySortedMap.lastKey()]?.packageName ?: "package name not found"
@@ -61,11 +73,36 @@ object BaseUtility {
         return appInfo
     }
 
+    private fun getLastForegroundPackageName(usm: UsageStatsManager, time: Long): String? {
+        val events = usm.queryEvents(time - 10 * 60 * 1000, time)
+        val event = UsageEvents.Event()
+        var packageName: String? = null
+
+        while (events.hasNextEvent()) {
+            events.getNextEvent(event)
+            if ((event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND ||
+                        event.eventType == UsageEvents.Event.ACTIVITY_RESUMED) &&
+                isValidForegroundPackage(event.packageName)
+            ) {
+                packageName = event.packageName
+            }
+        }
+
+        return packageName
+    }
+
+    private fun isValidForegroundPackage(packageName: String?): Boolean {
+        return !packageName.isNullOrBlank() && packageName != "android"
+    }
+
     fun getAppNameFromPackage(context: Context, packageName: String): String {
         val packageManager = context.packageManager
-        val applicationInfo = packageManager.getApplicationInfo(packageName, 0)
-
-        return applicationInfo.loadLabel(packageManager).toString()
+        return try {
+            val applicationInfo = packageManager.getApplicationInfo(packageName, 0)
+            applicationInfo.loadLabel(packageManager).toString()
+        } catch (e: PackageManager.NameNotFoundException) {
+            packageName
+        }
     }
 
     fun Fragment.hideKeyboard() {

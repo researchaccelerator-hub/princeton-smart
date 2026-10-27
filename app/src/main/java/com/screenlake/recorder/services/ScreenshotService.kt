@@ -1514,6 +1514,12 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                 var processedAny = false
                 try {
                     synchronized(pendingMarkerWrites) { pendingMarkerWrites.toList() }.joinAll()
+                    // The run works on the screenshots that exist now. Capture continues during a
+                    // manual run, and without a bound the queue might never empty, so zip and
+                    // upload would never start. Taken before segmenting so every row in the
+                    // workset gets a segment.
+                    val worksetMaxId = generalOperationsRepository.getMaxScreenshotId()
+
                     // Screenshots only become zip-eligible once they belong to an app segment (see
                     // ScreenshotDao's batch queries). The manual-upload trigger (button2 -> uploadCommand())
                     // calls straight into this function without going through a session-ending event
@@ -1521,7 +1527,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                     generalOperationsRepository.saveAllSessionSegments()
 
                     processedCount = 0
-                    var screenshots = generalOperationsRepository.getScreenshotsToOcr(OCR_FETCH_BATCH_SIZE)
+                    var screenshots = generalOperationsRepository.getScreenshotsToOcr(OCR_FETCH_BATCH_SIZE, worksetMaxId)
                     Timber.tag(TAG).d("Starting OCR: ${screenshots.size} images in the first batch.")
 
                     if ((screenshots.size >= OCR_IMAGE_THRESHOLD && isOlderThanTwoHours(lastOcrTime)) || manualRequest) {
@@ -1547,7 +1553,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                             val batch = recognizeImages(screenshots, manualRequest)
                             if (batch.processed > 0) processedAny = true
                             if (batch.engineUnavailable || batch.processed == 0) break
-                            screenshots = generalOperationsRepository.getScreenshotsToOcr(OCR_FETCH_BATCH_SIZE)
+                            screenshots = generalOperationsRepository.getScreenshotsToOcr(OCR_FETCH_BATCH_SIZE, worksetMaxId)
                         }
                         Timber.tag(TAG).d("Ending OCR.")
                     }
@@ -1637,6 +1643,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                 return false
             }
             screenshot.text = ""
+            deleteImageIfTextOnly(screenshot)
             generalOperationsRepository.setScreenToOcrComplete(screenshot)
             logOcrFailure(screenshot.filePath, "Stored without OCR text")
         } catch (ex: CancellationException) {
@@ -1645,10 +1652,20 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
             ex.record()
             Timber.tag(TAG).w("Error processing image: ${screenshot.filePath}, ${ex.message}")
             screenshot.text = ""
+            deleteImageIfTextOnly(screenshot)
             screenshot.id?.let { generalOperationsRepository.setScreenToOcrComplete(screenshot) }
             logOcrFailure(screenshot.filePath, "Error processing image: ${ex.stackTraceToString()}")
         }
         return true
+    }
+
+    /**
+     * Without image uploads the zip step never collects images, so the image would stay on
+     * the phone. Successful OCR deletes it in Recognize; failed rows need the same.
+     */
+    private suspend fun deleteImageIfTextOnly(screenshot: ScreenshotEntity) {
+        val uploadImages = runCatching { generalOperationsRepository.getUser().uploadImages }.getOrDefault(true)
+        if (!uploadImages) screenshot.filePath?.takeIf { it.isNotEmpty() }?.let { File(it).delete() }
     }
 
     private suspend fun logOcrFailure(filePath: String?, msg: String) {

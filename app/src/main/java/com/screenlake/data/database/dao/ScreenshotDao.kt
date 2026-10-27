@@ -71,8 +71,11 @@ interface ScreenshotDao {
      * @param offset The offset from which to start retrieving Screenshots.
      * @return A list of Screenshots.
      */
-    @Query("SELECT * FROM screenshot_table WHERE isOcrComplete = 0 AND type = 'SCREENSHOT' AND isAppRestricted = 0 AND filePath IS NOT NULL AND filePath != '' ORDER BY timestamp ASC LIMIT :limit OFFSET :offset")
-    suspend fun getAllScreenshotsSortedByDateWhereOcrIsNotComplete(limit: Int, offset: Int): List<ScreenshotEntity>
+    @Query("SELECT * FROM screenshot_table WHERE isOcrComplete = 0 AND type = 'SCREENSHOT' AND isAppRestricted = 0 AND filePath IS NOT NULL AND filePath != '' AND id <= :maxId ORDER BY timestamp ASC LIMIT :limit OFFSET :offset")
+    suspend fun getAllScreenshotsSortedByDateWhereOcrIsNotComplete(limit: Int, offset: Int, maxId: Int = Int.MAX_VALUE): List<ScreenshotEntity>
+
+    @Query("SELECT MAX(id) FROM screenshot_table")
+    suspend fun getMaxId(): Int?
 
     /**
      * Retrieves a list of Screenshots by their file paths.

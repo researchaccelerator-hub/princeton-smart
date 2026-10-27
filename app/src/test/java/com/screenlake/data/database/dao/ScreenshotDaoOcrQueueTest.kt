@@ -42,6 +42,17 @@ class ScreenshotDaoOcrQueueTest {
         assertEquals(listOf("/img/old.jpg", "/img/new.jpg"), queue.map { it.filePath })
     }
 
+    @Test
+    fun `a run only works on screenshots that existed when it started`() = runBlocking {
+        dao.insertScreenshot(row("2026-10-27T10:00:00Z", "/img/before.jpg"))
+        val worksetMaxId = dao.getMaxId()!!
+        dao.insertScreenshot(row("2026-10-27T10:00:01Z", "/img/during.jpg"))
+
+        val queue = dao.getAllScreenshotsSortedByDateWhereOcrIsNotComplete(limit = 100, offset = 0, maxId = worksetMaxId)
+
+        assertEquals(listOf("/img/before.jpg"), queue.map { it.filePath })
+    }
+
     private fun row(timestamp: String, filePath: String?) = ScreenshotEntity(
         timestamp = timestamp,
         type = "SCREENSHOT",

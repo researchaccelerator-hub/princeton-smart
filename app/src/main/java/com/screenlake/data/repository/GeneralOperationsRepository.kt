@@ -619,12 +619,16 @@ class GeneralOperationsRepository @Inject constructor(
         return screenshotDao.getOcrCompleteOrRestrictedCount()
     }
 
-    suspend fun getScreenshotsToOcr(limit: Int): List<ScreenshotEntity> {
+    /** Screenshots waiting for OCR, oldest first, up to the row with id [maxId]. */
+    suspend fun getScreenshotsToOcr(limit: Int, maxId: Int = Int.MAX_VALUE): List<ScreenshotEntity> {
         return screenshotDao.getAllScreenshotsSortedByDateWhereOcrIsNotComplete(
             limit = limit,
-            offset = 0
+            offset = 0,
+            maxId = maxId
         )
     }
+
+    suspend fun getMaxScreenshotId(): Int = screenshotDao.getMaxId() ?: 0
 
     suspend fun getAllScreenshotsSortedByDateWhereOcrIsComplete(limit: Int, offset: Int): List<ScreenshotEntity> {
         return screenshotDao.getAllScreenshotsSortedByDateWhereOcrIsComplete(

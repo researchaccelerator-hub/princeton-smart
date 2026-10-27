@@ -110,8 +110,6 @@ class LoginFragment : Fragment() {
         }
 
         onSelectRegister()
-
-        observerLoginState()
     }
 
 
@@ -205,17 +203,6 @@ class LoginFragment : Fragment() {
         }
     }
 
-    private fun observerLoginState() {
-        MainActivity.isLoggedIn.observe(viewLifecycleOwner, Observer {
-            if (it) {
-                setUserLoggedOut()
-                saveUserSendToHome(amplifyRepository.email)
-            } else {
-                // Toast.makeText(activity, getString(R.string.login_failed), Toast.LENGTH_LONG).show()
-            }
-        })
-    }
-
     private suspend fun loginUser() {
         val email = binding.loginEmail.editText?.text.toString()
         val password = binding.loginPassword.editText?.text.toString()
@@ -286,7 +273,24 @@ class LoginFragment : Fragment() {
     private fun saveUserSendToHome(email: String) = lifecycleScope.launch {
         val userExist = userModel.userExist()
 
-        if (!userExist) {
+        if (userExist && AuthRecoveryCoordinator.isPending(requireContext())) {
+            // Recovery was interrupted before the sign-out deleted the user (process killed).
+            // Finish it now: the stored user is the same participant only if the email matches.
+            val stored = runCatching { userModel.getUser() }.getOrNull()
+            if (stored?.email.equals(email, ignoreCase = true)) {
+                AuthRecoveryCoordinator.onLoginSucceeded(requireContext().applicationContext)
+                saveLog("AUTH_RECOVERY_LOGIN_SUCCEEDED", "resumed")
+                WorkManager.getInstance(requireContext()).enqueue(OneTimeWorkRequestBuilder<UploadWorker>().build())
+                MainActivity.isLoggedOut.postValue(false)
+                findNavController().navigate(R.id.screenRecordFragment)
+                return@launch
+            }
+            // A different account: record whose data it is and remove that user without signing
+            // out the account that just signed in; the different-account warning follows.
+            generalOperationsRepository.signOutKeepingData(stored)
+        }
+
+        if (!userModel.userExist()) {
             val user = getUserFromDatastore(email)
 
             val userEmail = user?.email

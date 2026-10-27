@@ -6,6 +6,7 @@ import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -30,8 +31,8 @@ class AuthRecoveryManagerTest {
     @Test
     fun `returns true when both AWSMobileClient and Amplify sign-in succeed`() = runTest {
         every { encryptedCredentialsStore.getStoredCredentials(any()) } returns EmailPasswordData("a@b.com", "pw")
-        coEvery { cognitoSessionAuthenticator.signInAwsMobileClient("a@b.com", "pw") } returns true
-        coEvery { cognitoSessionAuthenticator.signInAmplify("a@b.com", "pw") } returns true
+        coEvery { cognitoSessionAuthenticator.signInAwsMobileClient("a@b.com", "pw") } returns SignInOutcome.SIGNED_IN
+        coEvery { cognitoSessionAuthenticator.signInAmplify("a@b.com", "pw") } returns SignInOutcome.SIGNED_IN
 
         val result = manager.attemptSilentReauth(context)
 
@@ -41,8 +42,8 @@ class AuthRecoveryManagerTest {
     @Test
     fun `returns false when AWSMobileClient sign-in fails`() = runTest {
         every { encryptedCredentialsStore.getStoredCredentials(any()) } returns EmailPasswordData("a@b.com", "pw")
-        coEvery { cognitoSessionAuthenticator.signInAwsMobileClient("a@b.com", "pw") } returns false
-        coEvery { cognitoSessionAuthenticator.signInAmplify("a@b.com", "pw") } returns true
+        coEvery { cognitoSessionAuthenticator.signInAwsMobileClient("a@b.com", "pw") } returns SignInOutcome.REJECTED
+        coEvery { cognitoSessionAuthenticator.signInAmplify("a@b.com", "pw") } returns SignInOutcome.SIGNED_IN
 
         val result = manager.attemptSilentReauth(context)
 
@@ -52,11 +53,21 @@ class AuthRecoveryManagerTest {
     @Test
     fun `returns false when Amplify sign-in fails`() = runTest {
         every { encryptedCredentialsStore.getStoredCredentials(any()) } returns EmailPasswordData("a@b.com", "pw")
-        coEvery { cognitoSessionAuthenticator.signInAwsMobileClient("a@b.com", "pw") } returns true
-        coEvery { cognitoSessionAuthenticator.signInAmplify("a@b.com", "pw") } returns false
+        coEvery { cognitoSessionAuthenticator.signInAwsMobileClient("a@b.com", "pw") } returns SignInOutcome.SIGNED_IN
+        coEvery { cognitoSessionAuthenticator.signInAmplify("a@b.com", "pw") } returns SignInOutcome.REJECTED
 
         val result = manager.attemptSilentReauth(context)
 
         assertFalse(result)
+    }
+
+    @Test
+    fun `an unreachable Cognito is reported as unavailable, not as rejected credentials`() = runTest {
+        every { encryptedCredentialsStore.getStoredCredentials(any()) } returns EmailPasswordData("a@b.com", "pw")
+        coEvery { cognitoSessionAuthenticator.signInAwsMobileClient("a@b.com", "pw") } returns SignInOutcome.UNAVAILABLE
+        coEvery { cognitoSessionAuthenticator.signInAmplify("a@b.com", "pw") } returns SignInOutcome.REJECTED
+
+        assertEquals(SignInOutcome.UNAVAILABLE, manager.attemptSilentReauthWithOutcome(context))
+        assertFalse(manager.attemptSilentReauth(context))
     }
 }

@@ -39,7 +39,9 @@ class AuthRecoveryCoordinator(
 
     private suspend fun begin(user: UserEntity?, reason: String) {
         if (isPending()) return
-        preferences(context).edit().putBoolean(PREF_PENDING, true).apply()
+        // Synchronous so a kill right after still finds recovery pending; LoginFragment finishes
+        // a recovery that was interrupted before the sign-out below.
+        preferences(context).edit().putBoolean(PREF_PENDING, true).commit()
         repository.saveLog("AUTH_RECOVERY_STARTED", reason)
 
         val notifications = NotificationHelper(context)

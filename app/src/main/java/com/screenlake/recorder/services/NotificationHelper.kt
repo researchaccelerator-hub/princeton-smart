@@ -69,13 +69,25 @@ class NotificationHelper(private val context: Context) {
             .setAutoCancel(true)
             .setContentIntent(getLoginPendingIntent())
 
-        if (!NotificationManagerCompat.from(context).areNotificationsEnabled() ||
+        if (!canPost(ConstantSettings.NOTIFICATION_CHANNEL_ID)) return false
+        NotificationManagerCompat.from(context).notify(ConstantSettings.CREDENTIAL_EXPIRED_NOTIFICATION_ID, builder.build())
+        return true
+    }
+
+    /**
+     * Whether a notification on [channelId] will actually be shown: notifications on for the app,
+     * the runtime permission granted (Android 13+ only), and the channel not turned off.
+     */
+    private fun canPost(channelId: String): Boolean {
+        val manager = NotificationManagerCompat.from(context)
+        if (!manager.areNotificationsEnabled()) return false
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {
             return false
         }
-        NotificationManagerCompat.from(context).notify(ConstantSettings.CREDENTIAL_EXPIRED_NOTIFICATION_ID, builder.build())
-        return true
+        val channel = manager.getNotificationChannel(channelId)
+        return channel == null || channel.importance != NotificationManager.IMPORTANCE_NONE
     }
 
     private fun getLoginPendingIntent(): PendingIntent = PendingIntent.getActivity(

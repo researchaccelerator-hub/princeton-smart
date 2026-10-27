@@ -49,7 +49,7 @@ class UploadWorker @AssistedInject constructor(
 
     companion object {
         private const val TAG = "UploadWorker"
-        /** Files per run; a larger backlog continues in a retried run. */
+        /** Successful uploads per run; a larger backlog continues in a retried run. */
         private const val MAX_UPLOADS_PER_RUN = 100
         val uploadFeedback = MutableLiveData<String>()
         val mutex = Mutex()
@@ -165,13 +165,17 @@ class UploadWorker @AssistedInject constructor(
      */
     private suspend fun uploadZipFilesAsync(): UploadSummary = withContext(Dispatchers.IO) {
         val summary = UploadSummary()
-        val allPending = (generalOperationsRepository.getZipsToUpload() + getLocalLogFiles()).distinctBy { it.file }
-        val pending = allPending.take(MAX_UPLOADS_PER_RUN)
-        summary.remainingAfterRun = allPending.size - pending.size
+        val pending = (generalOperationsRepository.getZipsToUpload() + getLocalLogFiles()).distinctBy { it.file }
 
-        Timber.tag(TAG).d("Found ${allPending.size} files to upload; uploading ${pending.size} this run.")
+        Timber.tag(TAG).d("Found ${pending.size} files to upload.")
 
+        // The per-run limit counts successful uploads only, so files that keep failing (for
+        // example a missing invite code) never stop the files after them from being tried.
         for ((index, zip) in pending.withIndex()) {
+            if (summary.succeeded >= MAX_UPLOADS_PER_RUN) {
+                summary.remainingAfterRun = pending.size - index
+                break
+            }
             WorkerProgressManager.updateProgress("Uploading ${index + 1} of ${pending.size}")
             val filePath = zip.file
             if (filePath == null) {

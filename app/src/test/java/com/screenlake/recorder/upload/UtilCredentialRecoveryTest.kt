@@ -6,6 +6,7 @@ import com.amazonaws.mobile.client.AWSMobileClient
 import com.amazonaws.mobile.client.Callback
 import com.amazonaws.mobile.client.UserStateDetails
 import com.screenlake.recorder.authentication.AuthRecoveryManager
+import com.screenlake.recorder.authentication.SignInOutcome
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -64,7 +65,7 @@ class UtilCredentialRecoveryTest {
 
     @Test
     fun `throws CredentialExpiredException when silent reauth fails`() = runTest {
-        coEvery { authRecoveryManager.attemptSilentReauth(context) } returns false
+        coEvery { authRecoveryManager.attemptSilentReauthWithOutcome(context) } returns SignInOutcome.REJECTED
 
         val util = Util(authRecoveryManager).apply { isOnline = { true } }
 
@@ -90,7 +91,7 @@ class UtilCredentialRecoveryTest {
             neverCountsDown.await()
             error("unreachable — latch never counts down")
         }
-        coEvery { authRecoveryManager.attemptSilentReauth(context) } returns false
+        coEvery { authRecoveryManager.attemptSilentReauthWithOutcome(context) } returns SignInOutcome.REJECTED
 
         val util = Util(authRecoveryManager).apply { isOnline = { true } }
 
@@ -129,7 +130,7 @@ class UtilCredentialRecoveryTest {
         assertThrows(AwsTransientException::class.java) {
             runBlocking { util.prepareUploadSession(context) }
         }
-        coVerify(exactly = 0) { authRecoveryManager.attemptSilentReauth(any()) }
+        coVerify(exactly = 0) { authRecoveryManager.attemptSilentReauthWithOutcome(any()) }
     }
 
     @Test
@@ -140,12 +141,22 @@ class UtilCredentialRecoveryTest {
             if (calls == 1) throw RuntimeException("token cache expired")
             com.amazonaws.auth.BasicAWSCredentials("AKIDEXAMPLE", "secret")
         }
-        coEvery { authRecoveryManager.attemptSilentReauth(context) } returns true
+        coEvery { authRecoveryManager.attemptSilentReauthWithOutcome(context) } returns SignInOutcome.SIGNED_IN
         val util = Util(authRecoveryManager).apply { isOnline = { true } }
 
         util.prepareUploadSession(context)
 
         assertTrue(util.generates3ShareUrl(context, "/tmp/file.zip", "some/upload/path.zip").isNotEmpty())
         Unit
+    }
+
+    @Test
+    fun `an unreachable Cognito during silent re-login is a temporary failure`() = runTest {
+        coEvery { authRecoveryManager.attemptSilentReauthWithOutcome(context) } returns SignInOutcome.UNAVAILABLE
+        val util = Util(authRecoveryManager).apply { isOnline = { true } }
+
+        assertThrows(AwsTransientException::class.java) {
+            runBlocking { util.prepareUploadSession(context) }
+        }
     }
 }

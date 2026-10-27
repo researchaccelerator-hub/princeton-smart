@@ -9,17 +9,31 @@ Each upload ends as one of four results (`UploadResult`). Only `SUCCESS` deletes
 | Result | Causes | What happens |
 |---|---|---|
 | `SUCCESS` | Uploaded | File and its database row are deleted; the consecutive-failure count resets |
-| `TRANSIENT_FAILURE` | Phone offline, network error, timeout, HTTP 408/429/5xx, AWS server error | File kept; the run stops and WorkManager retries later |
-| `AUTHENTICATION_FAILURE` | AWS rejects the identity, and a silent re-login with the stored credentials did not fix it | File kept; counted toward recovery (below) |
+| `TRANSIENT_FAILURE` | Phone offline, network error, timeout, HTTP 408/429/5xx, AWS server error or throttling, Cognito unreachable during a silent re-login | File kept; the run stops and WorkManager retries later |
+| `AUTHENTICATION_FAILURE` | AWS rejects the identity, and Cognito rejected a silent re-login with the stored credentials | File kept; counted toward recovery (below) |
 | `CONFIGURATION_FAILURE` | Other HTTP 4xx, AWS setup not loaded, participant has no invite code or panel yet | File kept; the run continues with the next file |
 
 Errors are sorted by type and AWS error code (`UploadFailureClassifier`), never by matching words in the error message. An offline phone is never treated as an expired sign-in.
+
+## When uploads run
+
+An upload run starts:
+
+- every `UPLOAD_WORKER_INTERVAL_HOURS` (1 by default), as a periodic WorkManager job;
+- after each OCR run, once, as a zip-then-upload chain (`ScreenshotService.enqueueZipAndUpload`). OCR runs while the phone is locked or when the participant taps Upload, and a tap always zips and uploads even with nothing new to OCR;
+- after a participant signs in.
+
+A run skips while recovery is pending (below) or when no participant is signed in, and a mutex stops two runs uploading at once. OCR and zipping continue during recovery, so the data is ready when the participant signs in again.
 
 ## One credential fetch per run
 
 At the start of each upload run, the app loads AWS credentials once (`Util.prepareUploadSession`) and signs every upload in the run with them.
 
 If loading fails while the phone is online and the error is not a network or server error, the app signs in again silently with the participant's stored credentials and tries once more. It also does this when the credential call hangs, which happens when a session was revoked on the server; each AWS call has a 15-second timeout.
+
+A silent re-login reports whether Cognito rejected the stored credentials or could not be reached (`SignInOutcome`). Only a rejection counts as a credential failure; an unreachable or throttled Cognito, or a network error on the credential fetch that follows, is temporary.
+
+A run uploads up to 100 files; files that fail without being retryable (for example, no invite code yet) do not use up that limit, so the files after them are still tried. When more files remain after 100 successful uploads, the run is retried.
 
 If AWS rejects an upload with 401 or 403 partway through a run (for example, credentials expired mid-run), the app signs in again silently and retries that file once.
 
@@ -30,7 +44,8 @@ Every upload run that ends with `AUTHENTICATION_FAILURE` counts once. After `CRE
 1. A persisted "recovery pending" flag stops further upload attempts until the participant signs in. This prevents retry loops.
 2. A "Sign in to resume uploads" notification opens the login screen. If notifications are blocked, the login screen shows the same message the next time it opens.
 3. The participant is signed out and recording stops. Data stays on the phone: pending zips, screenshots, the database and log files are kept. The app records whose data it is (email, invite code, tenant and panel).
-4. While recovery is pending, the recording watchdog does not show its "Study Recording Stopped" notice, so the sign-in notice comes first.
+4. If the app is killed partway through, recovery is finished at the next sign-in: the same account resumes, a different one gets the warning below.
+5. While recovery is pending, the recording watchdog does not show its "Study Recording Stopped" notice, so the sign-in notice comes first.
 
 When the participant signs in again:
 

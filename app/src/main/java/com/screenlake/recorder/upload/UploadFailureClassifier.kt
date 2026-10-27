@@ -29,10 +29,23 @@ object UploadFailureClassifier {
             (it.errorCode in AUTH_ERROR_CODES || it.statusCode == 401 || it.statusCode == 403)
     }
 
-    /** An AWS server-side error (5xx) or throttling: retry later. */
+    private val THROTTLING_ERROR_CODES = setOf(
+        "TooManyRequestsException",
+        "ThrottlingException",
+        "Throttling",
+        "RequestLimitExceeded",
+        "SlowDown",
+        "LimitExceededException",
+    )
+
+    /**
+     * An AWS server-side error (5xx) or throttling: retry later. Cognito reports throttling as
+     * HTTP 400 client errors, so it is recognized by error code.
+     */
     fun isServerFailure(error: Throwable): Boolean = causes(error).any {
         it is AmazonServiceException &&
-            (it.errorType == AmazonServiceException.ErrorType.Service || it.statusCode == 429)
+            (it.errorType == AmazonServiceException.ErrorType.Service || it.statusCode == 429 ||
+                it.errorCode in THROTTLING_ERROR_CODES)
     }
 
     private fun causes(error: Throwable): Sequence<Throwable> =

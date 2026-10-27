@@ -18,6 +18,7 @@ import com.amazonaws.services.s3.model.ResponseHeaderOverrides
 import com.screenlake.BuildConfig
 import com.screenlake.data.repository.NativeLib
 import com.screenlake.recorder.authentication.AuthRecoveryManager
+import com.screenlake.recorder.authentication.SignInOutcome
 import com.screenlake.recorder.utilities.HardwareChecks
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
@@ -80,11 +81,7 @@ class Util @Inject constructor(private val authRecoveryManager: AuthRecoveryMana
         val credentials = try {
             acquireCredentials()
         } catch (error: Exception) {
-            if (!isOnline(applicationContext) || UploadFailureClassifier.isNetworkFailure(error) ||
-                UploadFailureClassifier.isServerFailure(error)
-            ) {
-                throw AwsTransientException("Credentials unavailable: offline or a network/server error", error)
-            }
+            throwIfTransient(applicationContext, error)
             Timber.tag(TAG).w("Credential refresh failed before upload: ${error.message}")
             recoverWithSilentReauth(applicationContext, error)
         }
@@ -97,8 +94,14 @@ class Util @Inject constructor(private val authRecoveryManager: AuthRecoveryMana
     }
 
     private suspend fun recoverWithSilentReauth(applicationContext: Context, cause: Throwable?): AWSCredentials {
-        if (!authRecoveryManager.attemptSilentReauth(applicationContext)) {
-            throw CredentialExpiredException(
+        if (!isOnline(applicationContext)) {
+            throw AwsTransientException("Offline; silent reauth skipped", cause)
+        }
+        when (authRecoveryManager.attemptSilentReauthWithOutcome(applicationContext)) {
+            SignInOutcome.SIGNED_IN -> Unit
+            SignInOutcome.UNAVAILABLE ->
+                throw AwsTransientException("Cognito unreachable or throttled during silent reauth", cause)
+            SignInOutcome.REJECTED -> throw CredentialExpiredException(
                 "Cognito credential refresh failed and silent reauth did not recover it.",
                 cause
             )
@@ -106,7 +109,17 @@ class Util @Inject constructor(private val authRecoveryManager: AuthRecoveryMana
         return try {
             acquireCredentials()
         } catch (retryEx: Exception) {
+            throwIfTransient(applicationContext, retryEx)
             throw CredentialExpiredException("Cognito credentials still invalid after silent reauth.", retryEx)
+        }
+    }
+
+    /** Offline, a network error or an AWS server or throttling error: retry later, not a credential problem. */
+    private fun throwIfTransient(applicationContext: Context, error: Exception) {
+        if (!isOnline(applicationContext) || UploadFailureClassifier.isNetworkFailure(error) ||
+            UploadFailureClassifier.isServerFailure(error)
+        ) {
+            throw AwsTransientException("Credentials unavailable: offline or a network/server error", error)
         }
     }
 

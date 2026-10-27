@@ -49,7 +49,7 @@ This step-by-step guide is made to match the following tools, including click-by
 ### Overview of App Technical Capacities
 The contents of this repository enable you (a researcher) to create an Android application. The Android application is designed to efficiently, continuously, & passively take screenshots of the smartphone device it is installed on, every 5 seconds until manually interrupted, and also perform Optical Character Recognition (OCR) to extract text from the captured images. Additionally, the app collects a variety of data related to the smartphone device and the apps running on it (listed below):
 
-- **Screenshots & OCR Processing:** Captures a full-screen screenshot every 5 seconds, and uses OCR to extract text from the screenshots.
+- **Screenshots & OCR Processing:** Captures a full-screen screenshot at the interval set by the capture preset (every 5 seconds by default; see [Screenshot Capture Presets](#screenshot-capture-presets)), and uses OCR to extract text from the screenshots.
 - **App Log Data:** Records metadata such as app names and timestamps at the time of each screenshot.
 - **App Usage Data:** Collects detailed usage data from the device, including which apps are running and how long they’ve been used.
 - **App Segment Data:** Tracks and logs data showing the last five apps that were on the screen before the current one.
@@ -357,7 +357,9 @@ Set `ACTIVE_PRESET` to one of the three options:
 | `MEDIUM` | 1 screenshot every 5 s | 0.2 | Balanced fidelity and storage. Suitable for most research use cases. **(default)** |
 | `HIGH` | 1 screenshot every 1 s | 1.0 | Short-duration sessions requiring fine-grained activity capture. Storage and upload costs increase significantly. |
 
-The active preset's interval is recorded in the `fps` column of the session CSV output, allowing you to confirm the deployed configuration from collected data.
+The active preset's interval is recorded in the `fps` column of the session CSV output, allowing you to confirm the deployed configuration from collected data. The recording notification also shows the interval ("Taking a screenshot every 5 seconds").
+
+> **Data from app versions before 1.53.0:** earlier versions always captured one screenshot every 5 seconds, whatever `ACTIVE_PRESET` was set to, while the `fps` column still reported the preset's value. If a study was built with `LOW` or `HIGH` on an earlier version, its screenshots were really taken every 5 s and its `fps` value is wrong. Check `app_version` in the manifest CSV to see which version produced the data. Studies on the default `MEDIUM` preset are not affected.
 
 #### App Recording Controls
 
@@ -411,6 +413,8 @@ The session CSV (`session_data_csv_*.csv`) includes a `stop_reason` column (adde
 | `UNKNOWN` | Stop reason could not be determined (hard crash, or data predates schema version 2) |
 
 Note that a single uninterrupted recording will produce multiple session rows, one per screen-on/screen-off cycle. Each row will have `SCREEN_OFF` as the `stop_reason` except the final one when the participant explicitly stops.
+
+**Phone power off and on:** From version 1.53.0, the app also writes a `PHONE_POWER_STATE` row to its event log (uploaded to `academia/log_events_v2/<participant>/<version>/` in your bucket, columns `event`, `msg`, `user`, `timestamp`) when the phone shuts down (`msg` = `POWER_OFF`) and when it finishes starting up (`POWER_ON`). `POWER_OFF` is only recorded while recording is on, because Android delivers the shutdown signal only to a running app. Use these rows to tell a phone that was switched off apart from a session ended by the participant or the system (`SERVICE_DESTROYED`).
 
 **Pause and resume:** The app does not have a true pause state. When a participant stops recording and restarts, each restart creates a new, independent session row with a new `id_session`. There is no identifier linking a stop to its subsequent resume — they appear in the data as two separate sessions from the same participant. When analysing gaps between sessions for the same user, a gap followed by a new session indicates the participant voluntarily stopped and restarted, but this cannot be confirmed from the data alone.
 

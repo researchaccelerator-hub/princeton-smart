@@ -6,7 +6,7 @@ This guide is for researchers who want to deploy the Princeton SMART app at thei
 
 ## What is this?
 
-Princeton SMART (Screenlake Mobile Analytics & Recording Tool) is an Android research app that passively captures screenshots every 5 seconds on participants' smartphones, extracts text from those screenshots, and securely uploads all collected data to your institution's private AWS cloud storage. The app also logs which apps are in use, session activity, and accessibility data.
+Princeton SMART (Screenlake Mobile Analytics & Recording Tool) is an Android research app that passively captures screenshots at a configurable interval (every 5 seconds by default) on participants' smartphones, extracts text from those screenshots, and securely uploads all collected data to your institution's private AWS cloud storage. The app also logs which apps are in use, session activity, and accessibility data.
 
 **What data is collected:**
 - Screenshots and OCR-extracted text

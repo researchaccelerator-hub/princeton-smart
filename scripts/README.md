@@ -79,8 +79,10 @@ python consolidatecsvs.py
 
 Any option you leave out is asked for interactively. To skip the prompts:
 ```bash
-python consolidatecsvs.py --bucket my-study-bucket --start 2026-10-01 --end 2026-10-07 \
-    --zip-types csv --remove-ocr --batch-size 25 --processors 4 --query-id query_oct_week1
+python consolidatecsvs.py --aws-default-credentials --bucket my-study-bucket \
+    --prefix academia/tenant/<tenant>/panel/<panel>/<version>/panelist/ \
+    --start 2026-10-01 --end 2026-10-07 --zip-types csv --remove-ocr \
+    --batch-size 25 --processors 4 --query-id query_oct_week1
 ```
 
 ### 3. **Follow the Prompts**
@@ -103,9 +105,11 @@ The script will guide you through:
 | `--bucket` | `$SMART_S3_BUCKET`, else `screenlake-zip-prod` | S3 bucket your study uploads to. Set `SMART_S3_BUCKET` to change the default for your institution. |
 | `--start`, `--end` | 1 year ago, today | Inclusive date range, `YYYY-MM-DD`, local time. |
 | `--zip-types` | `csv` | `csv`, `image`, or `both`. |
-| `--remove-ocr` / `--keep-ocr` | keep | Drop or keep `text`, `ocr`, and `ocr_text` columns in the consolidated CSVs. |
+| `--remove-ocr` / `--keep-ocr` | keep | Drop or keep `text`, `ocr`, and `ocr_text` columns in the consolidated CSVs. Applies to any ZIP type, since pre-1.50 image ZIPs contain CSVs. |
 | `--batch-size` | 25 | Number of files to download in a single batch. |
 | `--processors` | 4 | Number of parallel download processes. |
+| `--aws-default-credentials` | ask | Use your AWS profile, environment variables, or EC2 instance role without asking. |
+| `--prefix` | folder selector | S3 path to download (ends in `panelist/`), skipping the selector. |
 | `--query-id` | `query_<date>_<time>` | Output folder name. Reuse a folder name to resume an interrupted run. |
 
 ### ZIP file names

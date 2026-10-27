@@ -5,6 +5,7 @@ Estimates monthly S3 cost for a study, comparing:
   Variant 2: separate CSV and image ZIPs per batch (the app's current layout), with only
              the CSV ZIPs downloaded daily.
 
+Storage is the first-month average, starting from an empty bucket.
 Rates default to S3 Standard list prices (us-east-1). Check current AWS pricing and your
 own image sizes before relying on the numbers.
 
@@ -46,11 +47,11 @@ def estimate_s3_costs(
     daily_metadata_gb = total_images_per_day * metadata_size_gb
     daily_total_gb = daily_image_gb + daily_metadata_gb
 
-    # Storage volume at rest is the same for both variants.
-    if retention_days >= days_in_month:
-        avg_storage_gb = daily_total_gb * (days_in_month + 1) / 2  # linear accumulation over the month
-    else:
-        avg_storage_gb = daily_total_gb * retention_days
+    # Storage volume at rest is the same for both variants. First month, starting from an
+    # empty bucket: on day t the bucket holds min(t, retention_days) days of uploads.
+    avg_storage_gb = daily_total_gb * sum(
+        min(day, retention_days) for day in range(1, days_in_month + 1)
+    ) / days_in_month
     storage_cost = avg_storage_gb * storage_rate_per_gb
 
     def variant(puts_per_batch, egress_gb_per_day):

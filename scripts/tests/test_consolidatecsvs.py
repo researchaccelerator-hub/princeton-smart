@@ -267,3 +267,77 @@ def test_pipeline_after_download_unzips_every_panelist_and_consolidates(tmp_path
     panelists = os.listdir(os.path.join(query_id, "combined", "panelists"))
     assert sorted(panelists) == sorted(f"hash{i}" for i in range(panelist_count))
     assert summary["participants"] == panelist_count
+
+
+def test_read_downloaded_csv_repairs_free_text_in_the_middle_of_the_row(tmp_path):
+    # screenshot_data has text before the timestamp columns.
+    path = write(tmp_path / "s.csv", "id_user,file,text,t_epoch_ts_ms\n1,a.jpg,hello, world,100\n2,b.jpg,ok,200\n")
+
+    df = cc.read_downloaded_csv(path)
+
+    assert df.to_dict("records") == [
+        {"id_user": "1", "file": "a.jpg", "text": "hello, world", "t_epoch_ts_ms": "100"},
+        {"id_user": "2", "file": "b.jpg", "text": "ok", "t_epoch_ts_ms": "200"},
+    ]
+
+
+def test_read_downloaded_csv_keeps_first_column_when_only_first_row_is_wide(tmp_path):
+    # pandas alone would turn id_user into an index here and shift every column.
+    path = write(tmp_path / "a.csv", "id_user,apk,text\n1,com.a,hello, world\n")
+
+    df = cc.read_downloaded_csv(path)
+
+    assert df.to_dict("records") == [{"id_user": "1", "apk": "com.a", "text": "hello, world"}]
+
+
+def test_read_downloaded_csv_skips_wide_rows_without_a_free_text_column(tmp_path):
+    path = write(tmp_path / "p.csv", "id_user,apk\n1,com.a,extra\n2,com.b\n")
+
+    df = cc.read_downloaded_csv(path)
+
+    assert df.to_dict("records") == [{"id_user": "2", "apk": "com.b"}]
+
+
+def test_longest_run_without_normal_counts_runs_shorter_than_three_days(tmp_path):
+    query_id = str(tmp_path / "q")
+    make_screenshot_csv(query_id, "h1", [
+        ("1", "a.jpg", "2026-07-01", "Normal"),
+        ("1", "b.jpg", "2026-07-02", "ScreenLocked"),
+        ("1", "c.jpg", "2026-07-03", "ScreenLocked"),
+        ("1", "d.jpg", "2026-07-04", "Normal"),
+    ], with_state=True)
+
+    summary = cc.calculate_screenshot_daily_stats(query_id)
+
+    participants = pd.read_csv(os.path.join(query_id, "combined", "summary", "participant_statistics.csv"))
+    assert participants["longest_consecutive_days_without_normal"].tolist() == [2]
+    assert summary["participants_without_normal_3_consecutive_days"] == 0
+
+
+def test_explicit_remove_ocr_applies_to_image_zip_downloads(tmp_path, monkeypatch):
+    # Image ZIPs from app versions before 1.50 contain CSVs, so the flag must not be ignored.
+    calls = {}
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(cc, "connect_to_s3", lambda use_default: object())
+    monkeypatch.setattr(cc, "check_face_redaction_available", lambda: None)
+    monkeypatch.setattr(cc, "download_zip_files_in_batches", lambda *a, **k: None)
+    monkeypatch.setattr(cc, "process_child_folders_csvs", lambda path: {"h1": []})
+    monkeypatch.setattr(cc, "combine_csv_files",
+                        lambda result, query_id, remove: calls.setdefault("remove", remove))
+    monkeypatch.setattr(cc, "calculate_screenshot_daily_stats", lambda query_id: {})
+    monkeypatch.setattr("builtins.input", lambda *a: pytest.fail("prompted in an unattended run"))
+
+    cc.main(["--aws-default-credentials", "--bucket", "b", "--prefix", "academia/tenant/x/panelist",
+             "--start", "2026-07-01", "--end", "2026-07-02", "--zip-types", "image", "--remove-ocr",
+             "--batch-size", "5", "--processors", "1", "--query-id", "q"])
+
+    assert calls["remove"] is True
+
+
+def test_storage_estimate_does_not_grow_when_retention_shrinks():
+    import cost_estimation as ce
+
+    estimates = [ce.estimate_s3_costs(retention_days=r)["avg_storage_gb"] for r in (1, 15, 29, 30, 60)]
+
+    assert estimates == sorted(estimates)
+    assert estimates[3] == estimates[4]

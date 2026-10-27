@@ -70,23 +70,17 @@ def get_s3_client(*args, **kwargs):
 
 
 def read_downloaded_csv(file_path):
-    """Read a downloaded CSV, repairing unquoted commas in its final column.
+    """Read a downloaded CSV as text, repairing rows split by unquoted commas in free text.
 
-    Some uploads contain a comma-containing value (usually accessibility ``text``) without
-    CSV quoting. Pandas rejects those rows because they have more fields than the header.
-    The free-text column is last in every schema, so on a parser error the surplus fields
-    are joined back into that final value instead of dropping data.
+    Some uploads contain a comma-containing free-text value (OCR or accessibility ``text``)
+    that was not quoted correctly, so the row has more fields than the header. The surplus
+    fields are joined back into the free-text column, wherever it sits: it is last in
+    app_accessibility_data but in the middle of screenshot_data. A row with surplus fields
+    and no free-text column cannot be repaired safely, so it is skipped with a warning.
+
+    Every row's width is checked here rather than trusting pandas, which silently turns
+    the first column into an index when the first data row has one extra field.
     """
-    try:
-        return pd.read_csv(file_path)
-    except pd.errors.ParserError as error:
-        logging.warning(
-            "Malformed CSV detected in %s; repairing unquoted commas in the "
-            "final column. Original error: %s",
-            file_path,
-            error,
-        )
-
     with open(file_path, "r", encoding="utf-8-sig", newline="", errors="replace") as csv_file:
         reader = csv.reader(csv_file)
         try:
@@ -95,11 +89,30 @@ def read_downloaded_csv(file_path):
             raise pd.errors.EmptyDataError(f"No columns to parse from file: {file_path}")
 
         expected_fields = len(header)
+        text_columns = [i for i, column in enumerate(header) if column.lower() in OCR_COLUMN_NAMES]
+        text_index = text_columns[0] if len(text_columns) == 1 else None
         rows = []
         repaired_rows = 0
+        skipped_rows = 0
         for line_number, row in enumerate(reader, start=2):
+            if not row:
+                continue
             if len(row) > expected_fields:
-                row = row[:expected_fields - 1] + [",".join(row[expected_fields - 1:])]
+                if text_index is None:
+                    logging.warning(
+                        "CSV row %d in %s has %d fields for %d columns and no single free-text "
+                        "column to repair; skipping it.",
+                        line_number,
+                        file_path,
+                        len(row),
+                        expected_fields,
+                    )
+                    skipped_rows += 1
+                    continue
+                surplus = len(row) - expected_fields
+                row = (row[:text_index]
+                       + [",".join(row[text_index:text_index + surplus + 1])]
+                       + row[text_index + surplus + 1:])
                 repaired_rows += 1
             elif len(row) < expected_fields:
                 logging.warning(
@@ -114,7 +127,9 @@ def read_downloaded_csv(file_path):
 
     if repaired_rows:
         logging.warning("Repaired %d malformed row(s) in %s.", repaired_rows, file_path)
-    return pd.DataFrame(rows, columns=header)
+    if skipped_rows:
+        logging.warning("Skipped %d unrepairable row(s) in %s.", skipped_rows, file_path)
+    return pd.DataFrame(rows, columns=header, dtype=str)
 
 
 def read_csv_header(file_path):
@@ -142,6 +157,11 @@ def parse_args(argv=None):
     parser.add_argument("--batch-size", type=int, help="ZIP files per download batch (default: 25)")
     parser.add_argument("--processors", type=int, help="Parallel download processes (default: 4)")
     parser.add_argument("--query-id", help="Output folder name (default: query_<timestamp>)")
+    parser.add_argument("--prefix", help="S3 path to download, skipping the folder selector, for example "
+                                         "academia/tenant/<tenant>/panel/<panel>/<version>/panelist/")
+    parser.add_argument("--aws-default-credentials", action="store_true",
+                        help="Use the standard AWS credential chain (profile, environment, or instance role) "
+                             "without asking")
     return parser.parse_args(argv)
 
 
@@ -207,12 +227,15 @@ def s3_object_matches_download_type(obj, download_file_types):
 
 
 # Step 1: Connect to AWS S3
-def connect_to_s3():
+def connect_to_s3(use_default_credentials=False):
     """
     Connects to AWS S3 using existing credentials or prompts for new credentials.
     Returns:
         boto3 S3 client
     """
+    if use_default_credentials:
+        return get_s3_client()
+
     credentials_path = os.path.expanduser("~/.aws/credentials")
     config_path = os.path.expanduser("~/.aws/config")
 
@@ -1163,39 +1186,36 @@ def write_state_summaries(screenshot_rows_df, participant_summary, overall_summa
     }
     missing_normal_runs = []
 
+    # Collect every run of days without Normal data; the report only lists runs of 3 or
+    # more days, but the longest run per participant counts shorter ones too.
     for participant_id in sorted(df["id_user"].unique()):
         run_start = None
         run_length = 0
 
-        for day in all_days:
-            if normal_count_lookup.get((participant_id, day), 0) == 0:
+        for day in list(all_days) + [None]:
+            if day is not None and normal_count_lookup.get((participant_id, day), 0) == 0:
                 if run_start is None:
                     run_start = day
                 run_length += 1
                 continue
 
-            if run_length >= 3:
+            if run_length:
                 missing_normal_runs.append({
                     "id_user": participant_id,
                     "start_date": run_start,
-                    "end_date": day - timedelta(days=1),
+                    "end_date": run_start + timedelta(days=run_length - 1),
                     "consecutive_days_without_normal": run_length
                 })
             run_start = None
             run_length = 0
 
-        if run_length >= 3:
-            missing_normal_runs.append({
-                "id_user": participant_id,
-                "start_date": run_start,
-                "end_date": all_days[-1],
-                "consecutive_days_without_normal": run_length
-            })
-
-    participants_without_normal_3_consecutive_days = pd.DataFrame(
+    all_missing_normal_runs = pd.DataFrame(
         missing_normal_runs,
         columns=["id_user", "start_date", "end_date", "consecutive_days_without_normal"]
     )
+    participants_without_normal_3_consecutive_days = all_missing_normal_runs[
+        all_missing_normal_runs["consecutive_days_without_normal"] >= 3
+    ]
 
     participant_summary = participant_summary.merge(
         normal_data_per_participant[
@@ -1205,13 +1225,9 @@ def write_state_summaries(screenshot_rows_df, participant_summary, overall_summa
         how="left"
     )
     longest_missing_normal_run = (
-        participants_without_normal_3_consecutive_days.groupby("id_user")[
-            "consecutive_days_without_normal"
-        ]
+        all_missing_normal_runs.groupby("id_user")["consecutive_days_without_normal"]
         .max()
         .reset_index(name="longest_consecutive_days_without_normal")
-        if not participants_without_normal_3_consecutive_days.empty
-        else pd.DataFrame(columns=["id_user", "longest_consecutive_days_without_normal"])
     )
     participant_summary = participant_summary.merge(longest_missing_normal_run, on="id_user", how="left")
     for column in ["days_with_normal_data", "total_normal_screenshots", "longest_consecutive_days_without_normal"]:
@@ -1259,9 +1275,12 @@ def main(argv=None):
     args = parse_args(argv)
     query_id = args.query_id or f"query_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
-    s3 = connect_to_s3()
+    s3 = connect_to_s3(args.aws_default_credentials)
     bucket_name = get_bucket_name(args.bucket)
-    bucket_name, path = get_bucket_and_path(s3, bucket_name)
+    if args.prefix:
+        path = args.prefix if args.prefix.endswith("/") else args.prefix + "/"
+    else:
+        bucket_name, path = get_bucket_and_path(s3, bucket_name)
     if args.start is not None or args.end is not None:
         start_date, end_date = parse_date_range(args.start, args.end)
     else:
@@ -1269,12 +1288,13 @@ def main(argv=None):
     download_file_types = ZIP_TYPE_CHOICES[args.zip_types] if args.zip_types else get_download_file_types_from_user()
     if "image" in download_file_types:
         check_face_redaction_available()
-    if "csv" not in download_file_types:
-        remove_ocr_columns = False
-    elif args.remove_ocr is not None:
+    # An explicit flag always applies: image ZIPs from app versions before 1.50 contain CSVs too.
+    if args.remove_ocr is not None:
         remove_ocr_columns = args.remove_ocr
-    else:
+    elif "csv" in download_file_types:
         remove_ocr_columns = should_remove_ocr_from_consolidated_csvs()
+    else:
+        remove_ocr_columns = False
 
     zip_batch_size, num_processors = set_batch_and_processors(
         query_id,

@@ -5,6 +5,7 @@ import com.screenlake.data.database.entity.AccessibilityEventEntity
 import com.screenlake.data.database.entity.AppSegmentEntity
 import com.screenlake.data.database.entity.LogEventEntity
 import com.screenlake.data.database.entity.PackageEventEntity
+import com.screenlake.data.database.ScreenshotState
 import com.screenlake.data.database.entity.ScreenshotEntity
 import com.screenlake.data.database.entity.SessionEntity
 import com.screenlake.recorder.utilities.TimeUtility.getFormattedDate
@@ -215,22 +216,38 @@ object DataTransformation {
     }
 
 //    data class GroupedData(val name: String, var duration: Long)
+    private fun segmentApp(group: List<ScreenshotEntity>): String? =
+        (group.firstOrNull { !ScreenshotState.isMarker(it.state) } ?: group.first()).currentAppInUse
+
     fun groupAndSortData(dataList: List<ScreenshotEntity>): AppSegmentResult {
         val sortedData = dataList.sortedBy { it.epochTimeStamp }
         val groupedDataList = mutableListOf<AppSegmentEntity>()
 
         val resultScreenshots = mutableListOf<ScreenshotEntity>()
         var currentGroup: MutableList<ScreenshotEntity>? = null
+        // State marker rows (lock, unlock, pause) join the group they fall in and never start
+        // or split a segment; only capture rows decide which app a segment belongs to.
+        var groupApp: String? = null
+        var groupHasCapture = false
         for (data in sortedData) {
-            if (currentGroup == null || data.currentAppInUse != currentGroup.last().currentAppInUse) {
+            val isMarker = ScreenshotState.isMarker(data.state)
+            if (currentGroup != null && (isMarker || !groupHasCapture)) {
+                currentGroup.add(data)
+                if (!isMarker) {
+                    groupApp = data.currentAppInUse
+                    groupHasCapture = true
+                }
+                continue
+            }
+            if (currentGroup == null || data.currentAppInUse != groupApp) {
                 // Start a new group
-                 if (currentGroup != null && data.currentAppInUse != currentGroup?.last()?.currentAppInUse) {
+                 if (currentGroup != null) {
                     val time1 = Instant.parse(currentGroup.first().timestamp)
                     val time2 = Instant.parse(currentGroup.last().timestamp)
                     val appSegmentId = UUID.randomUUID().toString()
                     val timeBetween = ChronoUnit.MILLIS.between(time1, time2)
                      val duration = if (timeBetween == 0L) 3000L else timeBetween + 3000L
-                    groupedDataList.add(AppSegmentEntity(appTitle=currentGroup?.first()?.currentAppInUse,
+                    groupedDataList.add(AppSegmentEntity(appTitle=segmentApp(currentGroup),
                         appSegmentDuration = duration,
                         appSegmentStart = time1.toEpochMilli(),
                         appSegmentEnd = time2.toEpochMilli(),
@@ -246,6 +263,8 @@ object DataTransformation {
                 }else{
                      currentGroup = mutableListOf(data)
                 }
+                groupApp = data.currentAppInUse
+                groupHasCapture = !isMarker
             } else {
                 currentGroup.add(data)
             }
@@ -260,7 +279,7 @@ object DataTransformation {
             val appSegmentId = UUID.randomUUID().toString()
 
             groupedDataList.add(AppSegmentEntity(
-                appTitle=currentGroup.first().currentAppInUse,
+                appTitle=segmentApp(currentGroup),
                 appSegmentDuration = duration,
                 appSegmentStart = time1.toEpochMilli(),
                 appSegmentId = appSegmentId,

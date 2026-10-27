@@ -16,4 +16,7 @@ object ScreenshotState {
     const val PAUSE_START = "pause start"
     const val PAUSE_END = "pause end"
     const val NO_SCREEN_SHARING = "NoScreenSharing"
+
+    /** Marker rows record a state change, not what was on screen. */
+    fun isMarker(state: String?): Boolean = state != null && state != NORMAL && state != RESTRICTED
 }

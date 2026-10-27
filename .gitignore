@@ -82,3 +82,6 @@ gradle-app.setting
 /.claude
 /docs/superpowers/
 /.superpowers/
+
+# Python
+__pycache__/

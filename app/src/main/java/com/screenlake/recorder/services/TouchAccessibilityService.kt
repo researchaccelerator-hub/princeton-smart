@@ -2,9 +2,11 @@ package com.screenlake.recorder.services
 
 import android.accessibilityservice.AccessibilityService
 import android.content.BroadcastReceiver
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 import android.os.Build
 import android.os.Handler
@@ -69,6 +71,41 @@ class TouchAccessibilityService() : AccessibilityService() {
         var sessionStartTime: Long? = null
         var appIntervalId = UUID.randomUUID().toString()
         var user: UserEntity? = null
+        @Volatile private var latestPackageName: String? = null
+        @Volatile private var latestPackageTime: Long = 0L
+        private val activityClassCache = HashMap<String, Boolean>()
+
+        /**
+         * Records the foreground app when an Activity window comes to the front. Other windows
+         * (keyboard, notification shade, volume panel, dialogs from other packages) are ignored,
+         * so a restricted app stays the foreground app while one of them is drawn over it.
+         */
+        fun updateLatestPackage(context: Context, event: AccessibilityEvent) {
+            if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
+            val packageName = event.packageName?.toString()
+            val className = event.className?.toString()
+            if (packageName.isNullOrBlank() || packageName == "android" || className.isNullOrBlank()) return
+            if (!isActivity(context, packageName, className)) return
+            latestPackageName = packageName
+            latestPackageTime = System.currentTimeMillis()
+        }
+
+        private fun isActivity(context: Context, packageName: String, className: String): Boolean {
+            val key = "$packageName/$className"
+            synchronized(activityClassCache) { activityClassCache[key]?.let { return it } }
+            val isActivity = try {
+                context.packageManager.getActivityInfo(ComponentName(packageName, className), 0)
+                true
+            } catch (e: PackageManager.NameNotFoundException) {
+                false
+            }
+            synchronized(activityClassCache) { activityClassCache[key] = isActivity }
+            return isActivity
+        }
+
+        fun getLatestPackage(maxAgeMs: Long): String? {
+            return if (System.currentTimeMillis() - latestPackageTime <= maxAgeMs) latestPackageName else null
+        }
 
         fun isAccessibilitySettingsOn(mContext: Context): Boolean {
             return isAccessServiceEnabled(mContext)
@@ -107,6 +144,7 @@ class TouchAccessibilityService() : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
+        updateLatestPackage(this, event)
         eventHandler?.handleEvent(event)
     }
 

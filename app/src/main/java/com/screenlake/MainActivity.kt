@@ -24,21 +24,30 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.updatePadding
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.findNavController
 import androidx.preference.PreferenceManager
 import com.amplifyframework.core.Amplify
 import com.screenlake.databinding.ActivityMainBinding
+import com.screenlake.data.repository.GeneralOperationsRepository
 import com.screenlake.recorder.constants.ConstantSettings
+import com.screenlake.recorder.services.RecordingState
 import com.screenlake.recorder.services.ScreenshotService
 import com.screenlake.recorder.utilities.PermissionHelper
 import com.screenlake.recorder.viewmodels.MainViewModel
 import com.screenlake.recorder.viewmodels.RestrictedAppViewModel
 import com.screenlake.ui.fragments.ScreenRecordFragment
 import dagger.hilt.android.AndroidEntryPoint
+import jakarta.inject.Inject
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import timber.log.Timber
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity(), ScreenRecordFragment.MediaProjectionCallback {
+
+    @Inject
+    lateinit var generalOperationsRepository: GeneralOperationsRepository
 
     private lateinit var binding: ActivityMainBinding // ViewBinding instance
     private val mainViewModel: MainViewModel by viewModels()
@@ -48,15 +57,34 @@ class MainActivity : AppCompatActivity(), ScreenRecordFragment.MediaProjectionCa
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == MEDIA_PROJECTION_REQUEST_CODE && resultCode == Activity.RESULT_OK && data != null) {
+        if (requestCode != MEDIA_PROJECTION_REQUEST_CODE) return
+
+        if (resultCode == Activity.RESULT_OK && data != null) {
+            logProjectionPromptEvent("result=granted")
+            ScreenshotService.suppressMediaProjectionPromptUntilUnlock.set(false)
             ScreenshotService.isProjectionValid.postValue(true)
             startScreenRecordService(resultCode, data)
+        } else {
+            logProjectionPromptEvent("result=denied")
+            ScreenshotService.suppressMediaProjectionPromptUntilUnlock.set(true)
+            ScreenshotService.isMediaProjectionPromptInFlight.set(false)
+            // Starting the service here after a process kill would start a media projection
+            // foreground service without consent, which Android 14+ rejects. Consent stays
+            // pending either way, so the next app open asks again.
+            if (RecordingState.serviceAliveInProcess) {
+                startService(
+                    Intent(this, ScreenshotService::class.java).apply {
+                        action = ScreenshotService.ACTION_MEDIA_PROJECTION_DENIED
+                    }
+                )
+            }
         }
     }
 
     override fun onResume() {
         super.onResume()
         Timber.d("onResume")
+        requestPendingProjectionConsentIfNeeded()
     }
 
     private val requestPermissionLauncher = registerForActivityResult(
@@ -115,7 +143,8 @@ class MainActivity : AppCompatActivity(), ScreenRecordFragment.MediaProjectionCa
         handleAppUpdate()
         setObservers()
 
-        if (intent.action == "ACTION_REQUEST_MEDIA_PROJECTION") {
+        if (intent.action == ScreenshotService.ACTION_REQUEST_MEDIA_PROJECTION) {
+            ScreenshotService.suppressMediaProjectionPromptUntilUnlock.set(false)
             manager =
                 this.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
             requestMediaProjection()
@@ -132,8 +161,46 @@ class MainActivity : AppCompatActivity(), ScreenRecordFragment.MediaProjectionCa
     }
 
     private fun requestMediaProjection() {
-        val permissionIntent = manager.createScreenCaptureIntent()
-        startActivityForResult(permissionIntent, MEDIA_PROJECTION_REQUEST_CODE)
+        if (!ScreenshotService.isMediaProjectionPromptInFlight.compareAndSet(false, true)) {
+            logProjectionPromptEvent("request=skipped;reason=already_in_flight")
+            return
+        }
+
+        manager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        try {
+            logProjectionPromptEvent("request=system_dialog_launch")
+            startActivityForResult(
+                manager.createScreenCaptureIntent(),
+                MEDIA_PROJECTION_REQUEST_CODE
+            )
+        } catch (e: Exception) {
+            ScreenshotService.isMediaProjectionPromptInFlight.set(false)
+            logProjectionPromptEvent("request=launch_failed;error=${e.javaClass.simpleName}")
+            throw e
+        }
+    }
+
+    private fun requestPendingProjectionConsentIfNeeded() {
+        if (!ScreenshotService.isMediaProjectionRequestPending(this)) return
+        if (ScreenshotService.isMediaProjectionPromptInFlight.get()) return
+
+        // A denial returns directly to this Activity and immediately invokes onResume().
+        // Consume one resume so we do not loop the system dialog, then allow the next
+        // foreground entry (or the next unlock) to request consent again.
+        if (ScreenshotService.suppressMediaProjectionPromptUntilUnlock.getAndSet(false)) {
+            logProjectionPromptEvent("request=deferred;reason=denial_return_resume")
+            return
+        }
+
+        logProjectionPromptEvent("request=foreground_resume_recovery")
+        requestMediaProjection()
+    }
+
+    private fun logProjectionPromptEvent(message: String) {
+        Timber.i("Projection consent prompt: $message")
+        lifecycleScope.launch(Dispatchers.IO) {
+            generalOperationsRepository.saveLog("SCREEN_SHARING_PROMPT", message)
+        }
     }
 
     private fun startScreenRecordService(resultCode: Int, data: Intent?) {
@@ -229,7 +296,8 @@ class MainActivity : AppCompatActivity(), ScreenRecordFragment.MediaProjectionCa
             // Sent by the restart notification via NotificationHelper.getMainActivityPendingIntent().
             // Handles the case where the activity is already running when the user taps the
             // notification — onCreate() handles cold-start, this handles the warm/hot path.
-            "ACTION_REQUEST_MEDIA_PROJECTION" -> {
+            ScreenshotService.ACTION_REQUEST_MEDIA_PROJECTION -> {
+                ScreenshotService.suppressMediaProjectionPromptUntilUnlock.set(false)
                 manager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
                 requestMediaProjection()
             }
@@ -254,4 +322,5 @@ class MainActivity : AppCompatActivity(), ScreenRecordFragment.MediaProjectionCa
     override fun onMediaProjectionResult(resultCode: Int, data: Intent?) {
 
     }
+
 }

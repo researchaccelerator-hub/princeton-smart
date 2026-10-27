@@ -59,8 +59,10 @@ class NotificationHelper(private val context: Context) {
     fun getMainActivityPendingIntent() : PendingIntent {
 
         val intent = Intent(context, MainActivity::class.java).apply {
-            action = "ACTION_REQUEST_MEDIA_PROJECTION"
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            action = ScreenshotService.ACTION_REQUEST_MEDIA_PROJECTION
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
 
         return PendingIntent.getActivity(

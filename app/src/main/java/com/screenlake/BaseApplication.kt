@@ -8,6 +8,7 @@ import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.screenlake.data.database.dao.RestrictedAppDao
 import com.screenlake.recorder.ocr.Assets
 import com.screenlake.recorder.constants.ResearchConfig
+import com.screenlake.recorder.services.RecordingWatchdogWorker
 import com.screenlake.recorder.utilities.RingBufferTree
 import dagger.hilt.android.HiltAndroidApp
 import timber.log.Timber
@@ -39,6 +40,8 @@ class BaseApplication : Application(), Configuration.Provider {
             FirebaseCrashlytics.getInstance().recordException(e)
             Timber.tag("BaseApplication").e("Could not initialize SRK Application: $e")
         }
+
+        RecordingWatchdogWorker.onProcessStart(this)
     }
 
     private fun plantTimber() {

@@ -80,6 +80,13 @@ After setup, the app runs silently in the background. You do not need to open or
 
 Occasionally you may be asked to confirm a permission again, such as screen recording, even though you already granted it before. This is normal behavior built into Android to protect your privacy, not a sign that anything is wrong. Just tap to confirm again and the app will keep running.
 
+If screen recording stops, you will see one of these notifications:
+
+- **Study Recording Paused:** screen sharing was turned off, for example from the status bar or by your phone when it locked.
+- **Study Recording Stopped:** your phone closed the app in the background.
+
+Tap the notification, or open the app, and confirm screen recording to start again. The app will not open the screen recording prompt by itself, so recording stays off until you do.
+
 ---
 
 ## Battery and performance

@@ -83,6 +83,7 @@ import com.screenlake.recorder.services.util.SharedPreferencesUtil
 import com.screenlake.recorder.utilities.silence
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlin.collections.chunked
+import android.content.Context
 
 @AndroidEntryPoint
 class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
@@ -133,6 +134,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         var sessionId = UUID.randomUUID().toString()
         const val NOTIFICATION_ID = 1337
         const val CHANNEL_ID = "screenshot_service_channel"
+        const val INTERRUPTION_CHANNEL_ID = "screen_sharing_interruption_v2"
         const val EXTRA_RESULT_CODE = "resultCode"
         const val EXTRA_DATA = "data"
         /** Time between screenshots, from the study's capture preset. */
@@ -141,9 +143,20 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         private const val MAX_RETRY_ATTEMPTS = 3
         private const val SCREENSHOT_TIMEOUT_MS = 5000L  // 5 seconds timeout for screenshot operations
         private const val ERROR_NOTIFICATION_ID = 1339
+        private const val SCREEN_UNLOCK_PROBE_DELAY_MS = 500L
+        private const val MAX_SCREEN_UNLOCK_PROBES = 10
         val isRunning = MutableLiveData<Boolean>()
         // Action for restarting media projection
         const val ACTION_RESTART_PROJECTION = "com.example.screenshotapp.RESTART_PROJECTION"
+        const val ACTION_REQUEST_MEDIA_PROJECTION = "ACTION_REQUEST_MEDIA_PROJECTION"
+        const val ACTION_RESUME_SERVICE = "ACTION_RESUME_SERVICE"
+        const val ACTION_MEDIA_PROJECTION_DENIED = "ACTION_MEDIA_PROJECTION_DENIED"
+        private const val PREFS_NAME = "screenshot_service_state"
+        private const val PREF_PENDING_MEDIA_PROJECTION_REQUEST = "pending_media_projection_request"
+        val shouldRequestMediaProjection = MutableLiveData<Boolean>()
+        val projectionInterruptionState = MutableLiveData(ProjectionInterruptionState.IDLE)
+        val isMediaProjectionPromptInFlight = AtomicBoolean(false)
+        val suppressMediaProjectionPromptUntilUnlock = AtomicBoolean(false)
         val uploadTotal = MutableLiveData<Int>()
         val manualUploadPercentComplete = MutableLiveData<Double>()
         var uploadCountMsg = MutableLiveData<Int>()
@@ -188,6 +201,28 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
 
             return isRestrictedApp
         }
+
+        fun isMediaProjectionRequestPending(context: Context): Boolean {
+            return shouldRequestMediaProjection.value == true ||
+                context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                    .getBoolean(PREF_PENDING_MEDIA_PROJECTION_REQUEST, false)
+        }
+
+        fun markMediaProjectionRequestPending(context: Context) {
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean(PREF_PENDING_MEDIA_PROJECTION_REQUEST, true)
+                .apply()
+            shouldRequestMediaProjection.postValue(true)
+        }
+
+        fun clearMediaProjectionRequest(context: Context) {
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean(PREF_PENDING_MEDIA_PROJECTION_REQUEST, false)
+                .apply()
+            shouldRequestMediaProjection.postValue(false)
+        }
     }
 
     private var imagesProduced = 0
@@ -204,6 +239,14 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
     private var screenStateReceiver: ScreenStateReceiver? = null
     private var shutdownReceiver: BootReceiver? = null
     private var consecutiveErrors = AtomicInteger(0)
+    private var suppressNextProjectionStopPrompt = AtomicBoolean(false)
+    private var suppressNextVirtualDisplayStop = AtomicBoolean(false)
+    private var isResettingCapture = AtomicBoolean(false)
+    private val interruptionSessionFinalized = AtomicBoolean(false)
+    private val projectionStateLock = Any()
+    private var currentProjectionState = ProjectionInterruptionState.IDLE
+    private val projectionPromptHandler = Handler(Looper.getMainLooper())
+    private var screenUnlockProbe: Runnable? = null
     var moveForward = true
     private var screenshotJob: Job? = null
     var ocrSubmitted = false
@@ -248,6 +291,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
 
     override fun onCreate() {
         super.onCreate()
+        RecordingState.serviceAliveInProcess = true
         try {
             createNotificationChannel()
             startForeground()
@@ -292,10 +336,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
 
                 override fun onTick(millisUntilFinished: Long) {
                     if(isPaused.value == false){
-                        countDownTimer?.cancel()
-
-                        if(isRunning.value == true) pausedTimer.postValue("recording")
-
+                        handleResumeService()
                     }else{
                         pausedTimer.postValue("resuming in: " + ""+String.format("%d min, %d sec",
                             TimeUnit.MILLISECONDS.toMinutes(millisUntilFinished),
@@ -305,9 +346,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                 }
 
                 override fun onFinish() {
-                    isPaused.postValue(false)
-                    pausedTimer.postValue("recording")
-                    countDownTimer = null
+                    handleResumeService()
                 }
             }
 
@@ -320,8 +359,34 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
     }
 
     private fun handlePauseService() {
+        val wasPaused = isPaused.value == true
+        isPaused.value = true
+        transitionProjectionState(ProjectionInterruptionState.USER_PAUSED, "user_pause")
+        if (isRunning.value == true && !wasPaused) {
+            logScreenshotState(state = "pause start")
+        }
         pauseRecordingForMinutes()
         Timber.d("Service paused")
+    }
+
+    private fun handleResumeService() {
+        if (isPaused.value != true) return
+
+        countDownTimer?.cancel()
+        countDownTimer = null
+        isPaused.value = false
+        transitionProjectionState(
+            if (mediaProjection != null && virtualDisplay != null) {
+                ProjectionInterruptionState.CAPTURING
+            } else {
+                ProjectionInterruptionState.CONSENT_REQUIRED
+            },
+            "user_resume"
+        )
+        pausedTimer.value = "recording"
+
+        logScreenshotState(state = "pause end")
+        resetCapturing()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -336,6 +401,10 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                         // Stop the pause countdown first so it cannot end the pause mid-save.
                         countDownTimer?.cancel()
                         countDownTimer = null
+                        RecordingState.markStoppedIntentionally(this@ScreenshotService)
+                        // A stopped study needs no screen sharing consent.
+                        clearMediaProjectionRequest(this@ScreenshotService)
+                        cancelProjectionStoppedNotification()
                         coroutineScope.launch {
                             saveSessionSegmentsInBackground()
                             generalOperationsRepository.buildCurrentSession(framesPerSecondConst, "USER_STOP")
@@ -349,10 +418,20 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                         }
                     }
                     ACTION_PAUSE_SERVICE -> handlePauseService()
+                    ACTION_RESUME_SERVICE -> handleResumeService()
+                    ACTION_MEDIA_PROJECTION_DENIED -> {
+                        markMediaProjectionRequestPending(this)
+                        logProjectionPromptEvent("result=denied")
+                        logScreenshotState(state = "NoScreenSharing")
+                        // The notification that opened the consent flow is auto-cancelled by
+                        // Android, but restartNotificationShown still remembers it. Reset both
+                        // sides before reposting so a denial always leaves an obvious action.
+                        cancelProjectionStoppedNotification()
+                        showProjectionStoppedNotification()
+                        logProjectionPromptEvent("visibility=notification_reposted_after_denial")
+                    }
 
                     ACTION_RESTART_PROJECTION -> {
-                        // Media projection permission has been re-granted
-                        isRunning.postValue(true)
                         Timber.d("Restarting media projection")
                         val newResultCode = intent.getIntExtra(EXTRA_RESULT_CODE, Activity.RESULT_CANCELED)
                         val newData = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -363,20 +442,17 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                         }
 
                         if (newResultCode != Activity.RESULT_CANCELED && newData != null) {
-                            // Store for potential future restarts
                             resultCode = newResultCode
                             resultData = newData
-
                             setupMediaProjection(newResultCode, newData)
-                            startCapturing()
                         } else {
-                            Timber.e("Invalid result code or missing data for projection restart")
-                            // showErrorNotification("Could not restart screen capture", "Permission data is invalid")
+                            Timber.e("Permission screensharing denied by user.")
                         }
+
+                        // Does nothing unless the projection was set up above.
+                        startCapturing()
                     }
                     else -> {
-                        // Initial start of the service
-                        isRunning.postValue(true)
                         val newResultCode = intent.getIntExtra(EXTRA_RESULT_CODE, Activity.RESULT_CANCELED)
                         val newData = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                             intent.getParcelableExtra(EXTRA_DATA, Intent::class.java)
@@ -386,17 +462,16 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                         }
 
                         if (newResultCode != Activity.RESULT_CANCELED && newData != null) {
-                            // Store for potential future restarts
                             resultCode = newResultCode
                             resultData = newData
-
                             setupMediaProjection(newResultCode, newData)
-                            startCapturing()
                         } else {
-                            CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("MEDIA_PROJECTION", "Invalid result code or missing data for initial start") }
-                            Timber.e("Invalid result code or missing data for initial start")
-                            showErrorNotification("Could not start screen capture", "Permission data is invalid")
+                            CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("MEDIA_PROJECTION", "Permission denied for initial start") }
+                            Timber.e("Permission screensharing denied for initial start")
                         }
+
+                        // Does nothing unless the projection was set up above.
+                        startCapturing()
                     }
                 }
             }
@@ -450,11 +525,15 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
     private fun setupMediaProjection(resultCode: Int, data: Intent) {
         if (mediaProjection != null) {
             Timber.w("setupMediaProjection: projection already active, ignoring duplicate call")
+            isMediaProjectionPromptInFlight.set(false)
             return
         }
         // Fresh consent token received — allow the restart notification to be shown again
         // if projection is lost in this new session.
         restartNotificationShown = false
+        interruptionSessionFinalized.set(false)
+        RecordingState.markStarted(this)
+        transitionProjectionState(ProjectionInterruptionState.STARTING, "fresh_consent_received")
         try {
             val mediaProjectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -466,44 +545,43 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
 
             if (mediaProjection == null) {
                 Timber.e("Media projection is null after getMediaProjection")
+                isMediaProjectionPromptInFlight.set(false)
                 showErrorNotification("Error", "Could not create media projection")
+                transitionProjectionState(ProjectionInterruptionState.ERROR, "get_media_projection_returned_null")
                 return
             }
 
-            // MediaProjection.Callback is available from API 34 (Android 14, UPSIDE_DOWN_CAKE).
-            // Named constants for reference:
-            //   API 34 = UPSIDE_DOWN_CAKE  (Android 14)
-            //   API 35 = VANILLA_ICE_CREAM (Android 15)
-            //   API 36 = BAKLAVA           (Android 16)
-            // On API 33 and below, projection stop must be detected via other signals.
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                mediaProjection?.registerCallback(object : MediaProjection.Callback() {
-                    override fun onStop() {
-                        Timber.d("MediaProjection.Callback.onStop() fired")
-                        coroutineScope.launch {
-                            // Save the in-progress session before stopping, mirroring the logic
-                            // in onScreenOff(). Without this, screenshots captured since the last
-                            // screen-off event are orphaned in the database.
-                            saveSessionSegmentsInBackground()
-                            generalOperationsRepository.buildCurrentSession(framesPerSecondConst, "MEDIA_PROJECTION_REVOKED")
-                            generalOperationsRepository.saveSession(generalOperationsRepository.currentSession)
+            mediaProjection?.registerCallback(object : MediaProjection.Callback() {
+                override fun onStop() {
+                    Timber.d("MediaProjection.Callback.onStop() fired")
+                    isMediaProjectionValid.value = false
 
-                            // Rotate the session ID so data captured before and after re-consent
-                            // is stored in separate sessions, preserving the consent boundary.
-                            sessionId = UUID.randomUUID().toString()
-
-                            stopCapturing()
-                            showProjectionStoppedNotification()
-                            isMediaProjectionValid.postValue(false)
-                        }
+                    val stopWasRequestedByApp = suppressNextProjectionStopPrompt.getAndSet(false)
+                    val locked = isScreenLocked.get() || isDeviceCurrentlyLocked()
+                    if (!stopWasRequestedByApp) {
+                        transitionProjectionState(
+                            if (locked) ProjectionInterruptionState.SCREEN_LOCKED_CONSENT_REQUIRED
+                            else ProjectionInterruptionState.CONSENT_REQUIRED,
+                            "media_projection_on_stop"
+                        )
+                        markMediaProjectionRequestPending(this@ScreenshotService)
+                        showProjectionStoppedNotificationWhenAppropriate("media_projection_stopped")
+                        finalizeInterruptionSession(
+                            if (locked) "SCREEN_OFF_MEDIA_PROJECTION_REVOKED"
+                            else "MEDIA_PROJECTION_REVOKED"
+                        )
                     }
-                }, handler)
-            }
+
+                    releaseProjectionResources()
+                }
+            }, Handler(Looper.getMainLooper()))
         } catch (e: Exception) {
             Timber.e(e, "Error setting up media projection")
+            isMediaProjectionPromptInFlight.set(false)
             isMediaProjectionValid.postValue(false)
             CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("MEDIA_PROJECTION", "${e.message} -> ${e.stackTrace}") }
             showErrorNotification("Setup Error", "Failed to setup screen capture: ${e.message}")
+            transitionProjectionState(ProjectionInterruptionState.ERROR, "setup_media_projection_exception")
         }
     }
 
@@ -514,14 +592,17 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
             // Create a notification to inform the user that projection stopped
             val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
 
-            val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            val notification = NotificationCompat.Builder(this, INTERRUPTION_CHANNEL_ID)
                 .setContentTitle("Study Recording Paused")
                 .setContentText("Tap to resume data collection")
                 .setPriority(NotificationCompat.PRIORITY_MAX)
+                .setCategory(NotificationCompat.CATEGORY_ERROR)
+                .setDefaults(NotificationCompat.DEFAULT_ALL)
                 .setSmallIcon(com.screenlake.R.drawable.logo_just_square_small)
                 .setContentIntent(NotificationHelper(this).getMainActivityPendingIntent())
                 .setAutoCancel(true)
                 .setOngoing(false)
+                .setOnlyAlertOnce(true)
                 .build()
 
             notificationManager.notify(RESTART_NOTIFICATION_ID, notification)
@@ -541,6 +622,16 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
             }
             val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
+
+            val interruptionChannel = NotificationChannel(
+                INTERRUPTION_CHANNEL_ID,
+                "Screen sharing interrupted",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                this.description = "Alerts when screen sharing needs to be resumed"
+                enableVibration(true)
+            }
+            notificationManager.createNotificationChannel(interruptionChannel)
         }
     }
 
@@ -565,7 +656,11 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
     }
 
     private fun startCapturing() {
-        if (isRunning.value == true) {
+        if (
+            isRunning.value == true &&
+            virtualDisplay != null &&
+            imageReader != null
+        ) {
             return
         }
 
@@ -578,15 +673,26 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                 val keyguardManager = getSystemService(KEYGUARD_SERVICE) as KeyguardManager
                 isScreenLocked.set(keyguardManager.isKeyguardLocked)
 
-                withContext(Dispatchers.Main) {
+                val virtualDisplayReady = withContext(Dispatchers.Main) {
                     // Setup virtual display on main thread (MediaProjection requires main thread)
                     if (!setupVirtualDisplay()) {
-                        Timber.e("Failed to set up virtual display")
-                        showErrorNotification("Setup Error", "Failed to create virtual display")
-                        return@withContext
+                        Timber.e("Failed to set up virtual display (Screensharing not enabled)")
+                        // Let the participant retry consent instead of leaving the gate closed.
+                        isMediaProjectionPromptInFlight.set(false)
+                        false
+                    } else {
+                        // A new consent token is only recovered after its virtual display starts.
+                        isRunning.value = true
+                        transitionProjectionState(ProjectionInterruptionState.CAPTURING, "virtual_display_started")
+                        clearMediaProjectionRequest(this@ScreenshotService)
+                        isMediaProjectionPromptInFlight.set(false)
+                        cancelProjectionStoppedNotification()
+                        logProjectionPromptEvent("result=granted;capture=started")
+                        true
                     }
-                    isRunning.postValue(true)
                 }
+
+                if (!virtualDisplayReady) return@launch
 
                 // Load app data with timeout and error handling
                 try {
@@ -613,7 +719,9 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                         }
                     }
 
-                    startProcessingWithRestarts()
+                    if (screenshotJob?.isActive != true) {
+                        startProcessingWithRestarts()
+                    }
                 } catch (e: Exception) {
                     Timber.e(e, "Error loading initial data with timeout")
                     CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("START_CAPTURE", "${e.message} -> ${e.stackTrace}") }
@@ -634,46 +742,39 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         coroutineScope.launch {
             while (isActive) {
                 try {
-                    // Your operation that might timeout
                     screenshotJob = launch(errorHandler) {
+                        // Runs while the service runs, whether or not screen sharing is active;
+                        // takeScreenshot() logs a NoScreenSharing row when it is not.
                         while (isRunning.value == true && isActive) {
-                            if (manualOcr.value == true && !ocrSubmitted) {
-                                ocrSubmitted = true
-                                beginOcr()
-                            }
-                            if (!isScreenLocked.get()) {
+                            if (isPaused.value != true && !isScreenLocked.get()) {
                                 try {
-                                    withTimeout(SCREENSHOT_TIMEOUT_MS){
+                                    withTimeout(SCREENSHOT_TIMEOUT_MS) {
                                         lastIsAliveTime = System.currentTimeMillis()
                                         takeScreenshot()
                                     }
-
-                                    // Reset consecutive errors on success
                                     if (consecutiveErrors.get() > 0) {
                                         consecutiveErrors.set(0)
                                     }
                                 } catch (e: Exception) {
-                                    // handleScreenshotError(e)
+                                    Timber.d("Screenshot failed or timed out: ${e.message}")
                                 }
-                            } else {
-                                Timber.d("Screen locked, skipping screenshot")
+                            } else if (isPaused.value == true) {
+                                Timber.d("Recording paused. Skipping screenshot.")
                             }
 
+                            if (manualOcr.value == true && !ocrSubmitted) {
+                                ocrSubmitted = true
+                                beginOcr()
+                            }
+
+                            // Strict interval maintained independent of capture status
                             delay(SCREENSHOT_INTERVAL_MS)
                         }
                     }
-
-                    // If we get here, operation completed successfully, break the loop
                     break
-
                 } catch (e: TimeoutCancellationException) {
-                    // Timeout occurred, log it
-                    Timber.d("Operation timed out, restarting...")
-                    // imageReader?.close()
-                    // Optional: add a delay before restarting
+                    Timber.d("Master loop timed out, restarting...")
                     delay(1000)
-                    // resetCapturing()
-                    // Continue the loop to restart the operation
                     continue
                 }
             }
@@ -733,20 +834,40 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
             // Create image reader to capture screenshots
             imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
 
-            // Create virtual display.
-            // A VirtualDisplay.Callback is provided so the app can detect if the system
-            // stops the display unexpectedly (e.g. display resolution change) and recover
-            // without requiring re-consent — resetCapturing() recreates the VirtualDisplay
-            // and ImageReader on the existing, still-valid MediaProjection.
+            // Create the session's single virtual display. Pauses are recoverable, but
+            // onStopped() is terminal and API 34+ requires fresh consent for a new display.
+            suppressNextVirtualDisplayStop.set(false)
             virtualDisplay = mediaProjection?.createVirtualDisplay(
                 "ScreenCapture",
                 width, height, density,
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
                 imageReader?.surface,
                 object : VirtualDisplay.Callback() {
+                    override fun onPaused() {
+                        transitionProjectionState(
+                            if (isDeviceCurrentlyLocked()) {
+                                ProjectionInterruptionState.SCREEN_LOCKED_CAPTURE_SUSPENDED
+                            } else {
+                                ProjectionInterruptionState.STARTING
+                            },
+                            "virtual_display_paused"
+                        )
+                    }
+
+                    override fun onResumed() {
+                        transitionProjectionState(
+                            ProjectionInterruptionState.CAPTURING,
+                            "virtual_display_resumed"
+                        )
+                    }
+
                     override fun onStopped() {
-                        Timber.w("VirtualDisplay stopped unexpectedly, resetting capture")
-                        coroutineScope.launch(Dispatchers.Main) { resetCapturing() }
+                        if (suppressNextVirtualDisplayStop.getAndSet(false)) {
+                            Timber.d("VirtualDisplay stopped as requested by the app")
+                            return
+                        }
+                        Timber.w("VirtualDisplay stopped permanently")
+                        handleVirtualDisplayStopped()
                     }
                 },
                 Handler(Looper.getMainLooper())
@@ -793,10 +914,34 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                 return
             }
 
-            val image = captureScreenshotWithRetry(2, 500)
+            var image = captureScreenshotWithRetry(2, 500)
+
+            if (
+                image == null &&
+                mediaProjection != null &&
+                !isScreenLocked.get() &&
+                !isMediaProjectionRequestPending(this@ScreenshotService)
+            ) {
+                Timber.d("No image available, resetting capture surface before retrying")
+                withContext(Dispatchers.Main) { resetCapturing() }
+                delay(500)
+                image = captureScreenshotWithRetry(2, 500)
+            }
 
             if (image == null) {
-                Timber.d("No image available, skipping")
+                val projectionUnavailable =
+                    mediaProjection == null ||
+                        isMediaProjectionRequestPending(this@ScreenshotService)
+
+                if (projectionUnavailable) {
+                    // The SCREEN_SHARING_STATE log already records why capture stopped.
+                    Timber.d("No screen sharing consent; skipping screenshot")
+                } else {
+                    Timber.w(
+                        "Projection remains active but no image was available after retry; " +
+                            "skipping transient missing frame"
+                    )
+                }
                 return
             }
 
@@ -817,6 +962,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
             throw e
         }
     }
+
 
     private suspend fun captureScreenshotWithRetry(maxRetries: Int = 5, delayMs: Long = 500) : Image? {
         var attempts = 0
@@ -913,44 +1059,67 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
     }
 
     private fun resetCapturing() {
-        // Release the VirtualDisplay first. The old ImageReader surface is now dead, so
-        // leaving the VirtualDisplay attached would cause silent frame drops or an
-        // IllegalStateException. No re-consent is required — createVirtualDisplay() can be
-        // called multiple times on the same MediaProjection instance.
-        try {
-            virtualDisplay?.release()
-        } catch (e: Exception) {
-            e.record()
-            CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("STOP_CAPTURE_RESET", "${e.message} -> ${e.stackTrace}") }
-            Timber.e(e, "Error releasing virtual display during reset")
-        }
-        virtualDisplay = null
+        if (isResettingCapture.getAndSet(true)) return
 
+        // Android 14+ allows only one VirtualDisplay per MediaProjection session.
+        // Keep that display alive and replace only its ImageReader surface.
+        var newImageReader: ImageReader? = null
         try {
-            imageReader?.close()
+            if (mediaProjection == null || isMediaProjectionRequestPending(this)) {
+                Timber.d("resetCapturing: media projection is no longer active")
+                return
+            }
+
+            val display = virtualDisplay
+            if (display == null) {
+                Timber.w("resetCapturing: virtual display is unavailable")
+                return
+            }
+
+            val replacementImageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
+            newImageReader = replacementImageReader
+            display.setSurface(replacementImageReader.surface)
+
+            val previousImageReader = imageReader
+            imageReader = replacementImageReader
+            newImageReader = null
+
+            try {
+                previousImageReader?.close()
+            } catch (e: Exception) {
+                CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("STOP_CAPTURE_RESET", "${e.message} -> ${e.stackTrace}") }
+                e.record()
+                Timber.e(e, "Error closing previous image reader during reset")
+            }
         } catch (e: Exception) {
             CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("STOP_CAPTURE_RESET", "${e.message} -> ${e.stackTrace}") }
             e.record()
-            Timber.e(e, "Error closing image reader")
-        }
-        imageReader = null
-
-        if (!setupVirtualDisplay()) {
-            Timber.e("resetCapturing: failed to recreate virtual display")
+            Timber.e(e, "Error replacing image reader surface during reset")
+        } finally {
+            try {
+                newImageReader?.close()
+            } catch (e: Exception) {
+                Timber.e(e, "Error closing replacement image reader after reset failure")
+            }
+            isResettingCapture.set(false)
         }
     }
 
 
     private fun stopCapturing() {
+        cancelScreenUnlockProbe()
         isRunning.postValue(false)
+        transitionProjectionState(ProjectionInterruptionState.STOPPED, "capture_stopped")
 
         // Cancel the screenshot job
         screenshotJob?.cancel()
         screenshotJob = null
 
         try {
+            if (virtualDisplay != null) suppressNextVirtualDisplayStop.set(true)
             virtualDisplay?.release()
         } catch (e: Exception) {
+            suppressNextVirtualDisplayStop.set(false)
             e.record()
             CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("STOP_CAPTURE", "${e.message} -> ${e.stackTrace}") }
             Timber.e(e, "Error releasing virtual display")
@@ -967,8 +1136,13 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         imageReader = null
 
         try {
-            mediaProjection?.stop()
+            val projectionToStop = mediaProjection
+            if (projectionToStop != null) {
+                suppressNextProjectionStopPrompt.set(true)
+                projectionToStop.stop()
+            }
         } catch (e: Exception) {
+            suppressNextProjectionStopPrompt.set(false)
             e.record()
             CoroutineScope(Dispatchers.IO).launch { generalOperationsRepository.saveLog("STOP_CAPTURE", "${e.message} -> ${e.stackTrace}") }
             Timber.e(e, "Error stopping media projection")
@@ -978,6 +1152,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
     }
 
     override fun onDestroy() {
+        RecordingState.onServiceDestroyed(this)
         try {
             isMediaProjectionValid.postValue(false)
             screenStateReceiver?.unregister(this)
@@ -1013,24 +1188,169 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
     }
 
     // Screen state callback implementations
-    override fun onScreenOff() {
-        Timber.d("Screen turned off")
-        // IMPORTANT: Do NOT call mediaProjection.stop() or stopCapturing() here.
-        // On Android 14+, stopping the projection requires fresh user consent to restart.
-        // The capture loop skips frames while isScreenLocked = true; the projection stays alive.
-        isScreenLocked.set(true)
+    /**
+     * Records a capture state change (lock, unlock, pause, screen sharing denied) in the
+     * uploaded event log. D1 (schema v4) moves these to a state column in screenshot_data.
+     */
+    private fun logScreenshotState(state: String) {
+        coroutineScope.launch(Dispatchers.IO) {
+            generalOperationsRepository.saveLog("SCREENSHOT_STATE", state)
+        }
+    }
 
-        CoroutineScope(Dispatchers.IO).launch {
-            // Segment-building now happens inside beginOcr() (called below), which covers
-            // this path too -- no need to duplicate it here.
-            generalOperationsRepository.buildCurrentSession(framesPerSecondConst, "SCREEN_OFF")
-            generalOperationsRepository.saveSession(generalOperationsRepository.currentSession)
-            // Create a new session.
-            sessionId = UUID.randomUUID().toString()
+    private fun handleVirtualDisplayStopped() {
+        val stoppedDisplay = virtualDisplay
+        virtualDisplay = null
+        try {
+            stoppedDisplay?.release()
+        } catch (e: Exception) {
+            Timber.e(e, "Error releasing stopped virtual display")
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && mediaProjection == null && resultData != null) {
-            showProjectionStoppedNotification()
+        try {
+            imageReader?.close()
+        } catch (e: Exception) {
+            Timber.e(e, "Error closing image reader for stopped virtual display")
+        }
+        imageReader = null
+
+        val projectionStillPresent = mediaProjection != null
+        if (
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
+            projectionStillPresent
+        ) {
+            if (isDeviceCurrentlyLocked()) {
+                transitionProjectionState(
+                    ProjectionInterruptionState.SCREEN_LOCKED_CAPTURE_SUSPENDED,
+                    "legacy_virtual_display_stopped_while_locked"
+                )
+            } else {
+                val recovered = setupVirtualDisplay()
+                transitionProjectionState(
+                    if (recovered) ProjectionInterruptionState.CAPTURING
+                    else ProjectionInterruptionState.ERROR,
+                    if (recovered) "legacy_virtual_display_recreated"
+                    else "legacy_virtual_display_recreation_failed"
+                )
+            }
+            return
+        }
+
+        markMediaProjectionRequestPending(this)
+        transitionProjectionState(
+            if (isDeviceCurrentlyLocked()) {
+                ProjectionInterruptionState.SCREEN_LOCKED_CONSENT_REQUIRED
+            } else {
+                ProjectionInterruptionState.CONSENT_REQUIRED
+            },
+            "virtual_display_stopped_requires_fresh_consent"
+        )
+        showProjectionStoppedNotificationWhenAppropriate("virtual_display_stopped")
+
+        // API 34+ permits only one VirtualDisplay per MediaProjection session. End the
+        // unusable projection so its callback performs the remaining resource cleanup.
+        try {
+            mediaProjection?.stop()
+        } catch (e: Exception) {
+            Timber.e(e, "Error stopping projection after virtual display termination")
+            releaseProjectionResources()
+        }
+    }
+
+    private fun showProjectionStoppedNotificationWhenAppropriate(reason: String) {
+        if (isDeviceCurrentlyLocked()) {
+            suppressMediaProjectionPromptUntilUnlock.set(true)
+            logProjectionPromptEvent("visibility=deferred_while_locked;reason=$reason")
+            return
+        }
+
+        showProjectionStoppedNotification()
+        logProjectionPromptEvent("visibility=notification_shown;reason=$reason")
+    }
+
+    private fun cancelProjectionStoppedNotification() {
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.cancel(RESTART_NOTIFICATION_ID)
+        restartNotificationShown = false
+    }
+
+    private fun logProjectionPromptEvent(message: String) {
+        Timber.i("Projection consent prompt: $message")
+        coroutineScope.launch(Dispatchers.IO) {
+            generalOperationsRepository.saveLog("SCREEN_SHARING_PROMPT", message)
+        }
+    }
+
+    private fun isDeviceCurrentlyLocked(): Boolean {
+        val keyguardManager = getSystemService(KEYGUARD_SERVICE) as KeyguardManager
+        return keyguardManager.isDeviceLocked || keyguardManager.isKeyguardLocked
+    }
+
+    private fun finalizeInterruptionSession(reason: String) {
+        if (!interruptionSessionFinalized.compareAndSet(false, true)) {
+            Timber.d("Interruption session already finalized; ignoring duplicate reason=$reason")
+            return
+        }
+
+        // Segments are built at the start of beginOcr() (AC-1043), not here, so a screen-off
+        // does not build them twice.
+        coroutineScope.launch(Dispatchers.IO) {
+            generalOperationsRepository.buildCurrentSession(framesPerSecondConst, reason)
+            generalOperationsRepository.saveSession(generalOperationsRepository.currentSession)
+            sessionId = UUID.randomUUID().toString()
+        }
+    }
+
+    private fun transitionProjectionState(
+        newState: ProjectionInterruptionState,
+        reason: String
+    ) {
+        val transitionMessage = synchronized(projectionStateLock) {
+            val oldState = currentProjectionState
+            if (oldState == newState) return
+
+            currentProjectionState = newState
+            projectionInterruptionState.postValue(newState)
+            "${oldState.name}->${newState.name};" +
+                "reason=$reason;" +
+                "screenLocked=${isScreenLocked.get()};" +
+                "studyRunning=${isRunning.value == true};" +
+                "userPaused=${isPaused.value == true};" +
+                "projectionPresent=${mediaProjection != null};" +
+                "virtualDisplayPresent=${virtualDisplay != null};" +
+                "consentPending=${isMediaProjectionRequestPending(this)};" +
+                "promptInFlight=${isMediaProjectionPromptInFlight.get()}"
+        }
+
+        Timber.i("Screen-sharing state: $transitionMessage")
+        coroutineScope.launch(Dispatchers.IO) {
+            generalOperationsRepository.saveLog("SCREEN_SHARING_STATE", transitionMessage)
+        }
+    }
+
+    override fun onScreenOff() {
+        Timber.d("Screen turned off")
+        cancelScreenUnlockProbe()
+        logScreenshotState(state = "ScreenLocked")
+        // IMPORTANT: Do NOT call mediaProjection.stop() or stopCapturing() here.
+        // On Android 14+, stopping the projection requires fresh user consent to restart.
+        // The capture loop skips frames while isScreenLocked = true. Android 15 QPR1+
+        // can stop projection automatically on lock; MediaProjection.Callback.onStop() is
+        // authoritative and starts the fresh-consent recovery flow in that case.
+        isScreenLocked.set(true)
+        transitionProjectionState(
+            if (mediaProjection != null && !isMediaProjectionRequestPending(this)) {
+                ProjectionInterruptionState.SCREEN_LOCKED_CAPTURE_SUSPENDED
+            } else {
+                ProjectionInterruptionState.SCREEN_LOCKED_CONSENT_REQUIRED
+            },
+            "screen_off"
+        )
+
+        finalizeInterruptionSession("SCREEN_OFF")
+
+        if (isMediaProjectionRequestPending(this)) {
+            showProjectionStoppedNotificationWhenAppropriate("screen_off_with_consent_pending")
         }
 
         if (manualOcr.value == false) {
@@ -1040,10 +1360,23 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
 
     override fun onScreenOn() {
         Timber.d("Screen turned on, but may still be locked")
+        scheduleScreenUnlockProbe()
     }
 
     override fun onScreenUnlocked() {
+        cancelScreenUnlockProbe()
+        val firstUnlockSignal = isScreenLocked.compareAndSet(true, false)
+        if (!firstUnlockSignal) {
+            Timber.d("Duplicate screen-unlocked signal; rechecking projection recovery")
+            if (isMediaProjectionRequestPending(this)) {
+                suppressMediaProjectionPromptUntilUnlock.set(false)
+                handleProjectionInterruption()
+            }
+            return
+        }
+
         Timber.d("Screen unlocked")
+        logScreenshotState(state = "ScreenUnlocked")
 
         lastUnlockTime = System.currentTimeMillis()
 
@@ -1051,12 +1384,71 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         Timber.tag("SR_START").d("**** $currentTime ****")
         val sessionStartTime = currentTime.toInstant()
         generalOperationsRepository.currentSession = SessionTempEntity(sessionStart = sessionStartTime)
+        interruptionSessionFinalized.set(false)
 
-        isScreenLocked.set(false)
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && mediaProjection == null && resultData != null) {
-            // showProjectionStoppedNotification()
+        if (isMediaProjectionRequestPending(this)) {
+            transitionProjectionState(ProjectionInterruptionState.CONSENT_REQUIRED, "screen_unlocked")
+            // Remind the participant; the consent dialog opens when they tap the notification
+            // or open the app, and MainActivity's gate prevents a second dialog.
+            suppressMediaProjectionPromptUntilUnlock.set(false)
+            handleProjectionInterruption()
+        } else if (
+            isRunning.value == true &&
+            isPaused.value != true &&
+            mediaProjection != null &&
+            virtualDisplay != null
+        ) {
+            transitionProjectionState(ProjectionInterruptionState.CAPTURING, "screen_unlocked_projection_alive")
+            resetCapturing()
+        } else if (
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
+            isRunning.value == true &&
+            isPaused.value != true &&
+            mediaProjection != null &&
+            virtualDisplay == null
+        ) {
+            val recovered = setupVirtualDisplay()
+            transitionProjectionState(
+                if (recovered) ProjectionInterruptionState.CAPTURING
+                else ProjectionInterruptionState.ERROR,
+                if (recovered) "legacy_unlock_virtual_display_recreated"
+                else "legacy_unlock_virtual_display_recreation_failed"
+            )
         }
+    }
+
+    private fun handleProjectionInterruption() {
+        // Consent is requested only when the participant acts: tapping this notification or
+        // opening the app (MainActivity.requestPendingProjectionConsentIfNeeded). The app does
+        // not launch the consent dialog from the background. Repost in case the participant
+        // dismissed it; setOnlyAlertOnce keeps a still-visible one from alerting again.
+        restartNotificationShown = false
+        showProjectionStoppedNotification()
+        logProjectionPromptEvent("visibility=notification_shown;reason=projection_interrupted")
+    }
+
+    private fun scheduleScreenUnlockProbe(attempt: Int = 0) {
+        cancelScreenUnlockProbe()
+        val probe = Runnable {
+            screenUnlockProbe = null
+            if (!isScreenLocked.get()) return@Runnable
+
+            if (!isDeviceCurrentlyLocked()) {
+                logProjectionPromptEvent("unlock=detected_by_keyguard_probe;attempt=$attempt")
+                onScreenUnlocked()
+            } else if (attempt + 1 < MAX_SCREEN_UNLOCK_PROBES) {
+                scheduleScreenUnlockProbe(attempt + 1)
+            } else {
+                logProjectionPromptEvent("unlock=probe_timeout;attempts=$MAX_SCREEN_UNLOCK_PROBES")
+            }
+        }
+        screenUnlockProbe = probe
+        projectionPromptHandler.postDelayed(probe, SCREEN_UNLOCK_PROBE_DELAY_MS)
+    }
+
+    private fun cancelScreenUnlockProbe() {
+        screenUnlockProbe?.let(projectionPromptHandler::removeCallbacks)
+        screenUnlockProbe = null
     }
 
         /**
@@ -1217,5 +1609,23 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
 
         return (elapsedTime > fiveMinutesInMillis) || optimizeUploads.value == false
     }
+
+    private fun releaseProjectionResources() {
+        try {
+            if (virtualDisplay != null) suppressNextVirtualDisplayStop.set(true)
+            virtualDisplay?.release()
+        } catch (e: Exception) {
+            suppressNextVirtualDisplayStop.set(false)
+        }
+        virtualDisplay = null
+
+        try { imageReader?.close() } catch (e: Exception) {}
+        imageReader = null
+
+        mediaProjection = null
+
+        isMediaProjectionValid.postValue(false)
+    }
+
 
 }

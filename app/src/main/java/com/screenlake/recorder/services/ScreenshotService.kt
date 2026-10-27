@@ -77,6 +77,9 @@ import java.util.Date
 import java.util.HashSet
 import java.util.Locale
 import java.util.UUID
+import java.util.Collections
+import java.time.Instant
+import kotlinx.coroutines.joinAll
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
@@ -254,6 +257,9 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
     private var screenUnlockProbe: Runnable? = null
     var moveForward = true
     private var screenshotJob: Job? = null
+    // Marker rows still being written; segmentation waits for them so they get a segment
+    // (the zip queries need one) in the same pass.
+    private val pendingMarkerWrites: MutableList<Job> = Collections.synchronizedList(mutableListOf())
     var ocrSubmitted = false
     private var captureThread: Thread? = null
     private var threadLooper: Looper? = null
@@ -1203,19 +1209,26 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
      * pause, screen sharing lost). Marker rows have no image; their `state` says what changed.
      */
     private fun logScreenshotState(state: String) {
+        // The service outlives a Stop or sign-out until it is destroyed; record nothing then.
+        // Consent-required interruptions keep recording expected, so they are still recorded.
+        if (!RecordingState.isExpected(this)) return
         val markerSessionId = sessionId
-        coroutineScope.launch(Dispatchers.IO) {
+        val eventTime = Instant.now()
+        val job = coroutineScope.launch(Dispatchers.IO) {
             try {
                 val appInfo = withContext(Dispatchers.Default) {
                     getForegroundTaskPackageName(this@ScreenshotService)
                 }
-                val marker = ScreenshotData.saveScreenshotData("", appInfo, markerSessionId, user, state)
-                    .apply { isOcrComplete = true }
+                val marker = ScreenshotData.saveScreenshotData(
+                    "", appInfo, markerSessionId, user, state, eventTime = eventTime
+                ).apply { isOcrComplete = true }
                 screenCollectorSvc.add(marker)
             } catch (e: Exception) {
                 Timber.e(e, "Error writing $state marker row")
             }
         }
+        pendingMarkerWrites.add(job)
+        job.invokeOnCompletion { pendingMarkerWrites.remove(job) }
     }
 
     private fun handleVirtualDisplayStopped() {
@@ -1488,6 +1501,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
     }
 
     private fun beginOcr() = CoroutineScope(Dispatchers.IO).launch {
+        synchronized(pendingMarkerWrites) { pendingMarkerWrites.toList() }.joinAll()
         // Screenshots only become zip-eligible once they belong to an app segment (see
         // ScreenshotDao's batch queries). The manual-upload trigger (button2 -> uploadCommand())
         // calls straight into this function without going through a session-ending event first,

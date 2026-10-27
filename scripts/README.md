@@ -153,7 +153,7 @@ After processing, the following structure is created:
 ### State summaries
 If the screenshot data has a `state` column (SMART 1.53.0 and later, and University of Minnesota builds), the summary folder also gets per-state counts and `participants_without_normal_3_consecutive_days.csv`, which flags participants with 3 or more consecutive days without any `Normal` screenshot.
 
-`screenshot_count` in the summaries counts every screenshot row, including `Restricted` and state marker rows; `image_count` counts image files. With state data, use the `Normal` counts for captured screenshots.
+`screenshot_count` in the summaries counts every screenshot row, including `Restricted` and state marker rows. `image_count` counts distinct file names in the screenshot data; for data without a `state` column (before SMART 1.53.0), a day with no file names counts every row as an image. With state data, use the `Normal` counts for captured screenshots.
 
 ---
 

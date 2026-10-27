@@ -9,6 +9,7 @@ import com.screenlake.recorder.services.ScreenshotService
 import com.screenlake.recorder.services.ScreenshotService.Companion.appNameVsPackageName
 import com.screenlake.recorder.services.ScreenshotService.Companion.lastCaptureTime
 import com.screenlake.recorder.utilities.TimeUtility
+import java.time.Instant
 
 object ScreenshotData {
 
@@ -37,6 +38,8 @@ object ScreenshotData {
      * @param user The [UserEntity] object representing the user taking the screenshot.
      * @param state The `state` column value, [ScreenshotState.NORMAL] for a captured screenshot.
      * @param isAppRestricted Flag indicating whether the current app is restricted.
+     * @param eventTime When the row's event happened; now by default. Marker rows pass the time
+     *   of the state change, since they are written after a foreground-app lookup.
      * @return A [ScreenshotEntity] object populated with the provided information.
      */
     fun saveScreenshotData(
@@ -45,11 +48,13 @@ object ScreenshotData {
         sessionId: String,
         user: UserEntity,
         state: String = ScreenshotState.NORMAL,
-        isAppRestricted: Boolean = false
+        isAppRestricted: Boolean = false,
+        eventTime: Instant? = null
     ): ScreenshotEntity {
-        val timestamp = TimeUtility.getCurrentTimestamp().toInstant()
+        val timestamp = eventTime ?: TimeUtility.getCurrentTimestamp().toInstant()
 
-        lastCaptureTime = timestamp.toEpochMilli()
+        // Marker rows are not captures.
+        if (!ScreenshotState.isMarker(state)) lastCaptureTime = timestamp.toEpochMilli()
 
         // Extract the file ID (last part of the file path)
         val fileId = filename.substringAfterLast("/")
@@ -63,7 +68,7 @@ object ScreenshotData {
             this.type = "SCREENSHOT"
             this.currentAppInUse = currentAppInUse.apk
             this.currentAppRealNameInUse = currentAppInUse.name
-            this.localTimeStamp = TimeUtility.getCurrentTimestampDefaultTimezoneString()
+            this.localTimeStamp = timestamp.toEpochMilli().toString()
             this.filePath = filename
             this.fileName = fileId
             this.sessionDepth = ScreenshotService.lastUnlockTime?.let { timestamp.epochSecond.minus(it) }

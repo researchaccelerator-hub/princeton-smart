@@ -1005,10 +1005,13 @@ def calculate_screenshot_daily_stats(query_id):
         .reset_index()
         .sort_values(["id_user", "screenshot_day"])
     )
-    participant_day_counts.loc[
-        participant_day_counts["image_count"] == 0,
-        "image_count"
-    ] = participant_day_counts["screenshot_count"]
+    # Without a state column every row is a capture, so a day with no file names still had
+    # images. With one, marker and restricted rows have no image and a zero count is real.
+    if "state" not in screenshot_rows_df.columns:
+        participant_day_counts.loc[
+            participant_day_counts["image_count"] == 0,
+            "image_count"
+        ] = participant_day_counts["screenshot_count"]
 
     images_per_day = (
         participant_day_counts.groupby("screenshot_day")

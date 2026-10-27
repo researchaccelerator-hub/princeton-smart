@@ -899,7 +899,7 @@ def calculate_screenshot_daily_stats(query_id):
         participant_statistics.csv
         overall_statistics.csv
 
-    When the screenshot data has a ``state`` column (UMN builds today), these are also written:
+    When the screenshot data has a ``state`` column (SMART 1.53.0+ and UMN builds), these are also written:
         state_type_per_participant_day.csv
         state_type_per_day.csv
         normal_data_per_participant_day.csv

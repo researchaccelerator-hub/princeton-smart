@@ -4,6 +4,7 @@ import com.screenlake.recorder.constants.ConstantSettings
 import com.screenlake.data.model.AppInfo
 import com.screenlake.data.database.entity.ScreenshotEntity
 import com.screenlake.data.database.entity.UserEntity
+import com.screenlake.data.database.ScreenshotState
 import com.screenlake.recorder.services.ScreenshotService
 import com.screenlake.recorder.services.ScreenshotService.Companion.appNameVsPackageName
 import com.screenlake.recorder.services.ScreenshotService.Companion.lastCaptureTime
@@ -34,7 +35,7 @@ object ScreenshotData {
      * @param currentAppInUse The [AppInfo] object representing the current app in use during the screenshot.
      * @param sessionId The session ID for the screenshot session.
      * @param user The [UserEntity] object representing the user taking the screenshot.
-     * @param imageUrl The optional URL of the image (null by default).
+     * @param state The `state` column value, [ScreenshotState.NORMAL] for a captured screenshot.
      * @param isAppRestricted Flag indicating whether the current app is restricted.
      * @return A [ScreenshotEntity] object populated with the provided information.
      */
@@ -43,7 +44,7 @@ object ScreenshotData {
         currentAppInUse: AppInfo,
         sessionId: String,
         user: UserEntity,
-        imageUrl: String? = null,
+        state: String = ScreenshotState.NORMAL,
         isAppRestricted: Boolean = false
     ): ScreenshotEntity {
         val timestamp = TimeUtility.getCurrentTimestamp().toInstant()
@@ -66,6 +67,7 @@ object ScreenshotData {
             this.filePath = filename
             this.fileName = fileId
             this.sessionDepth = ScreenshotService.lastUnlockTime?.let { timestamp.epochSecond.minus(it) }
+            this.state = state
         }
     }
 }

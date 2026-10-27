@@ -28,7 +28,8 @@ object DataTransformation {
         "t_epoch_ts_ms",
         "t_natural_utc_ts",
         "t_natural_second_ts",
-        "t_natural_day_ts"
+        "t_natural_day_ts",
+        "state"
     )
     fun createScreenshotCsv(screenshots: List<ScreenshotEntity>) : String {
         val screenshotCsv = csvOf(
@@ -49,6 +50,7 @@ object DataTransformation {
                 it.timestamp.toString(),
                 getFormattedHhMmSs(it.epochTimeStamp ?: 0L),
                 getFormattedDate(it.epochTimeStamp ?: 0L),
+                it.state.orEmpty(),
             )
         }
         return screenshotCsv

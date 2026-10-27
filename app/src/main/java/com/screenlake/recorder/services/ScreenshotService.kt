@@ -34,6 +34,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.googlecode.tesseract.android.TessBaseAPI
 import com.screenlake.MainActivity
+import com.screenlake.data.database.ScreenshotState
 import com.screenlake.data.database.entity.ScreenshotEntity
 import com.screenlake.data.database.entity.SessionTempEntity
 import com.screenlake.data.database.entity.UserEntity
@@ -145,6 +146,10 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         private const val ERROR_NOTIFICATION_ID = 1339
         private const val SCREEN_UNLOCK_PROBE_DELAY_MS = 500L
         private const val MAX_SCREEN_UNLOCK_PROBES = 10
+        private val CONSENT_REQUIRED_STATES = setOf(
+            ProjectionInterruptionState.CONSENT_REQUIRED,
+            ProjectionInterruptionState.SCREEN_LOCKED_CONSENT_REQUIRED
+        )
         val isRunning = MutableLiveData<Boolean>()
         // Action for restarting media projection
         const val ACTION_RESTART_PROJECTION = "com.example.screenshotapp.RESTART_PROJECTION"
@@ -363,7 +368,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         isPaused.value = true
         transitionProjectionState(ProjectionInterruptionState.USER_PAUSED, "user_pause")
         if (isRunning.value == true && !wasPaused) {
-            logScreenshotState(state = "pause start")
+            logScreenshotState(ScreenshotState.PAUSE_START)
         }
         pauseRecordingForMinutes()
         Timber.d("Service paused")
@@ -385,7 +390,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         )
         pausedTimer.value = "recording"
 
-        logScreenshotState(state = "pause end")
+        logScreenshotState(ScreenshotState.PAUSE_END)
         resetCapturing()
     }
 
@@ -422,7 +427,6 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                     ACTION_MEDIA_PROJECTION_DENIED -> {
                         markMediaProjectionRequestPending(this)
                         logProjectionPromptEvent("result=denied")
-                        logScreenshotState(state = "NoScreenSharing")
                         // The notification that opened the consent flow is auto-cancelled by
                         // Android, but restartNotificationShown still remembers it. Reset both
                         // sides before reposting so a denial always leaves an obvious action.
@@ -899,7 +903,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
                     currentAppInUse,
                     sessionId,
                     user,
-                    "Restricted",
+                    ScreenshotState.RESTRICTED,
                     true
                 )
 
@@ -1195,12 +1199,22 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
 
     // Screen state callback implementations
     /**
-     * Records a capture state change (lock, unlock, pause, screen sharing denied) in the
-     * uploaded event log. D1 (schema v4) moves these to a state column in screenshot_data.
+     * Writes a marker row to screenshot_data when the capture state changes (lock, unlock,
+     * pause, screen sharing lost). Marker rows have no image; their `state` says what changed.
      */
     private fun logScreenshotState(state: String) {
+        val markerSessionId = sessionId
         coroutineScope.launch(Dispatchers.IO) {
-            generalOperationsRepository.saveLog("SCREENSHOT_STATE", state)
+            try {
+                val appInfo = withContext(Dispatchers.Default) {
+                    getForegroundTaskPackageName(this@ScreenshotService)
+                }
+                val marker = ScreenshotData.saveScreenshotData("", appInfo, markerSessionId, user, state)
+                    .apply { isOcrComplete = true }
+                screenCollectorSvc.add(marker)
+            } catch (e: Exception) {
+                Timber.e(e, "Error writing $state marker row")
+            }
         }
     }
 
@@ -1317,6 +1331,9 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
 
             currentProjectionState = newState
             projectionInterruptionState.postValue(newState)
+            if (newState in CONSENT_REQUIRED_STATES && oldState !in CONSENT_REQUIRED_STATES) {
+                logScreenshotState(ScreenshotState.NO_SCREEN_SHARING)
+            }
             "${oldState.name}->${newState.name};" +
                 "reason=$reason;" +
                 "screenLocked=${isScreenLocked.get()};" +
@@ -1337,7 +1354,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
     override fun onScreenOff() {
         Timber.d("Screen turned off")
         cancelScreenUnlockProbe()
-        logScreenshotState(state = "ScreenLocked")
+        logScreenshotState(ScreenshotState.SCREEN_LOCKED)
         // IMPORTANT: Do NOT call mediaProjection.stop() or stopCapturing() here.
         // On Android 14+, stopping the projection requires fresh user consent to restart.
         // The capture loop skips frames while isScreenLocked = true. Android 15 QPR1+
@@ -1385,7 +1402,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         // Rearm ScreenStateReceiver's screen-off gate; the keyguard probe path has no
         // ACTION_USER_PRESENT to do it.
         isActionScreenOff.postValue(true)
-        logScreenshotState(state = "ScreenUnlocked")
+        logScreenshotState(ScreenshotState.SCREEN_UNLOCKED)
 
         lastUnlockTime = System.currentTimeMillis()
 

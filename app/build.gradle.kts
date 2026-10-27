@@ -80,6 +80,11 @@ android {
     val cognitoUserPoolId: String = localProperties.getProperty("COGNITO_POOL_ID", "default")
     val cognitoAppClientId: String = localProperties.getProperty("COGNITO_APP_CLIENT_ID", "default")
 
+    testOptions {
+        // Robolectric tests that build notifications need the app's string resources.
+        unitTests.isIncludeAndroidResources = true
+    }
+
     buildTypes {
         release {
             // Left off: full-mode R8 currently fails independent of anything in this repo,

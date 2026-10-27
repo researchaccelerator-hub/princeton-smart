@@ -156,14 +156,21 @@ class SettingsFragment : PreferenceFragmentCompat() {
     /**
      * Signs out the user and navigates to the login or registration screen.
      */
-    private fun signOutUser() = lifecycleScope.launch {
+    private fun signOutUser(deleteLocalData: Boolean) = lifecycleScope.launch {
         cloudAuthentication.signOut(MainActivity.isLoggedOut)
         MainActivity.isLoggedIn.postValue(false)
 
         RecordingState.clearForSignOut(requireContext())
         sendCommandToRecordService(ConstantSettings.ACTION_STOP_SERVICE)
         setUserLoggedOut()
-        async { clearPhone() }.await()
+        if (deleteLocalData) {
+            async { clearPhone() }.await()
+        } else {
+            // Keeps data and records who it belongs to; the same account signing in again
+            // uploads it, a different account wipes it after a warning.
+            generalOperationsRepository.signOutKeepingData(runCatching { generalOperationsRepository.getUser() }.getOrNull())
+            generalOperationsRepository.saveLog("MANUAL_LOGOUT_DATA_RETAINED", "")
+        }
 
         delay(2000L)
         dialog.dismiss()
@@ -174,7 +181,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
         }
 
         mainViewModel.isOnPastOnBoarding(false)
-        findNavController().navigate(R.id.registerOrLoginFragment)
+        findNavController().navigate(if (deleteLocalData) R.id.registerOrLoginFragment else R.id.loginFragment)
     }
 
     /**
@@ -183,13 +190,27 @@ class SettingsFragment : PreferenceFragmentCompat() {
     private fun showSignOutDialog() {
         AlertDialog.Builder(requireContext())
             .setIcon(android.R.drawable.ic_dialog_alert)
-            .setTitle("Logout")
-            .setMessage(getString(R.string.are_you_sure_you_want_to_log_out_of_screenlake_this_will_delete_all_user_data_from_the_phone))
-            .setPositiveButton("Yes") { _, _ ->
+            .setTitle(R.string.logout)
+            .setMessage(R.string.logout_choice_message)
+            .setNeutralButton(R.string.sign_out_keep_data) { _, _ ->
                 startLoadingDialog()
-                signOutUser()
+                signOutUser(deleteLocalData = false)
             }
-            .setNegativeButton("No", null)
+            .setPositiveButton(R.string.delete_data_and_sign_out) { _, _ -> showDeleteDataConfirmation() }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun showDeleteDataConfirmation() {
+        AlertDialog.Builder(requireContext())
+            .setIcon(android.R.drawable.ic_dialog_alert)
+            .setTitle(R.string.delete_data_and_sign_out)
+            .setMessage(R.string.delete_data_logout_confirmation)
+            .setPositiveButton(R.string.delete_data_and_sign_out) { _, _ ->
+                startLoadingDialog()
+                signOutUser(deleteLocalData = true)
+            }
+            .setNegativeButton(R.string.cancel, null)
             .show()
     }
 

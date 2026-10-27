@@ -52,6 +52,42 @@ class NotificationHelper(private val context: Context) {
         NotificationManagerCompat.from(context).notify(notificationId, builder.build())
     }
 
+    /**
+     * Tells the participant that uploads stopped because they need to sign in again, and opens
+     * the login screen when tapped.
+     *
+     * @return false if notifications are not allowed.
+     */
+    fun showAuthenticationRecoveryNotification(): Boolean {
+        val message = context.getString(R.string.auth_recovery_message)
+        val builder = NotificationCompat.Builder(context, ConstantSettings.NOTIFICATION_CHANNEL_ID)
+            .setSmallIcon(R.drawable.logo_just_square_small)
+            .setContentTitle(context.getString(R.string.auth_recovery_title))
+            .setContentText(message)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setAutoCancel(true)
+            .setContentIntent(getLoginPendingIntent())
+
+        if (!NotificationManagerCompat.from(context).areNotificationsEnabled() ||
+            ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return false
+        }
+        NotificationManagerCompat.from(context).notify(ConstantSettings.CREDENTIAL_EXPIRED_NOTIFICATION_ID, builder.build())
+        return true
+    }
+
+    private fun getLoginPendingIntent(): PendingIntent = PendingIntent.getActivity(
+        context,
+        ConstantSettings.CREDENTIAL_EXPIRED_NOTIFICATION_ID,
+        Intent(context, MainActivity::class.java).apply {
+            action = ACTION_OPEN_LOGIN
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        },
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
+
     fun cancelNotification(notificationId: Int) {
         NotificationManagerCompat.from(context).cancel(notificationId)
     }
@@ -71,5 +107,9 @@ class NotificationHelper(private val context: Context) {
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+    }
+
+    companion object {
+        const val ACTION_OPEN_LOGIN = "com.screenlake.action.OPEN_LOGIN"
     }
 }

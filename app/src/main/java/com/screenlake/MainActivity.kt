@@ -31,6 +31,7 @@ import com.amplifyframework.core.Amplify
 import com.screenlake.databinding.ActivityMainBinding
 import com.screenlake.data.repository.GeneralOperationsRepository
 import com.screenlake.recorder.constants.ConstantSettings
+import com.screenlake.recorder.services.NotificationHelper
 import com.screenlake.recorder.services.RecordingState
 import com.screenlake.recorder.services.ScreenshotService
 import com.screenlake.recorder.utilities.PermissionHelper
@@ -149,6 +150,9 @@ class MainActivity : AppCompatActivity(), ScreenRecordFragment.MediaProjectionCa
                 this.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
             requestMediaProjection()
         }
+        if (intent.action == NotificationHelper.ACTION_OPEN_LOGIN) {
+            openLoginForRecovery()
+        }
 
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
         supportActionBar?.hide()
@@ -210,6 +214,10 @@ class MainActivity : AppCompatActivity(), ScreenRecordFragment.MediaProjectionCa
             logProjectionPromptEvent("request=foreground_resume_recovery")
             requestMediaProjection()
         }
+    }
+
+    private fun openLoginForRecovery() {
+        binding.navHostFragment.findNavController().navigate(R.id.loginFragment)
     }
 
     private fun logProjectionPromptEvent(message: String) {
@@ -317,6 +325,8 @@ class MainActivity : AppCompatActivity(), ScreenRecordFragment.MediaProjectionCa
                 manager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
                 requestMediaProjection()
             }
+            // The upload recovery notification ("Sign in to resume uploads").
+            NotificationHelper.ACTION_OPEN_LOGIN -> openLoginForRecovery()
             // Legacy path: restart triggered programmatically from within the app.
             "ACTION_RESTART_PROJECTION" -> {
                 val fragment = ScreenRecordFragment.newInstance().apply {

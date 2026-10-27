@@ -394,7 +394,25 @@ class GeneralOperationsRepository @Inject constructor(
     suspend fun forceSignOutForCredentialExpiry(currentUser: UserEntity?) {
         recordPendingReauthUser(currentUser)
         cloudAuthentication.signOut(MainActivity.isLoggedOut)
+        // isLoggedOut must be set before isLoggedIn turns false: ScreenRecordFragment only
+        // routes to the login screen when it sees both, and signOut() sets isLoggedOut later,
+        // in Amplify's callback.
+        MainActivity.isLoggedOut.postValue(true)
         MainActivity.isLoggedIn.postValue(false)
+        stopActiveRecording()
+        deleteUser()
+        resetCredentialFailureCount()
+    }
+
+    /**
+     * Manual sign-out that keeps the participant's collected data on the phone (Settings >
+     * Logout > keep data). Records the same reconnect marker as a forced sign-out, so signing in
+     * again with the same account restores the invite code and panel and resumes uploads, and a
+     * different account wipes this participant's pending data first
+     * (see [reconcilePendingReauthUser]).
+     */
+    suspend fun signOutKeepingData(currentUser: UserEntity?) {
+        recordPendingReauthUser(currentUser)
         stopActiveRecording()
         deleteUser()
         resetCredentialFailureCount()
@@ -454,6 +472,16 @@ class GeneralOperationsRepository @Inject constructor(
         }
 
         clearPendingReauthMarkers(prefs)
+    }
+
+    /**
+     * True when signing in with [email] would wipe another participant's data that has not
+     * uploaded yet (see [reconcilePendingReauthUser]), so the login screen can ask first.
+     */
+    fun pendingReauthUserDiffersFrom(email: String): Boolean {
+        val prefs = context.getSharedPreferences(CREDENTIAL_RECOVERY_PREFS, Context.MODE_PRIVATE)
+        val pendingUser = prefs.getString(PENDING_REAUTH_USER_KEY, null) ?: return false
+        return email.isNotBlank() && pendingUser != normalizeEmail(email)
     }
 
     private fun recordPendingReauthUser(user: UserEntity?) {

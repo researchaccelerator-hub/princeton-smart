@@ -32,6 +32,11 @@ import com.screenlake.recorder.authentication.CloudAuthentication
 import com.screenlake.data.database.entity.LogEventEntity
 import com.screenlake.data.database.entity.UserEntity
 import com.screenlake.data.repository.AmplifyRepository
+import com.screenlake.data.repository.GeneralOperationsRepository
+import com.screenlake.recorder.services.AuthRecoveryCoordinator
+import com.screenlake.recorder.services.UploadWorker
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import com.screenlake.recorder.services.util.ScreenshotData
 import com.screenlake.recorder.utilities.HardwareChecks
 import androidx.core.view.ViewCompat
@@ -58,6 +63,9 @@ class LoginFragment : Fragment() {
 
     @Inject
     lateinit var cloudAuthentication: CloudAuthentication
+
+    @Inject
+    lateinit var generalOperationsRepository: GeneralOperationsRepository
 
     private val mainViewModel: MainViewModel by activityViewModels()
     private val userModel: UserViewModel by viewModels()
@@ -95,6 +103,11 @@ class LoginFragment : Fragment() {
 
         setupListeners()
         observeLoginState()
+
+        // Upload recovery could not show its notification, so say it here instead.
+        if (AuthRecoveryCoordinator.consumeInAppMessage(requireContext())) {
+            alertView(getString(R.string.auth_recovery_message))
+        }
 
         onSelectRegister()
 
@@ -278,9 +291,11 @@ class LoginFragment : Fragment() {
 
             val userEmail = user?.email
             if (!userEmail.isNullOrBlank()) {
-                userModel.insertUser(user)
-                MainActivity.isLoggedOut.postValue(false)
-                findNavController().navigate(R.id.screenRecordFragment)
+                if (generalOperationsRepository.pendingReauthUserDiffersFrom(userEmail)) {
+                    confirmDifferentAccount(user)
+                } else {
+                    completeLogin(user)
+                }
             } else {
                 saveLog("Exception", "User null -> ${user?.username}")
                 isSubmitted = false
@@ -289,6 +304,45 @@ class LoginFragment : Fragment() {
                 binding.loginUser.text = getString(R.string.login)
             }
         }
+    }
+
+    /**
+     * Saves the signed-in participant and resumes uploads. The same participant signing in
+     * after a sign-out that kept data gets their invite code and panel back
+     * (GeneralOperationsRepository.reconcilePendingReauthUser).
+     */
+    private suspend fun completeLogin(user: UserEntity) {
+        userModel.insertUser(user)
+        val context = requireContext().applicationContext
+        if (AuthRecoveryCoordinator.onLoginSucceeded(context)) {
+            saveLog("AUTH_RECOVERY_LOGIN_SUCCEEDED", "")
+        }
+        WorkManager.getInstance(context).enqueue(OneTimeWorkRequestBuilder<UploadWorker>().build())
+        MainActivity.isLoggedOut.postValue(false)
+        findNavController().navigate(R.id.screenRecordFragment)
+    }
+
+    /** Another participant's data is waiting to upload; signing in with this account deletes it. */
+    private fun confirmDifferentAccount(user: UserEntity) {
+        AlertDialog.Builder(context)
+            .setIcon(R.drawable.ic_baseline_error_outline_24)
+            .setTitle(R.string.different_account_title)
+            .setMessage(getString(R.string.different_account_message, user.email))
+            .setCancelable(false)
+            .setPositiveButton(R.string.different_account_continue) { _, _ ->
+                lifecycleScope.launch {
+                    saveLog("REAUTH_DIFFERENT_ACCOUNT_CONFIRMED", "")
+                    completeLogin(user)
+                }
+            }
+            .setNegativeButton(R.string.cancel) { _, _ ->
+                lifecycleScope.launch { saveLog("REAUTH_DIFFERENT_ACCOUNT_CANCELLED", "") }
+                isSubmitted = false
+                MainActivity.isLoggedIn.postValue(false)
+                cloudAuthentication.signOut(MainActivity.isLoggedOut)
+                binding.loginUser.text = getString(R.string.login)
+            }
+            .show()
     }
 
     private suspend fun getUserFromDatastore(email: String): UserEntity? {

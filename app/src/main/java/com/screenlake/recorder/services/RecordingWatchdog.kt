@@ -174,11 +174,14 @@ class RecordingWatchdogWorker @AssistedInject constructor(
         // Opening the app (or tapping the notification) now goes straight to the consent prompt.
         ScreenshotService.markMediaProjectionRequestPending(ctx)
 
-        val shown = RecordingInterruptionNotifier.show(ctx, force = exits.isNotEmpty())
+        // While upload recovery waits for the participant to sign in, its notice comes first;
+        // recording cannot restart before they sign in anyway.
+        val authPending = AuthRecoveryCoordinator.isPending(ctx)
+        val shown = !authPending && RecordingInterruptionNotifier.show(ctx, force = exits.isNotEmpty())
         if (shown || exits.isNotEmpty()) {
             generalOperationsRepository.saveLogForStoredUser(
                 "RECORDING_INTERRUPTED",
-                "notificationShown=$shown;newExits=${exits.size}"
+                "notificationShown=$shown;authRecoveryPending=$authPending;newExits=${exits.size}"
             )
         }
         return Result.success()

@@ -102,3 +102,11 @@ The app is designed to have minimal impact on battery life. The battery optimiza
 **To stop participating:** You can stop the app at any time by opening it and pressing the stop button, or by going to **Settings > Accessibility** on your phone, finding the app in the list, and disabling it.
 
 You can also uninstall the app at any time from your phone's app settings. Uninstalling stops all data collection immediately.
+
+**To sign out:** Go to **Settings > Logout** in the app. You can choose to keep your collected data on the phone, so it uploads when you sign in again with the same account, or to delete it.
+
+---
+
+## If you are asked to sign in again
+
+If the app can no longer upload because your sign-in has expired, you will see a **"Sign in to resume uploads"** notification. Your collected data is safe on the phone. Tap the notification, or open the app, and sign in with the same email address as before; uploading then continues. Signing in with a different account deletes the data that has not uploaded yet, and the app asks you to confirm first.

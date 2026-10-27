@@ -1,52 +1,54 @@
 package com.screenlake.recorder.services
 
-import android.Manifest
-import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
-import androidx.core.app.ActivityCompat
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
-import com.google.firebase.crashlytics.FirebaseCrashlytics
-import com.screenlake.MainActivity
-import com.screenlake.R
-import com.screenlake.recorder.constants.ConstantSettings
-import com.screenlake.recorder.constants.ConstantSettings.NOTIFICATION_CHANNEL_ID
-import java.lang.Exception
+import com.screenlake.data.repository.GeneralOperationsRepository
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class BootReceiver  : BroadcastReceiver() {
+/**
+ * Logs the phone powering on and off as `PHONE_POWER_STATE` log events, which are uploaded with
+ * the other log events. This lets researchers tell a gap caused by the phone being off from one
+ * caused by the app.
+ *
+ * Boot arrives through the manifest registration. Since Android 9, `ACTION_SHUTDOWN` is only
+ * delivered to receivers registered at runtime, so [ScreenshotService] also registers an
+ * instance for it while recording.
+ */
+@AndroidEntryPoint
+class BootReceiver : BroadcastReceiver() {
+    @Inject
+    lateinit var generalOperationsRepository: GeneralOperationsRepository
+
     override fun onReceive(context: Context, intent: Intent) {
+        val state = powerStateFor(intent.action) ?: return
 
-//        val builder = NotificationCompat.Builder(context, NOTIFICATION_CHANNEL_ID)
-//            .setSmallIcon(R.mipmap.ic_screenlake_logo)
-//            .setContentTitle("Screenlake")
-//            .setContentText("Please re-enable screen recording.")
-//            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-//            .setAutoCancel(true)
-//
-//
-//        // TODO: Test these flags.
-//        val pendingIntent = NotificationHelper(context).getMainActivityPendingIntent()
-//
-//
-//        builder.setContentIntent(pendingIntent)
-//        if (ActivityCompat.checkSelfPermission(
-//                context,
-//                Manifest.permission.POST_NOTIFICATIONS
-//            ) != PackageManager.PERMISSION_GRANTED
-//        ) {
-//            // TODO: Consider calling
-//            //    ActivityCompat#requestPermissions
-//            // here to request the missing permissions, and then overriding
-//            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-//            //                                          int[] grantResults)
-//            // to handle the case where the user grants the permission. See the documentation
-//            // for ActivityCompat#requestPermissions for more details.
-//            return
-//        }
-//        NotificationManagerCompat.from(context).notify(13213, builder.build());
-//        FirebaseCrashlytics.getInstance().recordException(Exception("BOOT_ON_RECEIVE"))
+        // Keep the receiver alive until the event is written; shutdown leaves little time.
+        val pendingResult = goAsync()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                generalOperationsRepository.saveLogForStoredUser(POWER_STATE_EVENT, state)
+            } finally {
+                pendingResult.finish()
+            }
+        }
+    }
+
+    companion object {
+        const val POWER_STATE_EVENT = "PHONE_POWER_STATE"
+
+        /** Actions to register at runtime; the manifest registration never receives them. */
+        val RUNTIME_ACTIONS = listOf(Intent.ACTION_SHUTDOWN)
+
+        fun powerStateFor(action: String?): String? = when (action) {
+            Intent.ACTION_BOOT_COMPLETED -> "POWER_ON"
+            Intent.ACTION_SHUTDOWN,
+            "android.intent.action.QUICKBOOT_POWEROFF" -> "POWER_OFF"
+            else -> null
+        }
     }
 }

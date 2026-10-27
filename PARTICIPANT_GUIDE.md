@@ -16,7 +16,7 @@ You have been invited to participate in a study led by [researcher name / study 
 
 While the app is running, it collects:
 
-- **Screenshots** — a full-screen image taken approximately every 5 seconds
+- **Screenshots** — a full-screen image taken at a regular interval set by the study team (every 5 seconds unless your study team tells you otherwise)
 - **Text from screenshots** — text extracted automatically from those images (called OCR)
 - **App usage logs** — which apps are open and when
 - **App history** — a record of recent app switching (the last few apps you had open)

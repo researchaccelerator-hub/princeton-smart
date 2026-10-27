@@ -46,7 +46,7 @@ Neither of these can be disabled from within the app. They are Android privacy p
 | A Mac or Windows computer | For running Android Studio to build the app |
 | Android Studio installed | Free download from [developer.android.com/studio](https://developer.android.com/studio) |
 | An Android test device (Android 9+) | Recommended for testing before distributing to participants |
-| PyCharm or Python environment | For running post-processing scripts to retrieve and organize data |
+| PyCharm or Python 3 environment | For running post-processing scripts to retrieve and organize data (`pip install -r scripts/requirements.txt`) |
 | Basic comfort with web consoles | You'll navigate AWS and Firebase web UIs — no coding required |
 
 **Optional but useful:**
@@ -89,6 +89,12 @@ AWS is the cloud service where participants' data will be stored. You'll create 
 
 - [ ] **Create a Cognito Identity Pool** — connects authenticated participants to your S3 bucket
   → Follow [docs/IDENTITY_CREATION_AWS.md](docs/IDENTITY_CREATION_AWS.md)
+
+- [ ] **Estimate your monthly S3 cost** (optional, recommended for budgeting): enter your study size and get a monthly estimate:
+  ```bash
+  python scripts/cost_estimation.py --participants 150 --images-per-day 4000
+  ```
+  For that example the estimate is about $906/month if you download screenshots daily, or $117/month if you download only the CSV data. See [Estimating S3 costs](README.md#estimating-s3-costs).
 
 - [ ] **Record your AWS credentials** — you'll need these four values in Phase 3:
   - AWS region (e.g., `us-east-1`)
@@ -152,11 +158,15 @@ Firebase is used to distribute the app to participants via email invite.
 
 When participants' data arrives in S3, it is in compressed (zip) format. Use the included Python script to download and organize it.
 
-- [ ] Read the [scripts/README.md](scripts/README.md) to understand the processing pipeline and install dependencies
-- [ ] Run the script from an approved machine where participant data may be temporarily stored (an AWS EC2 instance is recommended — it avoids laptop sleep interruptions and keeps data within your institution's approved infrastructure)
-- [ ] Review the output: unzipped screenshots, OCR text, and consolidated CSV files
+- [ ] Read the [scripts/README.md](scripts/README.md) to understand the processing pipeline, then install dependencies: `pip install -r scripts/requirements.txt`
+- [ ] Run the script from an approved machine where participant data may be temporarily stored (an AWS EC2 instance is recommended: it avoids laptop sleep interruptions and keeps data within your institution's approved infrastructure):
+  ```bash
+  python scripts/consolidatecsvs.py
+  ```
+  Follow the prompts. Choose **CSV only** unless you need screenshots; it is much faster and cheaper. Every prompt also has a command-line option for unattended runs (see [Running the script](README.md#running-the-script)).
+- [ ] Review the output in `<query_id>/combined/`: consolidated CSV files per participant, face-redacted screenshots (if downloaded), and daily screenshot counts in `summary/`
 
-> **Tip:** The script is idempotent — if it stops mid-run, you can safely re-run it from the beginning.
+> **Tip:** If the script stops mid-run, re-run it with `--query-id <folder name>` using the output folder it created. Files already downloaded are skipped and nothing is duplicated.
 
 ---
 

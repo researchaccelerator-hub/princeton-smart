@@ -175,6 +175,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         private const val TAG = "OcrWorker"
         private const val BATCH_SIZE = 10  // Number of images to process per batch
         private const val OCR_IMAGE_THRESHOLD = 5  // Minimum number of images to trigger OCR
+        private const val OCR_FETCH_BATCH_SIZE = 100
 
         fun postInitialValues(){
             screenshotInterval.postValue(SCREENSHOT_MAPPING[ScreenshotService.Companion.framesPerSecond])
@@ -260,6 +261,8 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
     // Marker rows still being written; segmentation waits for them so they get a segment
     // (the zip queries need one) in the same pass.
     private val pendingMarkerWrites: MutableList<Job> = Collections.synchronizedList(mutableListOf())
+    private var ocrJob: Job? = null
+    private val ocrLock = Any()
     var ocrSubmitted = false
     private var captureThread: Thread? = null
     private var threadLooper: Looper? = null
@@ -1500,126 +1503,152 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         recognize.initTesseract(dataPath, language, TessBaseAPI.OEM_LSTM_ONLY)
     }
 
-    private fun beginOcr() = CoroutineScope(Dispatchers.IO).launch {
-        synchronized(pendingMarkerWrites) { pendingMarkerWrites.toList() }.joinAll()
-        // Screenshots only become zip-eligible once they belong to an app segment (see
-        // ScreenshotDao's batch queries). The manual-upload trigger (button2 -> uploadCommand())
-        // calls straight into this function without going through a session-ending event first,
-        // so segments must be built here rather than assumed to already exist.
-        generalOperationsRepository.saveAllSessionSegments()
-
-        val screenshots = generalOperationsRepository.getScreenshotsToOcr(1000)
-        Timber.tag(TAG).d("Starting OCR: Processing ${screenshots.size} images.")
-        processedCount = 0
-
-        // Only proceed if there are enough images to process
-        if ((screenshots.size >= OCR_IMAGE_THRESHOLD && isOlderThanTwoHours(lastOcrTime)) || manualOcr.value == true) {
-            lastOcrTime = System.currentTimeMillis()
-
-            // A manual request already started a fresh log with its request entry.
-            if (manualOcr.value != true) {
-                WorkerProgressManager.clear()
+    private fun beginOcr() {
+        synchronized(ocrLock) {
+            if (ocrJob?.isActive == true) {
+                Timber.tag(TAG).d("OCR is already running; ignoring duplicate request.")
+                return
             }
-            try {
-                initializeTesseract()  // Initialize Tesseract for OCR
-                delay(3000)
+            ocrJob = coroutineScope.launch(Dispatchers.IO) {
+                val manualRequest = manualOcr.value == true
+                var processedAny = false
+                try {
+                    synchronized(pendingMarkerWrites) { pendingMarkerWrites.toList() }.joinAll()
+                    // Screenshots only become zip-eligible once they belong to an app segment (see
+                    // ScreenshotDao's batch queries). The manual-upload trigger (button2 -> uploadCommand())
+                    // calls straight into this function without going through a session-ending event
+                    // first, so segments must be built here rather than assumed to already exist.
+                    generalOperationsRepository.saveAllSessionSegments()
 
-                screenshots.chunked(50).forEachIndexed { batchIndex, imagesToOcr ->
-                    WorkerProgressManager.updateProgress("Starting OCR batch ${batchIndex + 1}")
+                    processedCount = 0
+                    var screenshots = generalOperationsRepository.getScreenshotsToOcr(OCR_FETCH_BATCH_SIZE)
+                    Timber.tag(TAG).d("Starting OCR: ${screenshots.size} images in the first batch.")
 
-                    withContext(Dispatchers.IO) {
-                        recognizeImages(imagesToOcr, screenshots.size)  // Process the images in batches
-                    }
+                    if ((screenshots.size >= OCR_IMAGE_THRESHOLD && isOlderThanTwoHours(lastOcrTime)) || manualRequest) {
+                        lastOcrTime = System.currentTimeMillis()
 
-                    if (isScreenLocked.get() || manualOcr.value == true) {
-                        val firstWorkRequest = OneTimeWorkRequestBuilder<ZipFileWorker>()
-                            .setBackoffCriteria(BackoffPolicy.LINEAR, 0, TimeUnit.SECONDS)
-                            .build()
-
-                        val secondWorkRequest = OneTimeWorkRequestBuilder<UploadWorker>()
-                            .setBackoffCriteria(BackoffPolicy.LINEAR, 0, TimeUnit.SECONDS)
-                            .build()
-
-                        // Chain the work requests to run sequentially
-                        val workContinuation = WorkManager.getInstance(this@ScreenshotService)
-                            .beginWith(firstWorkRequest)
-                            .then(secondWorkRequest)
-                            .enqueue()
-
-                        try {
-                            // Wait for the operation to complete
-                            workContinuation.result.await()
-                            // Operation completed successfully
-                            Timber.d("ScreenshotService: Work operation completed successfully")
-                        } catch (e: Exception) {
-                            // Operation failed
-                            Timber.e(e, "ScreenshotService: Work operation failed")
+                        // A manual request already started a fresh log with its request entry.
+                        if (!manualRequest) {
+                            WorkerProgressManager.clear()
                         }
-                    }else{
-                        return@launch
+                        initializeTesseract()
+                        delay(3000)
+
+                        // Oldest first, one batch at a time, until none are left. Automatic OCR runs
+                        // only while the phone is locked; a manual request runs to the end.
+                        var batchIndex = 0
+                        while (screenshots.isNotEmpty() && isActive) {
+                            if (!manualRequest && !isScreenLocked.get()) {
+                                Timber.tag(TAG).d("Stopping automatic OCR because the screen was unlocked.")
+                                break
+                            }
+                            batchIndex++
+                            WorkerProgressManager.updateProgress("Starting OCR batch $batchIndex")
+                            val batch = recognizeImages(screenshots, manualRequest)
+                            if (batch.processed > 0) processedAny = true
+                            if (batch.engineUnavailable || batch.processed == 0) break
+                            screenshots = generalOperationsRepository.getScreenshotsToOcr(OCR_FETCH_BATCH_SIZE)
+                        }
+                        Timber.tag(TAG).d("Ending OCR.")
+                    }
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    generalOperationsRepository.saveLog("OCR_ERROR", "OCR failed: ${ex.stackTraceToString()}")
+                    ex.record()
+                } finally {
+                    // A manual request always zips and uploads, even with nothing new to OCR,
+                    // so the Upload button never silently does nothing.
+                    if (processedAny || manualRequest) {
+                        enqueueZipAndUpload()
+                    }
+                    System.gc()
+                    ocrSubmitted = false
+                    manualOcr.postValue(false)
+                    synchronized(ocrLock) {
+                        ocrJob = null
                     }
                 }
-
-                manualOcr.postValue(false)
-                ocrSubmitted = false
-                Timber.tag(TAG).d("Ending OCR.")
-            } catch (ex: Exception) {
-                // handleOcrException(ex)
-                generalOperationsRepository.saveLog("OCR_ERROR", "OCR failed: ${ex.stackTraceToString()}")
-                ex.record()
-                ocrSubmitted = false
-                manualOcr.postValue(false)
-            } finally {
-                System.gc()  // Trigger garbage collection to free memory
-                ocrSubmitted = false
-                manualOcr.postValue(false)
             }
-        } else {
-            if (manualOcr.value == true) {
-                manualOcr.postValue(false)
-                ocrSubmitted = false
-                Timber.tag(TAG).d("Ending OCR.")
-            }
-            ocrSubmitted = false
         }
     }
 
-    private suspend fun recognizeImages(images: List<ScreenshotEntity>, total: Int) {
-        if (recognize == null || !recognize!!.isInitialized) {
+    private suspend fun enqueueZipAndUpload() {
+        val zipWork = OneTimeWorkRequestBuilder<ZipFileWorker>()
+            .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.SECONDS)
+            .build()
+        val uploadWork = OneTimeWorkRequestBuilder<UploadWorker>()
+            .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.SECONDS)
+            .build()
+
+        WorkerProgressManager.updateProgress("OCR finished. Starting zip.")
+        try {
+            WorkManager.getInstance(this@ScreenshotService)
+                .beginWith(zipWork)
+                .then(uploadWork)
+                .enqueue()
+                .result.await()
+            Timber.d("ScreenshotService: zip and upload enqueued")
+        } catch (e: Exception) {
+            Timber.e(e, "ScreenshotService: could not enqueue zip and upload")
+            WorkerProgressManager.updateProgress("Could not start zip and upload: ${e.message}")
+        }
+    }
+
+    private class OcrBatchResult(val processed: Int, val engineUnavailable: Boolean)
+
+    private suspend fun recognizeImages(images: List<ScreenshotEntity>, allowWhenUnlocked: Boolean): OcrBatchResult {
+        if (!recognize.isInitialized) {
             Timber.tag(TAG).d("Tesseract is not initialized.")
-            return
+            return OcrBatchResult(0, engineUnavailable = true)
         }
 
         val startTime = System.currentTimeMillis()
-
-        // Process images in batches to manage memory and performance
-        images.chunked(BATCH_SIZE).forEachIndexed { batchIndex, batch ->
-            processedCount = processedCount + batch.count()
-            WorkerProgressManager.updateProgress("Processing ${processedCount} of total $total images.")
-            batch.forEach { screenshot ->
-                if (isScreenLocked.get() || manualOcr.value == true) {
-                    processScreenshot(screenshot)
-                }
+        var processedInBatch = 0
+        for (screenshot in images) {
+            if (!allowWhenUnlocked && !isScreenLocked.get()) break
+            if (!processScreenshot(screenshot)) {
+                return OcrBatchResult(processedInBatch, engineUnavailable = true)
             }
+            processedInBatch++
+            processedCount++
+            WorkerProgressManager.updateProgress("Processing OCR image $processedCount.")
         }
 
-        val endTime = System.currentTimeMillis()
-        Timber.d("OCR completed for $processedCount images in ${endTime - startTime} ms.")
+        Timber.d("OCR completed for $processedInBatch images in ${System.currentTimeMillis() - startTime} ms.")
+        return OcrBatchResult(processedInBatch, engineUnavailable = false)
     }
 
-    private suspend fun processScreenshot(screenshot: ScreenshotEntity) {
+    /**
+     * Runs OCR on one screenshot. Every row is finished, whatever happens, so the next fetch
+     * does not return it again: a missing image or a timeout is stored with empty text (the
+     * row's metadata still uploads), and a Tesseract error deletes the row (Recognize).
+     *
+     * @return false only when the OCR engine is unavailable; the row is left for a later run.
+     */
+    private suspend fun processScreenshot(screenshot: ScreenshotEntity): Boolean {
         try {
             Timber.tag(TAG).d("Processing image: ${screenshot.filePath}")
             if (recognize.processImage(screenshot)) {
                 generalOperationsRepository.setScreenToOcrComplete(screenshot)
-            } else {
-                logOcrFailure(screenshot.filePath, "")
+                return true
             }
+            if (!recognize.isInitialized || recognize.stopped) {
+                return false
+            }
+            screenshot.text = ""
+            generalOperationsRepository.setScreenToOcrComplete(screenshot)
+            logOcrFailure(screenshot.filePath, "Stored without OCR text")
+        } catch (ex: CancellationException) {
+            throw ex
         } catch (ex: Exception) {
             ex.record()
             Timber.tag(TAG).w("Error processing image: ${screenshot.filePath}, ${ex.message}")
-            logOcrFailure(screenshot.filePath, "Error processing image: ${screenshot.filePath}, ${ex.stackTrace}")
+            screenshot.text = ""
+            screenshot.id?.let { generalOperationsRepository.setScreenToOcrComplete(screenshot) }
+            logOcrFailure(screenshot.filePath, "Error processing image: ${ex.stackTraceToString()}")
         }
+        return true
     }
 
     private suspend fun logOcrFailure(filePath: String?, msg: String) {

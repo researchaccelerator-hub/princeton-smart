@@ -247,6 +247,18 @@ class GeneralOperationsRepository @Inject constructor(
         )
     }
 
+    /**
+     * Like [saveLog], for background events (boot, shutdown) that can run in a fresh process
+     * before any screen has set [AmplifyRepository.email]. Falls back to the stored user, and
+     * still logs the event when no user is stored.
+     */
+    suspend fun saveLogForStoredUser(event: String, msg: String = "") = silence {
+        val email = amplifyRepository.email.ifBlank {
+            runCatching { userDao.getUser().email }.getOrNull().orEmpty()
+        }
+        logEventDao.saveException(LogEventEntity(event, msg, email))
+    }
+
     fun save(accessibilityEvent: AccessibilityEventEntity) {
         CoroutineScope(Dispatchers.IO).launch {
             accessibilityEventDao.save(

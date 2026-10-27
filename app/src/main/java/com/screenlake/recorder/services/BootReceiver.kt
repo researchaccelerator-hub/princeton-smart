@@ -14,6 +14,10 @@ import javax.inject.Inject
  * Logs the phone powering on and off as `PHONE_POWER_STATE` log events, which are uploaded with
  * the other log events. This lets researchers tell a gap caused by the phone being off from one
  * caused by the app.
+ *
+ * Boot arrives through the manifest registration. Since Android 9, `ACTION_SHUTDOWN` is only
+ * delivered to receivers registered at runtime, so [ScreenshotService] also registers an
+ * instance for it while recording.
  */
 @AndroidEntryPoint
 class BootReceiver : BroadcastReceiver() {
@@ -27,7 +31,7 @@ class BootReceiver : BroadcastReceiver() {
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                generalOperationsRepository.saveLog(POWER_STATE_EVENT, state)
+                generalOperationsRepository.saveLogForStoredUser(POWER_STATE_EVENT, state)
             } finally {
                 pendingResult.finish()
             }
@@ -36,6 +40,9 @@ class BootReceiver : BroadcastReceiver() {
 
     companion object {
         const val POWER_STATE_EVENT = "PHONE_POWER_STATE"
+
+        /** Actions to register at runtime; the manifest registration never receives them. */
+        val RUNTIME_ACTIONS = listOf(Intent.ACTION_SHUTDOWN)
 
         fun powerStateFor(action: String?): String? = when (action) {
             Intent.ACTION_BOOT_COMPLETED -> "POWER_ON"

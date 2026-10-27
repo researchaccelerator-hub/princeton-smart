@@ -8,6 +8,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
 import android.graphics.PixelFormat
@@ -26,6 +27,7 @@ import android.util.DisplayMetrics
 import android.view.WindowManager
 import androidx.concurrent.futures.await
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.MutableLiveData
 import androidx.work.BackoffPolicy
 import androidx.work.OneTimeWorkRequestBuilder
@@ -199,6 +201,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
     private var density = 0
     private var isScreenLocked = AtomicBoolean(false)
     private var screenStateReceiver: ScreenStateReceiver? = null
+    private var shutdownReceiver: BootReceiver? = null
     private var consecutiveErrors = AtomicInteger(0)
     var moveForward = true
     private var screenshotJob: Job? = null
@@ -269,6 +272,12 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
             // Register screen state receiver
             screenStateReceiver = ScreenStateReceiver(this)
             screenStateReceiver?.register(this)
+
+            // Log POWER_OFF; shutdown is not delivered to the manifest-registered BootReceiver.
+            shutdownReceiver = BootReceiver().also { receiver ->
+                val filter = IntentFilter().apply { BootReceiver.RUNTIME_ACTIONS.forEach(::addAction) }
+                ContextCompat.registerReceiver(this, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+            }
         } catch (e: Exception) {
             Timber.e(e, "Error in onCreate")
             stopSelf()
@@ -970,6 +979,13 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
             Timber.e(e, "Error unregistering screen state receiver")
         }
         screenStateReceiver = null
+
+        try {
+            shutdownReceiver?.let { unregisterReceiver(it) }
+        } catch (e: IllegalArgumentException) {
+            Timber.e(e, "Error unregistering shutdown receiver")
+        }
+        shutdownReceiver = null
 
         CoroutineScope(Dispatchers.IO).launch {
             saveSessionSegmentsInBackground()

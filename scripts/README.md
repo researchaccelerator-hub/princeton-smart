@@ -14,7 +14,7 @@ NOTES:
     - Running processing in date-bounded batches (super easy thanks to the script)
     - Making sure that there are no internet disruptions during the script's run
     - Choosing to use an ec2 versus a local laptop, as the laptop is more prone to interruptions
-- The script is idempotent, meaning that even it gets stuck or hung up, you can just cancel the run midway and re-run it with no harm done and no duplicated data in your output.
+- The script can be resumed. If it gets stuck or hung up, cancel it and re-run it with the same `--query-id` (the output folder it created). Files already downloaded are skipped and there is no duplicated data in your output.
 
 [Watch a visual walkthrough here.](https://youtu.be/oFH0MieGgUY).
 

@@ -39,3 +39,5 @@ This tutorial will guide you through the steps to create an Amazon S3 bucket wit
 ## Conclusion
 
 You have successfully created an Amazon S3 bucket with all public access blocked and server-side encryption enabled. This ensures that your data is securely stored and inaccessible to the public by default. You can now use this bucket to securely store your data.
+
+To budget for the bucket, estimate your study's monthly S3 cost with `scripts/cost_estimation.py` (see [Estimating S3 costs](../README.md#estimating-s3-costs)). Most of the cost of a large study comes from downloading screenshots, not from storing them.

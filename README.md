@@ -257,10 +257,58 @@ NOTES:
    - Running processing in date-bounded batches (super easy thanks to the script)
    - Making sure that there are no internet disruptions during the script's run
    - Choosing to use an ec2 versus a local laptop, as the laptop is more prone to interruptions
-- The script is idempotent, meaning that even it gets stuck or hung up, you can just cancel the run midway and re-run it with no harm done and no duplicated data in your output.
+- The script can be resumed. If it gets stuck or hung up, cancel it and re-run it with the same `--query-id` (the output folder name printed at the start). Files already downloaded are skipped and there is no duplicated data in your output.
 
-Check out the readme file inside of the **scripts** folder as well.
-[Watch a visual valkthrough here.](https://youtu.be/oFH0MieGgUY).
+### Running the script
+
+Install the dependencies once (Python 3, OpenCV must be 4.x for face redaction):
+
+```bash
+pip install -r scripts/requirements.txt
+```
+
+Run it and answer the prompts (bucket, study folder, dates, which ZIPs to download, whether to remove OCR text):
+
+```bash
+python scripts/consolidatecsvs.py
+```
+
+Or pass everything on the command line, for example to process one week of CSV data on an EC2 instance with no prompts:
+
+```bash
+python scripts/consolidatecsvs.py --aws-default-credentials --bucket my-study-bucket \
+    --prefix academia/tenant/<tenant>/panel/<panel>/<version>/panelist/ \
+    --start 2026-10-01 --end 2026-10-07 --zip-types csv --remove-ocr --query-id query_oct_week1
+```
+
+Things to know:
+- **Dates** are whole days in your computer's local time; both the start and end day are included.
+- **CSV only** (`--zip-types csv`) skips the screenshots, which are most of the data and of the download cost. Use `both` when you need images. For data from app versions before 1.50, choose `both`: those uploads put CSVs and images in one ZIP.
+- **Faces are always redacted** in downloaded screenshots; only the redacted copies are kept.
+- **`--remove-ocr`** drops the OCR and on-screen text columns (`text`) from the consolidated CSVs, if your study does not need screen text.
+- **Output** goes to `<query_id>/combined/`: one consolidated CSV per data type per participant under `panelists/<id>/metadata/`, redacted images under `panelists/<id>/images/`, and daily screenshot counts under `summary/`.
+
+Full options and output details are in [scripts/README.md](scripts/README.md).
+[Watch a visual walkthrough here.](https://youtu.be/oFH0MieGgUY).
+
+### Estimating S3 costs
+
+`scripts/cost_estimation.py` estimates a study's monthly S3 bill (storage, upload and download requests, and data transfer out of AWS) and compares downloading everything daily with downloading only the CSV ZIPs. Run it while planning a study budget:
+
+```bash
+python scripts/cost_estimation.py --participants 150 --images-per-day 4000 --image-mb 0.5
+```
+
+With those inputs (150 participants, 4,000 screenshots each per day, 0.5 MB per screenshot, 30-day retention), it reports:
+
+| | Download images and CSVs daily | Download CSVs only |
+|---|---|---|
+| Requests | $1.94 | $3.74 |
+| Storage | $106.48 | $106.48 |
+| Data transfer out | $797.47 (about 9 TB) | $6.45 (172 GB) |
+| **Total per month** | **$905.89** | **$116.68** |
+
+Most of the cost of a large study is downloading screenshots, so download images only when you need them. Prices are S3 Standard list prices for us-east-1 and the 100 GB free transfer allowance is per AWS account; check current AWS pricing before relying on the numbers. Run `python scripts/cost_estimation.py --help` for all inputs.
 
 
 To understand the final output data, read through the explainer doc.

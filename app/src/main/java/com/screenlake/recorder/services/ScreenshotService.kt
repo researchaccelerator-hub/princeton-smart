@@ -1072,7 +1072,13 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
 
             val display = virtualDisplay
             if (display == null) {
-                Timber.w("resetCapturing: virtual display is unavailable")
+                // Before Android 14 a projection can create another display, e.g. after one
+                // stopped while locked and paused. From 14 on, onStopped() asks for consent.
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE && setupVirtualDisplay()) {
+                    transitionProjectionState(ProjectionInterruptionState.CAPTURING, "legacy_reset_virtual_display_recreated")
+                } else {
+                    Timber.w("resetCapturing: virtual display is unavailable")
+                }
                 return
             }
 
@@ -1376,6 +1382,9 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
         }
 
         Timber.d("Screen unlocked")
+        // Rearm ScreenStateReceiver's screen-off gate; the keyguard probe path has no
+        // ACTION_USER_PRESENT to do it.
+        isActionScreenOff.postValue(true)
         logScreenshotState(state = "ScreenUnlocked")
 
         lastUnlockTime = System.currentTimeMillis()

@@ -13,16 +13,29 @@ SCENARIO="${1:-status}"
 pid_of() { adb shell pidof "$PKG" 2>/dev/null | tr -d '\r' || true; }
 
 run_watchdog() {
-  # Force-run the watchdog's JobScheduler job instead of waiting up to 15 min.
-  # Relaunching the process (any WorkManager job) also triggers the immediate check from
-  # BaseApplication.onCreate(), so forcing every WorkManager job of the app is fine.
-  local jobs
+  # Force-run the app's WorkManager jobs instead of waiting up to 15 min. Relaunching the
+  # process also triggers the immediate check from BaseApplication.onCreate().
+  # On Android 14+ WorkManager schedules into its own JobScheduler namespace; the job line
+  # then reads "JOB #u0a123/<namespace>/<id>:" instead of "JOB #u0a123/<id>:".
+  local jobs ran=0 failed=0 ns id out
   jobs=$(adb shell dumpsys jobscheduler 2>/dev/null | tr -d '\r' \
-        | grep -E "JOB #u[0-9a-z]+/[0-9]+: .*$PKG/androidx.work" \
-        | sed -E 's|.*JOB #[^/]+/([0-9]+):.*|\1|' | sort -u || true)
+        | grep -E "JOB #u[0-9a-z]+/[^ ]*: .*$PKG/androidx.work" \
+        | sed -E 's|.*JOB #u[0-9a-z]+/([^ ]*):.*|\1|' | sort -u || true)
   if [[ -z "$jobs" ]]; then echo "!! no WorkManager jobs found for $PKG"; return; fi
-  for j in $jobs; do adb shell cmd jobscheduler run -f "$PKG" "$j" >/dev/null 2>&1 || true; done
-  echo ">> forced WorkManager jobs: $(echo $jobs)"
+  for job in $jobs; do
+    id="${job##*/}"
+    if [[ "$job" == */* ]]; then ns="${job%/*}"; else ns=""; fi
+    if [[ -n "$ns" ]]; then
+      out=$(adb shell cmd jobscheduler run -f -n "$ns" "$PKG" "$id" 2>&1 | tr -d '\r')
+    else
+      out=$(adb shell cmd jobscheduler run -f "$PKG" "$id" 2>&1 | tr -d '\r')
+      if ! grep -qi "running job" <<<"$out"; then
+        out=$(adb shell cmd jobscheduler run -f -n androidx.work.systemjobscheduler "$PKG" "$id" 2>&1 | tr -d '\r')
+      fi
+    fi
+    if grep -qi "running job" <<<"$out"; then ran=$((ran+1)); else failed=$((failed+1)); echo "!! job $job: $out"; fi
+  done
+  echo ">> forced $ran WorkManager job(s), $failed failed"
   sleep 8
 }
 

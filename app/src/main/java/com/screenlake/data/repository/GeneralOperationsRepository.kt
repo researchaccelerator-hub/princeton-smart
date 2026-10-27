@@ -43,6 +43,7 @@ import com.screenlake.recorder.screenshot.DataTransformation
 import com.screenlake.recorder.services.ScreenshotService
 import com.screenlake.recorder.utilities.TimeUtility
 import com.screenlake.recorder.utilities.silence
+import com.screenlake.recorder.services.RecordingState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -406,6 +407,7 @@ class GeneralOperationsRepository @Inject constructor(
         // WorkManager context throws ForegroundServiceStartNotAllowedException on Android 12+,
         // uncaught by the worker's own try/catch, crashing the exact retry path this fix exists
         // to protect.
+        RecordingState.clearForSignOut(context)
         if (ScreenshotService.isRunning.value != true) return
 
         Intent(context, ScreenshotService::class.java).apply {

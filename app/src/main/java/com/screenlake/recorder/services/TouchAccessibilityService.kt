@@ -103,6 +103,12 @@ class TouchAccessibilityService() : AccessibilityService() {
             return isActivity
         }
 
+        /** The service is gone, so the cached app can no longer be trusted. */
+        fun clearLatestPackage() {
+            latestPackageName = null
+            latestPackageTime = 0L
+        }
+
         fun getLatestPackage(maxAgeMs: Long): String? {
             return if (System.currentTimeMillis() - latestPackageTime <= maxAgeMs) latestPackageName else null
         }
@@ -182,6 +188,7 @@ class TouchAccessibilityService() : AccessibilityService() {
 
     @RequiresApi(Build.VERSION_CODES.R)
     override fun onDestroy() {
+        clearLatestPackage()
         // Unregister broadcast receiver and remove observer
         mReceiver?.let { context?.get()?.unregisterReceiver(it) }
         mPackageEventReceiver?.let { context?.get()?.unregisterReceiver(it) }

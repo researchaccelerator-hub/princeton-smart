@@ -122,6 +122,7 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK && result.data != null) {
             // The service clears the in-flight flag once capture starts.
+            ScreenshotService.suppressMediaProjectionPromptUntilUnlock.set(false)
             startScreenshotService(result.resultCode, result.data)
         } else {
             ScreenshotService.isMediaProjectionPromptInFlight.set(false)

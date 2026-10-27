@@ -25,6 +25,7 @@ import com.screenlake.recorder.constants.ResearchConfig
 import com.screenlake.recorder.services.ScreenshotService
 import com.screenlake.recorder.utilities.SendLogsHelper
 import com.screenlake.recorder.viewmodels.MainViewModel
+import com.screenlake.recorder.services.RecordingState
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import timber.log.Timber
@@ -159,6 +160,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
         cloudAuthentication.signOut(MainActivity.isLoggedOut)
         MainActivity.isLoggedIn.postValue(false)
 
+        RecordingState.clearForSignOut(requireContext())
         sendCommandToRecordService(ConstantSettings.ACTION_STOP_SERVICE)
         setUserLoggedOut()
         async { clearPhone() }.await()

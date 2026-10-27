@@ -62,12 +62,23 @@ object RecordingState {
 
     /** Fresh screen-sharing consent received: recording is now expected to keep running. */
     fun markStarted(c: Context) {
-        prefs(c).edit().putBoolean(KEY_EXPECTED, true).commit() // sync: survive an immediate kill
+        // A new recording gets its own interruption notice, even within the repost interval.
+        prefs(c).edit().putBoolean(KEY_EXPECTED, true).putLong(KEY_LAST_NOTIFIED, 0L)
+            .commit() // sync: survive an immediate kill
     }
 
     /** Participant pressed Stop (or signed out): not an interruption. */
     fun markStoppedIntentionally(c: Context) {
         prefs(c).edit().putBoolean(KEY_EXPECTED, false).commit()
+    }
+
+    /**
+     * Sign-out: nothing should be recording or waiting for consent, whether or not the service
+     * is alive in this process (after a kill it is not, and nothing else would clear these).
+     */
+    fun clearForSignOut(c: Context) {
+        markStoppedIntentionally(c)
+        ScreenshotService.clearMediaProjectionRequest(c)
     }
 
     /** Service destroyed while the process lives on; if it wasn't a Stop, check right away. */

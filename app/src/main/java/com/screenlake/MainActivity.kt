@@ -181,6 +181,10 @@ class MainActivity : AppCompatActivity(), ScreenRecordFragment.MediaProjectionCa
     }
 
     private fun requestPendingProjectionConsentIfNeeded() {
+        // On a cold start after a kill this can run before the watchdog marks consent pending.
+        if (RecordingState.isExpected(this) && !RecordingState.serviceAliveInProcess) {
+            ScreenshotService.markMediaProjectionRequestPending(this)
+        }
         if (!ScreenshotService.isMediaProjectionRequestPending(this)) return
         if (ScreenshotService.isMediaProjectionPromptInFlight.get()) return
 
@@ -192,8 +196,20 @@ class MainActivity : AppCompatActivity(), ScreenRecordFragment.MediaProjectionCa
             return
         }
 
-        logProjectionPromptEvent("request=foreground_resume_recovery")
-        requestMediaProjection()
+        // Recovery restarts capture directly, so it needs a participant with an invite code,
+        // the same requirement the record button checks.
+        lifecycleScope.launch {
+            val hasParticipant = runCatching {
+                generalOperationsRepository.userExists() &&
+                    !generalOperationsRepository.getUser().emailHash.isNullOrEmpty()
+            }.getOrDefault(false)
+            if (!hasParticipant) {
+                logProjectionPromptEvent("request=skipped;reason=no_participant")
+                return@launch
+            }
+            logProjectionPromptEvent("request=foreground_resume_recovery")
+            requestMediaProjection()
+        }
     }
 
     private fun logProjectionPromptEvent(message: String) {

@@ -281,6 +281,10 @@
     <string name="password_requirement_length">- have at least 8 characters</string>
     <string name="password_requirement_digit_special" formatted="false">- have 1 digit and 1 special character, such as @ # $ % ^ &amp; + ! =</string>
     <string name="password_requirement_case">- have 1 lowercase and 1 uppercase character</string>
+    <plurals name="taking_screenshots_every_n_seconds">
+        <item quantity="one">Taking a screenshot every second</item>
+        <item quantity="other">Taking a screenshot every %d seconds</item>
+    </plurals>
     <string name="confirmation_code_sent">A six digit code was sent to your email...</string>
     <string name="password_must_be_8_characters_long">Password must be 8 characters long</string>
     <string name="for_screenlake_to_work_properly_we_need_you_to_accept_accessibility_settings">For SRK to work properly, we need you to grant Accessibility Settings.</string>

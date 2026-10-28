@@ -12,8 +12,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.Observer
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.screenlake.R
@@ -49,7 +47,7 @@ class RegisterNameEmailFragment : Fragment() {
     private val binding get() = _binding!!
 
     var email = ""
-    var userExist = MutableLiveData<Boolean>()
+    private var emailCheckRunning = false
     private val userExistsCheck = UserExistsCheck()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -104,8 +102,7 @@ class RegisterNameEmailFragment : Fragment() {
             hideKeyboard()
             lifecycleScope.launch {
                 if (HardwareChecks.isConnected(requireContext())) {
-                    email = binding.registerNameEmailFragmentEmail.text.toString().trim()
-                        .lowercase(Locale.getDefault())
+                    email = enteredEmail()
 
                     val enteredCode = binding.loginPanelConfirmationlFragmentEmail.text?.toString()?.trim()
                     if(enteredCode.isNullOrBlank()) {
@@ -123,7 +120,7 @@ class RegisterNameEmailFragment : Fragment() {
                     amplifyRepository.code = enteredCode
 
                     if (binding.checkBox1.isChecked && binding.checkBox2.isChecked) {
-                        userExist.postValue(userExistsCheck.exists(email))
+                        checkEmailThenContinue(email)
                     } else {
                         binding.registerNameEmailFragmentNext.text =
                             getString(R.string.accept_terms_above)
@@ -146,14 +143,34 @@ class RegisterNameEmailFragment : Fragment() {
             }
         }
 
-        userExist.observe(viewLifecycleOwner, Observer {
-            if (it) {
-                binding.registerNameEmailFragmentEmail.error = getString(R.string.email_taken)
-                binding.registerNameEmailFragmentNext.text = getText(R.string.next)
-            } else {
-                emailConfirmed(email)
-            }
-        })
+    }
+
+    private fun enteredEmail(): String =
+        binding.registerNameEmailFragmentEmail.text.toString().trim().lowercase(Locale.getDefault())
+
+    /**
+     * Runs the optional user-exists check (ResearchConfig.USER_EXISTS_URL) for [checkedEmail],
+     * one check at a time with Next disabled, and acts on the answer only if the email field
+     * still holds that email, so an answer is never applied to a different address.
+     */
+    private suspend fun checkEmailThenContinue(checkedEmail: String) {
+        if (emailCheckRunning) return
+        emailCheckRunning = true
+        binding.registerNameEmailFragmentNext.isEnabled = false
+        val taken = try {
+            userExistsCheck.exists(checkedEmail)
+        } finally {
+            emailCheckRunning = false
+            _binding?.registerNameEmailFragmentNext?.isEnabled = true
+        }
+        if (_binding == null || enteredEmail() != checkedEmail) return
+
+        if (taken) {
+            binding.registerNameEmailFragmentEmail.error = getString(R.string.email_taken)
+            binding.registerNameEmailFragmentNext.text = getText(R.string.next)
+        } else {
+            emailConfirmed(checkedEmail)
+        }
     }
 
     private fun emailConfirmed(email: String) {

@@ -79,7 +79,16 @@ class UploadWorker @AssistedInject constructor(
 
                 generalOperationsRepository.saveLog("UPLOAD_SERVICE_RUN", "")
 
-                uploadZipFilesAsync()
+                // OCR now enqueues one upload for its whole run, so keep going in batches of 10
+                // until the backlog is empty. Stop when a batch uploads nothing (offline, HTTP
+                // errors) so failures cannot loop; the next run retries them.
+                var pending = generalOperationsRepository.getZipsToUpload().size
+                do {
+                    uploadZipFilesAsync()
+                    val stillPending = generalOperationsRepository.getZipsToUpload().size
+                    val progressed = stillPending < pending
+                    pending = stillPending
+                } while (progressed && pending > 0)
 
                 Timber.tag(TAG).d("Upload Worker has finished.")
                 WorkerProgressManager.updateProgress("Upload has finished.")

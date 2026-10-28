@@ -17,18 +17,20 @@ Errors are sorted by type and AWS error code (`UploadFailureClassifier`), never 
 
 ## When uploads run
 
-There are two upload jobs: the periodic one, every `UPLOAD_WORKER_INTERVAL_HOURS` (1 by default), and one unique on-demand job (`UploadWorker.enqueue`, `WORK_MANAGER_UPLOAD_ON_DEMAND`). Asking for an upload while the on-demand job is waiting or running does not add a second one. The on-demand job is requested:
+There are two upload jobs: the periodic one, every `UPLOAD_WORKER_INTERVAL_HOURS` (1 by default), and one unique on-demand job (`UploadWorker.enqueue`, `WORK_MANAGER_UPLOAD_ON_DEMAND`). The on-demand job is requested:
 
 - when a zip run finishes, whether it succeeded or not (`ZipFileWorker`), so earlier zips upload too;
 - after a participant signs in.
 
-Zips are made by the hourly zip job and by one unique on-demand zip job (`ZipFileWorker.enqueueThenUpload`, `WORK_MANAGER_ZIP_ON_DEMAND`). The on-demand zip is requested after each OCR run (while the phone is locked, or when the participant taps Upload with recording on) and by the stats screen's Upload button while recording is stopped. A zip requested while one is running waits and runs after it, so nothing finished in the meantime waits an hour. Zipping needs no network.
+Zips are made by the hourly zip job and by one unique on-demand zip job (`ZipFileWorker.enqueueThenUpload`, `WORK_MANAGER_ZIP_ON_DEMAND`). The on-demand zip is requested after each OCR run (while the phone is locked, or when the participant taps Upload with recording on) and by the stats screen's Upload button while recording is stopped. Zipping needs no network.
 
-With recording stopped, OCR cannot run (it runs in the recording service), so the Upload button zips and uploads only screenshots that already have their text. The rest upload after recording restarts.
+Both on-demand jobs follow the same rule (`OnDemandWork`): at most one run in progress and one waiting. A request while a run is in progress queues one more run after it, so data that becomes ready near the end of that run does not wait an hour. A request while a run is already waiting adds nothing, because that run will see the new data. The waiting run would be failed by WorkManager if the run before it failed, so zip and upload runs never end in failure: an error that retrying would not fix is logged and the run ends as a success.
+
+With recording stopped, OCR cannot run (it runs in the recording service), so the Upload button zips and uploads only screenshots that already have their text. The rest upload after recording restarts. The button shows "Uploading..." while any zip or upload is running, hourly or on demand, or an on-demand zip is waiting; an upload waiting for a network does not hold it.
 
 While a run uploads, it shows a quiet "Uploading study data" notification (`UPLOAD_NOTIFICATION_ID`, channel "Data uploads") as a `dataSync` foreground job, so it is not stopped after WorkManager's usual 10 minutes. If Android does not allow the foreground start (Android 12 and later can refuse it while the app is in the background), the event log gets `UPLOAD_FOREGROUND_UNAVAILABLE` and the run continues as a normal background job. On Android 15 and later, `dataSync` jobs get at most 6 hours a day; WorkManager stops the run when that is reached and the next run continues.
 
-Only one run uploads at a time. A run that finds another one uploading retries shortly after instead of failing. Files that become ready while a run is uploading are uploaded by that run before it ends, and each file is tried at most once per run.
+Only one run uploads at a time; the hourly and on-demand runs can overlap, and a run that finds another one uploading retries shortly after. Files that become ready while a run is uploading are uploaded by that run before it ends, and each file is tried at most once per run.
 
 A run skips while recovery is pending (below) or when no participant is signed in. OCR and zipping continue during recovery, so the data is ready when the participant signs in again.
 
@@ -94,6 +96,7 @@ These events appear in the uploaded event log. They never include credentials, p
 | Upload results, HTTP status mapping, retry after 401/403 | `recorder/services/RealUploadHandler.kt` |
 | Run outcome, WorkManager result, the unique upload job and its notification | `recorder/services/UploadWorker.kt` |
 | Zip, then request an upload | `recorder/services/ZipFileWorker.kt` |
+| One run in progress and one waiting per on-demand job | `recorder/services/OnDemandWork.kt` |
 | Upload button on the stats screen | `ui/fragments/ScreenshotStatsFragment.kt` |
 | Threshold, notification, sign-out | `recorder/services/AuthRecoveryCoordinator.kt` |
 | Sign-out keeping data, reconnecting the same or a different account | `data/repository/GeneralOperationsRepository.kt` |

@@ -57,7 +57,8 @@ class ScreenshotStatsFragment : Fragment() {
     private lateinit var lastUploadSuccess: TextView
     private lateinit var uploadButton: Button
     private lateinit var viewUploadProgressTextView: TextView
-    private var zipActive = false
+    private var zipQueued = false
+    private var zipRunning = false
     private var uploadRunning = false
     private var uploadButtonBusy = false
 
@@ -110,13 +111,20 @@ class ScreenshotStatsFragment : Fragment() {
             updateUploadProgressLinkVisibility()
         }
 
+        // WorkManager tags every request with its worker class, so these cover the hourly jobs
+        // as well as the on-demand ones.
         val workManager = WorkManager.getInstance(requireContext())
         workManager.getWorkInfosForUniqueWorkLiveData(ZipFileWorker.ZIP_ON_DEMAND_WORK)
             .observe(viewLifecycleOwner) { infos ->
-                zipActive = infos.any { !it.state.isFinished }
+                zipQueued = infos.any { !it.state.isFinished }
                 updateUploadButton()
             }
-        workManager.getWorkInfosForUniqueWorkLiveData(UploadWorker.UPLOAD_ON_DEMAND_WORK)
+        workManager.getWorkInfosByTagLiveData(ZipFileWorker::class.java.name)
+            .observe(viewLifecycleOwner) { infos ->
+                zipRunning = infos.any { it.state == WorkInfo.State.RUNNING }
+                updateUploadButton()
+            }
+        workManager.getWorkInfosByTagLiveData(UploadWorker::class.java.name)
             .observe(viewLifecycleOwner) { infos ->
                 // A run waiting for a network does not hold the button.
                 uploadRunning = infos.any { it.state == WorkInfo.State.RUNNING }
@@ -255,7 +263,7 @@ class ScreenshotStatsFragment : Fragment() {
     }
 
     private fun updateUploadButton() {
-        val busy = ScreenshotService.manualOcr.value == true || zipActive || uploadRunning
+        val busy = ScreenshotService.manualOcr.value == true || zipQueued || zipRunning || uploadRunning
         if (uploadButtonBusy && !busy) loadScreenshotStats()
         uploadButtonBusy = busy
         uploadButton.isEnabled = !busy

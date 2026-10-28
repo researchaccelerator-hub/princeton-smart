@@ -4,10 +4,7 @@ import android.content.Context
 import androidx.hilt.work.HiltWorker
 import androidx.work.BackoffPolicy
 import androidx.work.CoroutineWorker
-import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.Operation
-import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.screenlake.BuildConfig
 import com.screenlake.recorder.constants.ConstantSettings
@@ -59,17 +56,16 @@ class ZipFileWorker @AssistedInject constructor(
 
         /**
          * Zips everything collected so far, then starts an upload (see [doWork]). A request made
-         * while a zip runs waits for it and runs after, so rows finished in the meantime are not
-         * left for the hourly zip. Zipping needs no network, so queued requests never stall.
+         * while a zip runs queues one more zip after it (see [OnDemandWork]), so rows finished in
+         * the meantime are not left for the hourly zip. Zipping needs no network, so a queued
+         * zip never stalls.
          */
-        fun enqueueThenUpload(context: Context): Operation =
-            WorkManager.getInstance(context).enqueueUniqueWork(
-                ZIP_ON_DEMAND_WORK,
-                ExistingWorkPolicy.APPEND_OR_REPLACE,
+        fun enqueueThenUpload(context: Context) =
+            OnDemandWork.request(context, ZIP_ON_DEMAND_WORK) {
                 OneTimeWorkRequestBuilder<ZipFileWorker>()
                     .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.SECONDS)
                     .build()
-            )
+            }
     }
 
     /**
@@ -105,7 +101,9 @@ class ZipFileWorker @AssistedInject constructor(
         } catch (ex: Exception) {
             generalOperationsRepository.saveLog("FAILED_ZIP_WORKER $runId", ex.stackTraceToString())
             Timber.tag(TAG).e(ex, "Zip Worker failed.")
-            Result.failure()
+            // Success, so a zip queued behind this one still runs; retrying would repeat the
+            // same error, and the next zip tries again.
+            Result.success()
         } finally {
             isRunning = false
             mutex.unlock()

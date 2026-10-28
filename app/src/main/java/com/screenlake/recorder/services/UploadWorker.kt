@@ -11,12 +11,10 @@ import androidx.lifecycle.MutableLiveData
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
-import androidx.work.ExistingWorkPolicy
 import androidx.work.ForegroundInfo
 import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequest
 import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.Operation
-import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.screenlake.R
 import com.screenlake.data.database.entity.ScreenshotZipEntity
@@ -75,22 +73,21 @@ class UploadWorker @AssistedInject constructor(
         var isRunning = false
 
         /**
-         * Starts an upload unless one is already waiting or running. A file that is ready while
-         * a run is in progress is picked up by that run before it ends.
+         * Starts an upload unless one is already waiting. A request while a run is in progress
+         * queues one more run after it (see [OnDemandWork]), so a file that becomes ready after
+         * that run's last check is not left for the hourly job.
          */
-        fun enqueue(context: Context): Operation =
-            WorkManager.getInstance(context).enqueueUniqueWork(
-                UPLOAD_ON_DEMAND_WORK,
-                ExistingWorkPolicy.KEEP,
-                OneTimeWorkRequestBuilder<UploadWorker>()
-                    .setConstraints(
-                        Constraints.Builder()
-                            .setRequiredNetworkType(NetworkType.CONNECTED)
-                            .build()
-                    )
-                    .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.SECONDS)
-                    .build()
-            )
+        fun enqueue(context: Context) = OnDemandWork.request(context, UPLOAD_ON_DEMAND_WORK, ::request)
+
+        internal fun request(): OneTimeWorkRequest =
+            OneTimeWorkRequestBuilder<UploadWorker>()
+                .setConstraints(
+                    Constraints.Builder()
+                        .setRequiredNetworkType(NetworkType.CONNECTED)
+                        .build()
+                )
+                .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.SECONDS)
+                .build()
     }
 
     /**
@@ -104,6 +101,9 @@ class UploadWorker @AssistedInject constructor(
      *   threshold [Result.retry], at the threshold recovery begins and the run ends with
      *   [Result.success] so it does not retry in a loop.
      * - while recovery waits for the participant to sign in: nothing is uploaded.
+     * - another run is uploading: [Result.retry].
+     * - the AWS setup could not be loaded: [Result.success], since retrying will not fix it.
+     *   Runs never end with [Result.failure], which would also fail an upload queued after them.
      */
     override suspend fun doWork(): Result {
         Timber.tag(TAG).d("Upload Worker has started.")
@@ -153,7 +153,8 @@ class UploadWorker @AssistedInject constructor(
                 }
                 UploadResult.CONFIGURATION_FAILURE -> {
                     WorkerProgressManager.updateProgress("Upload failed: the app's AWS setup could not be loaded.")
-                    return Result.failure()
+                    // Retrying will not fix the setup; success keeps a queued upload from failing too.
+                    return Result.success()
                 }
             }
 

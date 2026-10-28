@@ -25,7 +25,6 @@ import android.os.IBinder
 import android.os.Looper
 import android.util.DisplayMetrics
 import android.view.WindowManager
-import androidx.concurrent.futures.await
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.MutableLiveData
@@ -1579,7 +1578,7 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
     private suspend fun enqueueZipAndUpload() {
         WorkerProgressManager.updateProgress("OCR finished. Starting zip.")
         try {
-            ZipFileWorker.enqueueThenUpload(this@ScreenshotService).result.await()
+            ZipFileWorker.enqueueThenUpload(this@ScreenshotService)
             Timber.d("ScreenshotService: zip and upload enqueued")
         } catch (e: Exception) {
             Timber.e(e, "ScreenshotService: could not enqueue zip and upload")

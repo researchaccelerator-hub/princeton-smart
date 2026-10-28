@@ -296,6 +296,11 @@
     <string name="delete_data_and_sign_out">Delete data and sign out</string>
     <string name="delete_data_logout_confirmation">This permanently deletes data that has not uploaded yet, and the saved invite code, from this phone. You will need to enter the invite code again after signing in.</string>
     <string name="auth_recovery_title">Sign in to resume uploads</string>
+    <string name="upload_channel_name">Data uploads</string>
+    <string name="upload_channel_description">Shown while collected study data uploads</string>
+    <string name="upload_notification_title">Uploading study data</string>
+    <string name="upload_notification_text">Your collected data is uploading securely.</string>
+    <string name="upload_stopped_queued">Zipping and uploading collected data.</string>
     <string name="auth_recovery_message">Uploads are paused because your sign-in expired. Your collected data is safe on this phone. Sign in again to resume uploading.</string>
     <string name="different_account_title">Different account</string>
     <string name="different_account_message">This phone has data from another account that has not uploaded yet. Signing in with %1$s will delete that data. To keep it, cancel and sign in with the original account.</string>

@@ -1,13 +1,26 @@
 package com.screenlake.recorder.services
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
+import android.content.pm.ServiceInfo
+import android.os.Build
+import androidx.core.app.NotificationCompat
 import androidx.hilt.work.HiltWorker
 import androidx.lifecycle.MutableLiveData
+import androidx.work.BackoffPolicy
+import androidx.work.Constraints
 import androidx.work.CoroutineWorker
+import androidx.work.ForegroundInfo
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequest
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkerParameters
+import com.screenlake.R
 import com.screenlake.data.database.entity.ScreenshotZipEntity
 import com.screenlake.data.database.entity.UserEntity
 import com.screenlake.data.repository.GeneralOperationsRepository
+import com.screenlake.recorder.constants.ConstantSettings
 import com.screenlake.recorder.viewmodels.WorkerProgressManager
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -16,6 +29,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
+import java.util.concurrent.TimeUnit
 
 /**
  * Worker for handling the upload of screenshot zip files to the server.
@@ -51,9 +65,29 @@ class UploadWorker @AssistedInject constructor(
         private const val TAG = "UploadWorker"
         /** Successful uploads per run; a larger backlog continues in a retried run. */
         private const val MAX_UPLOADS_PER_RUN = 100
+        /** The one on-demand upload job; the periodic job in [WorkerStarter] is the only other. */
+        const val UPLOAD_ON_DEMAND_WORK = "WORK_MANAGER_UPLOAD_ON_DEMAND"
+        private const val UPLOAD_CHANNEL_ID = "upload_service_channel"
         val uploadFeedback = MutableLiveData<String>()
         val mutex = Mutex()
         var isRunning = false
+
+        /**
+         * Starts an upload unless one is already waiting. A request while a run is in progress
+         * queues one more run after it (see [OnDemandWork]), so a file that becomes ready after
+         * that run's last check is not left for the hourly job.
+         */
+        fun enqueue(context: Context) = OnDemandWork.request(context, UPLOAD_ON_DEMAND_WORK, ::request)
+
+        internal fun request(): OneTimeWorkRequest =
+            OneTimeWorkRequestBuilder<UploadWorker>()
+                .setConstraints(
+                    Constraints.Builder()
+                        .setRequiredNetworkType(NetworkType.CONNECTED)
+                        .build()
+                )
+                .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.SECONDS)
+                .build()
     }
 
     /**
@@ -67,20 +101,25 @@ class UploadWorker @AssistedInject constructor(
      *   threshold [Result.retry], at the threshold recovery begins and the run ends with
      *   [Result.success] so it does not retry in a loop.
      * - while recovery waits for the participant to sign in: nothing is uploaded.
+     * - another run is uploading: [Result.retry].
+     * - the AWS setup could not be loaded: [Result.success], since retrying will not fix it.
+     *   Runs never end with [Result.failure], which would also fail an upload queued after them.
      */
     override suspend fun doWork(): Result {
         Timber.tag(TAG).d("Upload Worker has started.")
 
+        // Another run is uploading (the periodic and on-demand jobs can overlap). Retry rather
+        // than fail, so this request is not lost if that run stops early.
         if (!mutex.tryLock()) {
-            Timber.tag(TAG).w("Upload already in progress. Skipping this worker.")
-            return Result.failure()
+            Timber.tag(TAG).w("Upload already in progress. Retrying this worker.")
+            return Result.retry()
         }
 
         return try {
             if (isRunning) {
                 generalOperationsRepository.saveLog("uploadZipFilesAsync","uploadZipFilesAsync already running.")
                 Timber.tag(TAG).w("uploadZipFilesAsync already running.")
-                return Result.failure()
+                return Result.retry()
             }
             isRunning = true
 
@@ -100,6 +139,7 @@ class UploadWorker @AssistedInject constructor(
             }
 
             generalOperationsRepository.saveLog("UPLOAD_SERVICE_RUN", "")
+            runInForeground()
             user = generalOperationsRepository.getUser()
             val recovery = AuthRecoveryCoordinator(applicationContext, generalOperationsRepository)
 
@@ -113,7 +153,8 @@ class UploadWorker @AssistedInject constructor(
                 }
                 UploadResult.CONFIGURATION_FAILURE -> {
                     WorkerProgressManager.updateProgress("Upload failed: the app's AWS setup could not be loaded.")
-                    return Result.failure()
+                    // Retrying will not fix the setup; success keeps a queued upload from failing too.
+                    return Result.success()
                 }
             }
 
@@ -160,13 +201,80 @@ class UploadWorker @AssistedInject constructor(
     }
 
     /**
-     * Uploads up to [MAX_UPLOADS_PER_RUN] pending files, oldest log files after the zips. Stops at
-     * the first temporary or authentication failure, since the files after it would fail too.
+     * Shows an upload notification and keeps the run going past WorkManager's 10-minute limit.
+     * Android 12 and later may refuse to start a foreground service while the app is in the
+     * background; the run then continues as a normal background job instead of waiting.
+     */
+    private suspend fun runInForeground() {
+        try {
+            createUploadNotificationChannel()
+            setForeground(createForegroundInfo())
+        } catch (e: Exception) {
+            Timber.tag(TAG).w(e, "Upload continues in the background.")
+            generalOperationsRepository.saveLog("UPLOAD_FOREGROUND_UNAVAILABLE", e.javaClass.simpleName)
+        }
+    }
+
+    private fun createForegroundInfo(): ForegroundInfo {
+        val notification = NotificationCompat.Builder(applicationContext, UPLOAD_CHANNEL_ID)
+            .setSmallIcon(R.drawable.logo_just_square_small)
+            .setContentTitle(applicationContext.getString(R.string.upload_notification_title))
+            .setContentText(applicationContext.getString(R.string.upload_notification_text))
+            .setOngoing(true)
+            .setSilent(true)
+            .build()
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ForegroundInfo(ConstantSettings.UPLOAD_NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        } else {
+            ForegroundInfo(ConstantSettings.UPLOAD_NOTIFICATION_ID, notification)
+        }
+    }
+
+    private fun createUploadNotificationChannel() {
+        val channel = NotificationChannel(
+            UPLOAD_CHANNEL_ID,
+            applicationContext.getString(R.string.upload_channel_name),
+            NotificationManager.IMPORTANCE_LOW
+        ).apply {
+            description = applicationContext.getString(R.string.upload_channel_description)
+        }
+        applicationContext.getSystemService(NotificationManager::class.java)
+            .createNotificationChannel(channel)
+    }
+
+    /**
+     * Uploads pending files until none are left, up to [MAX_UPLOADS_PER_RUN] successful uploads,
+     * log files after the zips. Files that become ready during the run (a zip finishing while
+     * this run holds the one upload job) are picked up before it ends. Each file is tried at
+     * most once per run. Stops at the first temporary or authentication failure, since the
+     * files after it would fail too.
      */
     private suspend fun uploadZipFilesAsync(): UploadSummary = withContext(Dispatchers.IO) {
         val summary = UploadSummary()
-        val pending = (generalOperationsRepository.getZipsToUpload() + getLocalLogFiles()).distinctBy { it.file }
+        val attempted = mutableSetOf<String>()
+        while (true) {
+            val pending = (generalOperationsRepository.getZipsToUpload() + getLocalLogFiles())
+                .distinctBy { it.file }
+                .filter { attemptKey(it) !in attempted }
+            if (pending.isEmpty()) break
+            uploadPass(pending, summary, attempted)
+            if (summary.transientFailure || summary.authenticationFailure || summary.remainingAfterRun > 0) break
+        }
 
+        if (summary.transientFailure || summary.authenticationFailure) {
+            summary.remainingAfterRun = 0
+        }
+        System.gc() // Suggest garbage collection after uploads
+        summary
+    }
+
+    private fun attemptKey(zip: ScreenshotZipEntity) = zip.file ?: "id:${zip.id}"
+
+    private suspend fun uploadPass(
+        pending: List<ScreenshotZipEntity>,
+        summary: UploadSummary,
+        attempted: MutableSet<String>
+    ) {
         Timber.tag(TAG).d("Found ${pending.size} files to upload.")
 
         // The per-run limit counts successful uploads only, so files that keep failing (for
@@ -176,6 +284,7 @@ class UploadWorker @AssistedInject constructor(
                 summary.remainingAfterRun = pending.size - index
                 break
             }
+            attempted += attemptKey(zip)
             WorkerProgressManager.updateProgress("Uploading ${index + 1} of ${pending.size}")
             val filePath = zip.file
             if (filePath == null) {
@@ -209,12 +318,6 @@ class UploadWorker @AssistedInject constructor(
             ScreenshotService.manualUploadPercentComplete.postValue((index + 1).toDouble() / pending.size)
             if (summary.transientFailure || summary.authenticationFailure) break
         }
-
-        if (summary.transientFailure || summary.authenticationFailure) {
-            summary.remainingAfterRun = 0
-        }
-        System.gc() // Suggest garbage collection after uploads
-        summary
     }
 
     /**

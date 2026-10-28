@@ -16,6 +16,8 @@ object ConstantSettings {
     const val UPLOAD_FAILED = "UPLOAD_FAILED"
     const val UPLOAD_CREDENTIAL_FAILURE = "UPLOAD_CREDENTIAL_FAILURE"
     const val CREDENTIAL_EXPIRED_NOTIFICATION_ID = 3
+    /** Shown while an upload runs as a foreground job; separate from the sign-in notice above. */
+    const val UPLOAD_NOTIFICATION_ID = 1340
     const val CREDENTIAL_FAILURE_NOTIFICATION_THRESHOLD = 6
     const val COROUTINE_EXCEPTION_HANDLER = "COROUTINE_EXCEPTION_HANDLER"
     const val IS_CONNECTED = "IS_CONNECTED"

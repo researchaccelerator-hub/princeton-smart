@@ -395,10 +395,27 @@ Every zip bundle produced by the app includes a `manifest.csv` file with one row
 |---------|-------------|
 | 1 | Original schema. No `manifest.csv` present, no `stop_reason` column in session data. |
 | 2 | Added `stop_reason` column to session CSV. Added `manifest.csv` to all zip bundles. |
+| 3 | Version 1.51.0. Added `package_event_data_csv_*.csv` (only when `LOG_PACKAGE_EVENTS` is on). |
+| 4 | Version 1.53.0. Added a `state` column as the last column of `screenshot_data_csv_*.csv`, and state marker rows (see [Screenshot state](#screenshot-state)). |
 
-When processing data collected across multiple app versions, check `schema_version` in `manifest.csv` first. Data from schema version `1` (pre-upgrade) will not have a manifest file and will not have a `stop_reason` column in session CSVs; treat missing `stop_reason` values as `UNKNOWN`.
+When processing data collected across multiple app versions, check `schema_version` in `manifest.csv` first. Data from schema version `1` (pre-upgrade) will not have a manifest file and will not have a `stop_reason` column in session CSVs; treat missing `stop_reason` values as `UNKNOWN`. Screenshot files before schema version `4` have no `state` column, and rows captured before a phone updated to 1.53.0 but uploaded after it have an empty `state`.
 
-**For developers:** `DATA_SCHEMA_VERSION` in [app/src/main/java/com/screenlake/recorder/constants/ConstantSettings.kt](app/src/main/java/com/screenlake/recorder/constants/ConstantSettings.kt) is the single source of truth for both the exported CSV schema version and the Room database version — [ScreenshotDatabase.kt](app/src/main/java/com/screenlake/data/database/ScreenshotDatabase.kt) references it directly. Increment it any time a CSV column is added, renamed, or removed. Because the app uses destructive migration, incrementing this value will wipe and recreate the local database on the next app launch.
+#### Screenshot state
+
+From schema version `4`, every row of `screenshot_data_csv_*.csv` has a `state`:
+
+| `state` | Row means | Image |
+|---|---|---|
+| `Normal` | A screenshot was captured. | Yes (unless image uploads are off) |
+| `Restricted` | The foreground app is restricted, so nothing was captured. | No |
+| `ScreenLocked` | The phone locked. | No |
+| `ScreenUnlocked` | The phone unlocked. | No |
+| `pause start` / `pause end` | The participant paused recording / recording resumed. | No |
+| `NoScreenSharing` | Screen sharing stopped and is waiting for the participant's consent. | No |
+
+Marker rows (every state except `Normal` and `Restricted`) are written once, when the state changes, with the app in the foreground at that moment. Count only `Normal` rows when you count screenshots. The names match the University of Minnesota builds, so the two studies' data can be combined.
+
+**For developers:** `DATA_SCHEMA_VERSION` in [app/src/main/java/com/screenlake/recorder/constants/ConstantSettings.kt](app/src/main/java/com/screenlake/recorder/constants/ConstantSettings.kt) is the single source of truth for both the exported CSV schema version and the Room database version; [ScreenshotDatabase.kt](app/src/main/java/com/screenlake/data/database/ScreenshotDatabase.kt) references it directly. Increment it any time a CSV column is added, renamed, or removed, and add a Room migration in [Migrations.kt](app/src/main/java/com/screenlake/data/database/Migrations.kt) so that an update keeps data that has not been uploaded yet. Versions with no migration path (1 and 2) fall back to destructive migration, which wipes and recreates the local database on the next app launch. Commit the schema JSON that the build writes to `app/schemas/`.
 
 ---
 
@@ -425,14 +442,13 @@ Note that a single uninterrupted recording will produce multiple session rows, o
 |---|---|
 | `SCREEN_SHARING_STATE` | Each change of capture state, as `OLD->NEW;reason=...` followed by the lock, pause and consent flags at that moment. States: `IDLE`, `STARTING`, `CAPTURING`, `USER_PAUSED`, `SCREEN_LOCKED_CAPTURE_SUSPENDED`, `SCREEN_LOCKED_CONSENT_REQUIRED`, `CONSENT_REQUIRED`, `STOPPED`, `ERROR`. |
 | `SCREEN_SHARING_PROMPT` | The screen sharing consent dialog and its reminder notification: shown, granted, denied. |
-| `SCREENSHOT_STATE` | `ScreenLocked`, `ScreenUnlocked`, `pause start`, `pause end`, `NoScreenSharing` (consent denied). |
 | `SCREEN_CAPTURE_DENIED` | The participant declined the consent dialog after pressing record. |
 | `RECORDING_INTERRUPTED` | The app found that Android had closed it while recording and showed the participant a "Study Recording Stopped" notification. |
 | `PROCESS_EXIT` | Android 11+: the reason Android gave for each earlier app exit (for example `LOW_MEMORY`, `CRASH`, `USER_REQUESTED`). |
 
 When screen sharing ends, the app does not reopen the consent dialog on its own. It shows a "Study Recording Paused" notification (or "Study Recording Stopped" if Android closed the app), and asks for consent again when the participant taps it or opens the app. No screenshots are taken until they do, so a `CONSENT_REQUIRED` state followed by a long gap means the participant had not yet responded. If the participant force-stops the app, Android cancels the app's notifications and scheduled checks, so nothing is recorded until they open it again.
 
-**Pause and resume:** The pause button stops screenshots for the chosen time and logs `pause start` and `pause end` (`SCREENSHOT_STATE`) and the `USER_PAUSED` state; the session continues. When a participant stops recording and restarts, each restart creates a new, independent session row with a new `id_session`. There is no identifier linking a stop to its subsequent restart; they appear in the data as two separate sessions from the same participant. When analysing gaps between sessions for the same user, a gap followed by a new session indicates the participant voluntarily stopped and restarted, but this cannot be confirmed from the data alone.
+**Pause and resume:** The pause button stops screenshots for the chosen time and writes `pause start` and `pause end` marker rows (see [Screenshot state](#screenshot-state)) and the `USER_PAUSED` state; the session continues. When a participant stops recording and restarts, each restart creates a new, independent session row with a new `id_session`. There is no identifier linking a stop to its subsequent restart; they appear in the data as two separate sessions from the same participant. When analysing gaps between sessions for the same user, a gap followed by a new session indicates the participant voluntarily stopped and restarted, but this cannot be confirmed from the data alone.
 
 ---
 

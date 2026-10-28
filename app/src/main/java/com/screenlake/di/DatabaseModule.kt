@@ -2,6 +2,7 @@ package com.screenlake.di
 
 import android.content.Context
 import androidx.room.Room
+import com.screenlake.data.database.MIGRATION_3_4
 import com.screenlake.data.database.ScreenshotDatabase
 import com.screenlake.data.database.dao.AccessibilityEventDao
 import com.screenlake.data.database.dao.AppSegmentDao
@@ -43,7 +44,12 @@ object DatabaseModule {
             context = context,
             klass = ScreenshotDatabase::class.java,
             name = ScreenshotDatabase.DATABASE_NAME
-        ).fallbackToDestructiveMigration().build()
+        )
+            // Keeps pending data from 1.51.0 and later. Older schemas have no migration
+            // path and are still recreated.
+            .addMigrations(MIGRATION_3_4)
+            .fallbackToDestructiveMigration()
+            .build()
     }
 
     @Provides

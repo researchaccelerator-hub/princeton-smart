@@ -248,6 +248,20 @@ def test_daily_stats_with_state_flags_three_days_without_normal(tmp_path):
     assert participants["longest_consecutive_days_without_normal"].tolist() == [3]
 
 
+def test_daily_stats_with_state_keeps_zero_images_for_marker_only_days(tmp_path):
+    query_id = str(tmp_path / "q")
+    make_screenshot_csv(query_id, "h1", [
+        ("1", "a.jpg", "2026-07-01", "Normal"),
+        ("1", "", "2026-07-02", "ScreenLocked"),
+        ("1", "", "2026-07-02", "ScreenUnlocked"),
+    ], with_state=True)
+
+    cc.calculate_screenshot_daily_stats(query_id)
+
+    days = pd.read_csv(os.path.join(query_id, "combined", "summary", "images_per_participant_day.csv"))
+    assert days["image_count"].tolist() == [1, 0]
+
+
 def test_pipeline_after_download_unzips_every_panelist_and_consolidates(tmp_path, monkeypatch):
     # Mirrors the S3 key layout under <query_id>/zipped and runs the real unzip processes.
     monkeypatch.chdir(tmp_path)

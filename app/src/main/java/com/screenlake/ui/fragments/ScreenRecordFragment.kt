@@ -41,6 +41,8 @@ import androidx.work.WorkManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.screenlake.MainActivity
 import com.screenlake.R
+import com.screenlake.recorder.constants.ResearchConfig
+import com.screenlake.recorder.utilities.InviteCode
 import com.screenlake.data.database.dao.LogEventDao
 import com.screenlake.data.database.dao.UserDao
 import com.screenlake.databinding.FragmentScreenRecordBinding
@@ -826,17 +828,18 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
 
         // Get the EditText from the inflated view
         val codeEditText = dialogView.findViewById<EditText>(R.id.codeEditText)
+        codeEditText.filters = arrayOf(InviteCode.lengthFilter())
 
         // Build the dialog
         val builder = AlertDialog.Builder(context)
             .setTitle("Missing ID")
-            .setMessage("Please enter your 4 digit panel invite code before continuing.")
+            .setMessage(getString(R.string.missing_invite_code_message, ResearchConfig.INVITE_CODE_LENGTH))
             .setPositiveButton("Continue") { dialog, _ ->
                 val inviteCode = codeEditText.text.toString()
                 if (inviteCode.isNotEmpty()) {
 
-                    if (!validateCode(inviteCode)) {
-                        Toast.makeText(context, "Error -> Please enter a valid 4 digit invite code", Toast.LENGTH_SHORT).show()
+                    if (!InviteCode.isValid(inviteCode)) {
+                        Toast.makeText(context, getString(R.string.invalid_invite_code_toast, ResearchConfig.INVITE_CODE_LENGTH), Toast.LENGTH_SHORT).show()
                     } else {
                         // Process the invite code
                         lifecycleScope.launch {
@@ -863,17 +866,6 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
 
         // Show the dialog
         builder.create().show()
-    }
-
-    fun validateCode(code: String): Boolean {
-        if (code.length != 4) {
-            return false
-        }
-        if (!code.all { it.isDigit() }) {
-            return false
-        }
-        val numericCode = code.toInt()
-        return numericCode in 0..9999
     }
 
     companion object {

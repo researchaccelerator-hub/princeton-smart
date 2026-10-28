@@ -54,7 +54,6 @@
     <!-- TODO: Remove or change this placeholder text -->
     <string name="accessibility_service_description" />
     <string name="text_view">android.widget.TextView</string>
-    <string name="url">https://eqjfomhbw5.execute-api.us-west-1.amazonaws.com/prod/does-user-exist</string>
 
     <string name="remind_to_take_a_break">Remind me to take a break</string>
     <string name="key_upload_quality">key_upload_quality</string>
@@ -313,7 +312,9 @@
     <string name="for_screenlake_to_work_properly_you_must_manually_permit_usage_access_this_is_so_we_can_stop_recording_data_sensitive_apps_for_privacy_reasons">For SRK to work properly, you must manually permit Usage Access. \n This is so we can stop recording data sensitive apps for privacy reasons.</string>
     <string name="privacy_url">https://screenlake.com/privacy-policy</string>
     <string name="sending">Sending...</string>
-    <string name="invalid_code_please_enter_a_4_digit_code_between_0000_and_9999">Invalid code. Please enter a 4-digit code between 0000 and 9999.</string>
+    <string name="invalid_invite_code">Invalid code. Please enter a %1$d-digit code.</string>
+    <string name="missing_invite_code_message">Please enter your %1$d-digit panel invite code before continuing.</string>
+    <string name="invalid_invite_code_toast">Please enter a valid %1$d-digit invite code.</string>
     <string name="confirmation_code_cannot_be_empty">Confirmation code cannot be empty.</string>
     <string name="code_invalid">Code invalid.</string>
     <string name="accept_terms_above">Accept terms above.</string>

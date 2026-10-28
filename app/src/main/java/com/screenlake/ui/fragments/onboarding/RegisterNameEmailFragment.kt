@@ -16,25 +16,20 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Observer
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
-import com.google.firebase.crashlytics.FirebaseCrashlytics
-import com.google.gson.GsonBuilder
 import com.screenlake.R
 import com.screenlake.data.database.dao.LogEventDao
 import com.screenlake.databinding.FragmentNameEmailRegisterBinding
-import com.screenlake.data.model.UserExistItem
 import com.screenlake.data.database.entity.LogEventEntity
 import com.screenlake.data.repository.AmplifyRepository
 import com.screenlake.recorder.authentication.CloudAuthentication
-import com.screenlake.recorder.services.util.ScreenshotData
+import com.screenlake.recorder.authentication.UserExistsCheck
+import com.screenlake.recorder.constants.ResearchConfig
 import com.screenlake.recorder.utilities.HardwareChecks
+import com.screenlake.recorder.utilities.InviteCode
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import okhttp3.*
-import java.io.IOException
 import java.util.*
 import javax.inject.Inject
 
@@ -55,7 +50,7 @@ class RegisterNameEmailFragment : Fragment() {
 
     var email = ""
     var userExist = MutableLiveData<Boolean>()
-    private val client = OkHttpClient()
+    private val userExistsCheck = UserExistsCheck()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -88,15 +83,16 @@ class RegisterNameEmailFragment : Fragment() {
 //            findNavController().navigate(R.id.goToTermsOfService)
 //        }
 
+        binding.loginPanelConfirmationlFragmentEmail.filters = arrayOf(InviteCode.lengthFilter())
         binding.loginPanelConfirmationlFragmentEmail.addTextChangedListener(object :
             TextWatcher {
             override fun afterTextChanged(s: Editable?) {
                 val code = binding.loginPanelConfirmationlFragmentEmail.text.toString()
-                if (validateCode(code)) {
+                if (InviteCode.isValid(code)) {
                     binding.loginPanelConfirmationlFragmentEmail.error = null
                 } else {
                     binding.loginPanelConfirmationlFragmentEmail.error =
-                        getString(R.string.invalid_code_please_enter_a_4_digit_code_between_0000_and_9999)
+                        getString(R.string.invalid_invite_code, ResearchConfig.INVITE_CODE_LENGTH)
                 }
             }
 
@@ -118,7 +114,7 @@ class RegisterNameEmailFragment : Fragment() {
                         return@launch
                     }
 
-                    if(!validateCode(enteredCode)) {
+                    if(!InviteCode.isValid(enteredCode)) {
                         binding.loginPanelConfirmationlFragmentEmail.error =
                             getString(R.string.code_invalid)
                         return@launch
@@ -127,7 +123,7 @@ class RegisterNameEmailFragment : Fragment() {
                     amplifyRepository.code = enteredCode
 
                     if (binding.checkBox1.isChecked && binding.checkBox2.isChecked) {
-                        userExist.postValue(false)
+                        userExist.postValue(userExistsCheck.exists(email))
                     } else {
                         binding.registerNameEmailFragmentNext.text =
                             getString(R.string.accept_terms_above)
@@ -160,17 +156,6 @@ class RegisterNameEmailFragment : Fragment() {
         })
     }
 
-    fun validateCode(code: String): Boolean {
-        if (code.length != 4) {
-            return false
-        }
-        if (!code.all { it.isDigit() }) {
-            return false
-        }
-        val numericCode = code.toInt()
-        return numericCode in 0..9999
-    }
-
     private fun emailConfirmed(email: String) {
         if(email.isNullOrBlank()){
             binding.registerNameEmailFragmentEmail.error = getString(R.string.must_not_be_empty)
@@ -178,33 +163,6 @@ class RegisterNameEmailFragment : Fragment() {
             amplifyRepository.email = email
             findNavController().navigate(R.id.registerConfirmPassword)
         }
-    }
-
-    fun doesUserExist(url: String) {
-        val request = Request.Builder()
-            .url(url)
-            .build()
-
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                CoroutineScope(Dispatchers.Default).launch { saveLog("Exception", ScreenshotData.ocrCleanUp(e.stackTraceToString())) }
-                userExist.postValue(false)
-                binding.registerNameEmailFragmentNext.text = getString(R.string.next)
-                FirebaseCrashlytics.getInstance().recordException(e)
-            }
-            override fun onResponse(call: Call, response: Response) {
-                try {
-                    val result = response.body?.string()
-                    val gson = GsonBuilder().excludeFieldsWithoutExposeAnnotation().create()
-                    val doesUserExist = gson.fromJson(result, UserExistItem::class.java).items
-                    userExist.postValue(doesUserExist.first().message)
-                } catch (ex: Exception) {
-                    CoroutineScope(Dispatchers.IO).launch { saveLog("Exception", ScreenshotData.ocrCleanUp(ex.stackTraceToString())) }
-                    FirebaseCrashlytics.getInstance().log(response?.body.toString())
-                    FirebaseCrashlytics.getInstance().recordException(ex)
-                }
-            }
-        })
     }
 
     override fun onCreateView(

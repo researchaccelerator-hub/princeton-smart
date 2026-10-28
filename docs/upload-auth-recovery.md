@@ -40,6 +40,8 @@ At the start of each upload run, the app loads AWS credentials once (`Util.prepa
 
 If loading fails while the phone is online and the error is not a network or server error, the app signs in again silently with the participant's stored credentials and tries once more. It also does this when the credential call hangs, which happens when a session was revoked on the server; each AWS call has a 15-second timeout.
 
+The stored credentials are the participant's email and password, encrypted on the phone (`EncryptedCredentialsStore`). They are saved at registration and again after every successful manual login (`CloudAuthentication.rememberCredentials`), so a participant who reset their password, or whose saved credentials were lost, is back to working silent re-logins as soon as they sign in by hand. Every sign-out clears them (`CloudAuthentication.signOut`): Settings > Logout (either choice), the forced sign-out below, and a cancelled different-account login. A login that is cancelled at the different-account warning does not save anything.
+
 A silent re-login reports whether Cognito rejected the stored credentials or could not be reached (`SignInOutcome`). Only a rejection counts as a credential failure; an unreachable or throttled Cognito, or a network error on the credential fetch that follows, is temporary.
 
 A run uploads up to 100 files; files that fail without being retryable (for example, no invite code yet) do not use up that limit, so the files after them are still tried. When more files remain after 100 successful uploads, the run is retried.
@@ -92,6 +94,7 @@ These events appear in the uploaded event log. They never include credentials, p
 | Piece | File |
 |---|---|
 | Credential loading, silent re-login, presigned URLs | `recorder/upload/Util.kt` |
+| Saving credentials at login, clearing them at sign-out | `recorder/authentication/CloudAuthentication.kt`, `EncryptedCredentialsStore.kt` |
 | Error sorting | `recorder/upload/UploadFailureClassifier.kt` |
 | Upload results, HTTP status mapping, retry after 401/403 | `recorder/services/RealUploadHandler.kt` |
 | Run outcome, WorkManager result, the unique upload job and its notification | `recorder/services/UploadWorker.kt` |

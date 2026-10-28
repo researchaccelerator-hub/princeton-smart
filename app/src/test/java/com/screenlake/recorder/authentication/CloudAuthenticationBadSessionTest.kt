@@ -14,7 +14,7 @@ class CloudAuthenticationBadSessionTest {
 
     private val amplifyRepository = mockk<AmplifyRepository>()
     private val encryptedCredentialsStore = mockk<EncryptedCredentialsStore>()
-    private val cloudAuthentication = CloudAuthentication(amplifyRepository, encryptedCredentialsStore)
+    private val cloudAuthentication = CloudAuthentication(amplifyRepository, encryptedCredentialsStore, mockk(relaxed = true))
 
     private fun sessionMock(isSignedIn: Boolean, awsCredentialsError: AuthException?): AWSCognitoAuthSession {
         val session = mockk<AWSCognitoAuthSession>()

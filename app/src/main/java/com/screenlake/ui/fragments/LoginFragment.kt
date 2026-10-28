@@ -277,6 +277,7 @@ class LoginFragment : Fragment() {
             val stored = runCatching { userModel.getUser() }.getOrNull()
             if (stored?.email.equals(email, ignoreCase = true)) {
                 AuthRecoveryCoordinator.onLoginSucceeded(requireContext().applicationContext)
+                cloudAuthentication.rememberCredentials(email, amplifyRepository.password)
                 saveLog("AUTH_RECOVERY_LOGIN_SUCCEEDED", "resumed")
                 UploadWorker.enqueue(requireContext())
                 MainActivity.isLoggedOut.postValue(false)
@@ -309,12 +310,15 @@ class LoginFragment : Fragment() {
     }
 
     /**
-     * Saves the signed-in participant and resumes uploads. The same participant signing in
-     * after a sign-out that kept data gets their invite code and panel back
-     * (GeneralOperationsRepository.reconcilePendingReauthUser).
+     * Saves the signed-in participant and their credentials, and resumes uploads. The same
+     * participant signing in after a sign-out that kept data gets their invite code and panel
+     * back (GeneralOperationsRepository.reconcilePendingReauthUser).
      */
     private suspend fun completeLogin(user: UserEntity) {
         userModel.insertUser(user)
+        // Only now is this account the app's participant (a cancelled different-account login
+        // never gets here), so its credentials replace any saved at registration.
+        cloudAuthentication.rememberCredentials(amplifyRepository.email, amplifyRepository.password)
         val context = requireContext().applicationContext
         if (AuthRecoveryCoordinator.onLoginSucceeded(context)) {
             saveLog("AUTH_RECOVERY_LOGIN_SUCCEEDED", "")

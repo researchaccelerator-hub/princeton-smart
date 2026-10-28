@@ -12,6 +12,7 @@ import com.amplifyframework.core.Amplify
 import com.screenlake.data.repository.AmplifyRepository
 import com.screenlake.recorder.services.util.CognitoErrorHelper
 import com.screenlake.ui.fragments.onboarding.RegisterConfirmPassword
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -23,7 +24,8 @@ import javax.inject.Singleton
 @Singleton
 class CloudAuthentication @Inject constructor(
     private val amplifyRepository: AmplifyRepository,
-    private val encryptedCredentialsStore: EncryptedCredentialsStore
+    private val encryptedCredentialsStore: EncryptedCredentialsStore,
+    @ApplicationContext private val appContext: Context
 ) {
 
     /**
@@ -74,11 +76,23 @@ class CloudAuthentication @Inject constructor(
     }
 
     /**
-     * Signs out the user.
+     * Saves the credentials of the participant who just signed in, so silent sign-in
+     * ([autoSignIn], [AuthRecoveryManager]) uses the password that works now rather than one
+     * saved at registration, which may have been reset since or be missing.
+     */
+    fun rememberCredentials(email: String, password: String) {
+        if (email.isBlank() || password.isBlank()) return
+        encryptedCredentialsStore.storeCredentials(WeakReference(appContext), email, password)
+    }
+
+    /**
+     * Signs out the user and clears their stored credentials, so their password does not stay
+     * on the phone and silent sign-in cannot sign them back in.
      *
      * @param isLoggedOut The live data to update the logged-out status.
      */
     fun signOut(isLoggedOut: MutableLiveData<Boolean>) {
+        encryptedCredentialsStore.clearCredentials(WeakReference(appContext))
         Amplify.Auth.signOut(
             { isLoggedOut.postValue(true) },
             { error -> Timber.e("Sign out error: $error") }

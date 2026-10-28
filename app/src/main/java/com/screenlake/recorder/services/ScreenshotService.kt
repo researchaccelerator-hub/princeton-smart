@@ -29,9 +29,6 @@ import androidx.concurrent.futures.await
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.MutableLiveData
-import androidx.work.BackoffPolicy
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
 import com.googlecode.tesseract.android.TessBaseAPI
 import com.screenlake.MainActivity
 import com.screenlake.data.database.ScreenshotState
@@ -1580,20 +1577,9 @@ class ScreenshotService : Service(), ScreenStateReceiver.ScreenStateCallback {
     }
 
     private suspend fun enqueueZipAndUpload() {
-        val zipWork = OneTimeWorkRequestBuilder<ZipFileWorker>()
-            .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.SECONDS)
-            .build()
-        val uploadWork = OneTimeWorkRequestBuilder<UploadWorker>()
-            .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.SECONDS)
-            .build()
-
         WorkerProgressManager.updateProgress("OCR finished. Starting zip.")
         try {
-            WorkManager.getInstance(this@ScreenshotService)
-                .beginWith(zipWork)
-                .then(uploadWork)
-                .enqueue()
-                .result.await()
+            ZipFileWorker.enqueueThenUpload(this@ScreenshotService).result.await()
             Timber.d("ScreenshotService: zip and upload enqueued")
         } catch (e: Exception) {
             Timber.e(e, "ScreenshotService: could not enqueue zip and upload")

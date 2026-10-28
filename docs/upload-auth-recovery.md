@@ -17,13 +17,20 @@ Errors are sorted by type and AWS error code (`UploadFailureClassifier`), never 
 
 ## When uploads run
 
-An upload run starts:
+There are two upload jobs: the periodic one, every `UPLOAD_WORKER_INTERVAL_HOURS` (1 by default), and one unique on-demand job (`UploadWorker.enqueue`, `WORK_MANAGER_UPLOAD_ON_DEMAND`). Asking for an upload while the on-demand job is waiting or running does not add a second one. The on-demand job is requested:
 
-- every `UPLOAD_WORKER_INTERVAL_HOURS` (1 by default), as a periodic WorkManager job;
-- after each OCR run, once, as a zip-then-upload chain (`ScreenshotService.enqueueZipAndUpload`). OCR runs while the phone is locked or when the participant taps Upload, and a tap always zips and uploads even with nothing new to OCR;
+- when a zip run finishes, whether it succeeded or not (`ZipFileWorker`), so earlier zips upload too;
 - after a participant signs in.
 
-A run skips while recovery is pending (below) or when no participant is signed in, and a mutex stops two runs uploading at once. OCR and zipping continue during recovery, so the data is ready when the participant signs in again.
+Zips are made by the hourly zip job and by one unique on-demand zip job (`ZipFileWorker.enqueueThenUpload`, `WORK_MANAGER_ZIP_ON_DEMAND`). The on-demand zip is requested after each OCR run (while the phone is locked, or when the participant taps Upload with recording on) and by the stats screen's Upload button while recording is stopped. A zip requested while one is running waits and runs after it, so nothing finished in the meantime waits an hour. Zipping needs no network.
+
+With recording stopped, OCR cannot run (it runs in the recording service), so the Upload button zips and uploads only screenshots that already have their text. The rest upload after recording restarts.
+
+While a run uploads, it shows a quiet "Uploading study data" notification (`UPLOAD_NOTIFICATION_ID`, channel "Data uploads") as a `dataSync` foreground job, so it is not stopped after WorkManager's usual 10 minutes. If Android does not allow the foreground start (Android 12 and later can refuse it while the app is in the background), the event log gets `UPLOAD_FOREGROUND_UNAVAILABLE` and the run continues as a normal background job. On Android 15 and later, `dataSync` jobs get at most 6 hours a day; WorkManager stops the run when that is reached and the next run continues.
+
+Only one run uploads at a time. A run that finds another one uploading retries shortly after instead of failing. Files that become ready while a run is uploading are uploaded by that run before it ends, and each file is tried at most once per run.
+
+A run skips while recovery is pending (below) or when no participant is signed in. OCR and zipping continue during recovery, so the data is ready when the participant signs in again.
 
 ## One credential fetch per run
 
@@ -71,6 +78,7 @@ These events appear in the uploaded event log. They never include credentials, p
 | `UPLOAD_AWS_TRANSIENT_FAILURE` | Offline, network or server error; will retry |
 | `UPLOAD_AWS_CONFIGURATION_FAILURE` | The app's AWS setup could not be loaded |
 | `UPLOAD_HTTP_FAIL` | Any failed upload response, with the HTTP code |
+| `UPLOAD_FOREGROUND_UNAVAILABLE` | Android did not allow the upload notification; the run continued in the background |
 | `AUTH_RECOVERY_STARTED` | Recovery began; the participant was signed out |
 | `AUTH_RECOVERY_NOTIFICATION_SHOWN` | The sign-in notification was shown |
 | `AUTH_RECOVERY_LOGIN_SUCCEEDED` | The participant signed in again during recovery |
@@ -84,6 +92,8 @@ These events appear in the uploaded event log. They never include credentials, p
 | Credential loading, silent re-login, presigned URLs | `recorder/upload/Util.kt` |
 | Error sorting | `recorder/upload/UploadFailureClassifier.kt` |
 | Upload results, HTTP status mapping, retry after 401/403 | `recorder/services/RealUploadHandler.kt` |
-| Run outcome and WorkManager result | `recorder/services/UploadWorker.kt` |
+| Run outcome, WorkManager result, the unique upload job and its notification | `recorder/services/UploadWorker.kt` |
+| Zip, then request an upload | `recorder/services/ZipFileWorker.kt` |
+| Upload button on the stats screen | `ui/fragments/ScreenshotStatsFragment.kt` |
 | Threshold, notification, sign-out | `recorder/services/AuthRecoveryCoordinator.kt` |
 | Sign-out keeping data, reconnecting the same or a different account | `data/repository/GeneralOperationsRepository.kt` |

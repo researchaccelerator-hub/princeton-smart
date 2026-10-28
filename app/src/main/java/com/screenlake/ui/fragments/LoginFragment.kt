@@ -35,8 +35,6 @@ import com.screenlake.data.repository.AmplifyRepository
 import com.screenlake.data.repository.GeneralOperationsRepository
 import com.screenlake.recorder.services.AuthRecoveryCoordinator
 import com.screenlake.recorder.services.UploadWorker
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
 import com.screenlake.recorder.services.util.ScreenshotData
 import com.screenlake.recorder.utilities.HardwareChecks
 import androidx.core.view.ViewCompat
@@ -280,7 +278,7 @@ class LoginFragment : Fragment() {
             if (stored?.email.equals(email, ignoreCase = true)) {
                 AuthRecoveryCoordinator.onLoginSucceeded(requireContext().applicationContext)
                 saveLog("AUTH_RECOVERY_LOGIN_SUCCEEDED", "resumed")
-                WorkManager.getInstance(requireContext()).enqueue(OneTimeWorkRequestBuilder<UploadWorker>().build())
+                UploadWorker.enqueue(requireContext())
                 MainActivity.isLoggedOut.postValue(false)
                 findNavController().navigate(R.id.screenRecordFragment)
                 return@launch
@@ -321,7 +319,7 @@ class LoginFragment : Fragment() {
         if (AuthRecoveryCoordinator.onLoginSucceeded(context)) {
             saveLog("AUTH_RECOVERY_LOGIN_SUCCEEDED", "")
         }
-        WorkManager.getInstance(context).enqueue(OneTimeWorkRequestBuilder<UploadWorker>().build())
+        UploadWorker.enqueue(context)
         MainActivity.isLoggedOut.postValue(false)
         findNavController().navigate(R.id.screenRecordFragment)
     }

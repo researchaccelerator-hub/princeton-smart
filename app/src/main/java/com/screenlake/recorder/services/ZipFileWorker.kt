@@ -2,7 +2,12 @@ package com.screenlake.recorder.services
 
 import android.content.Context
 import androidx.hilt.work.HiltWorker
+import androidx.work.BackoffPolicy
 import androidx.work.CoroutineWorker
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.Operation
+import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.screenlake.BuildConfig
 import com.screenlake.recorder.constants.ConstantSettings
@@ -28,6 +33,7 @@ import timber.log.Timber
 import java.io.File
 import java.io.FileWriter
 import java.util.*
+import java.util.concurrent.TimeUnit
 
 /**
  * A worker class that handles zipping up screenshots and related data for processing.
@@ -47,8 +53,23 @@ class ZipFileWorker @AssistedInject constructor(
 
     companion object {
         private const val TAG = "ZipFileWorker"
+        const val ZIP_ON_DEMAND_WORK = "WORK_MANAGER_ZIP_ON_DEMAND"
         val mutex = Mutex()
         var isRunning = false
+
+        /**
+         * Zips everything collected so far, then starts an upload (see [doWork]). A request made
+         * while a zip runs waits for it and runs after, so rows finished in the meantime are not
+         * left for the hourly zip. Zipping needs no network, so queued requests never stall.
+         */
+        fun enqueueThenUpload(context: Context): Operation =
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                ZIP_ON_DEMAND_WORK,
+                ExistingWorkPolicy.APPEND_OR_REPLACE,
+                OneTimeWorkRequestBuilder<ZipFileWorker>()
+                    .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.SECONDS)
+                    .build()
+            )
     }
 
     /**
@@ -59,6 +80,7 @@ class ZipFileWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         Timber.tag(TAG).d("Zip Worker has started.")
 
+        // The run already in progress starts the upload when it finishes.
         if (!mutex.tryLock()) {
             Timber.tag(TAG).w("Another zipUpScreenshots is already running.")
             generalOperationsRepository.saveLog("Another zipUpScreenshots is already running.", "")
@@ -87,6 +109,9 @@ class ZipFileWorker @AssistedInject constructor(
         } finally {
             isRunning = false
             mutex.unlock()
+            // Upload what was zipped, and earlier zips even if this run failed. Uploads wait for
+            // a network and do nothing while no participant is signed in.
+            UploadWorker.enqueue(applicationContext)
         }
     }
 

@@ -70,8 +70,13 @@ class NotificationHelper(private val context: Context) {
             .setContentIntent(getLoginPendingIntent())
 
         if (!canPost(ConstantSettings.NOTIFICATION_CHANNEL_ID)) return false
-        NotificationManagerCompat.from(context).notify(ConstantSettings.CREDENTIAL_EXPIRED_NOTIFICATION_ID, builder.build())
-        return true
+        return try {
+            NotificationManagerCompat.from(context).notify(ConstantSettings.CREDENTIAL_EXPIRED_NOTIFICATION_ID, builder.build())
+            true
+        } catch (e: SecurityException) {
+            // The permission was revoked after canPost(); the login screen shows the message instead.
+            false
+        }
     }
 
     /**

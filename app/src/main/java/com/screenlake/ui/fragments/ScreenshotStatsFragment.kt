@@ -18,12 +18,16 @@ import androidx.appcompat.widget.SwitchCompat
 import androidx.lifecycle.LifecycleOwner
 import androidx.room.Dao
 import androidx.room.Query
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
 import com.screenlake.R
 import com.screenlake.data.database.ScreenshotDatabase
 import com.screenlake.data.database.dao.ScreenshotDao
 import com.screenlake.data.model.AppStat
 import com.screenlake.di.DatabaseModule
 import com.screenlake.recorder.services.ScreenshotService
+import com.screenlake.recorder.services.UploadWorker
+import com.screenlake.recorder.services.ZipFileWorker
 import com.screenlake.recorder.services.util.SharedPreferencesUtil
 import com.screenlake.recorder.services.util.SharedPreferencesUtil.setBatteryOptimizationDisabled
 import com.screenlake.recorder.utilities.BaseUtility
@@ -53,6 +57,9 @@ class ScreenshotStatsFragment : Fragment() {
     private lateinit var lastUploadSuccess: TextView
     private lateinit var uploadButton: Button
     private lateinit var viewUploadProgressTextView: TextView
+    private var zipActive = false
+    private var uploadRunning = false
+    private var uploadButtonBusy = false
 
     @Inject
     lateinit var screenshotDao: ScreenshotDao
@@ -84,22 +91,37 @@ class ScreenshotStatsFragment : Fragment() {
         viewUploadProgressTextView = view.findViewById(R.id.tv_view_upload_progress)
 
         uploadButton.setOnClickListener {
-            if(ScreenshotService.isRunning.value == true) {
-                WorkerProgressManager.clear()
+            WorkerProgressManager.clear()
+            if (ScreenshotService.isRunning.value == true) {
                 WorkerProgressManager.updateProgress("Manual OCR zip and upload requested.")
                 ScreenshotService.manualOcr.postValue(true)
-                uploadButton.isEnabled = false
             } else {
-                Toast.makeText(requireContext(), "Screen recording must be running", Toast.LENGTH_SHORT).show()
+                // OCR runs in the recording service, so with recording stopped only screenshots
+                // that already have their text are zipped; the rest upload after recording restarts.
+                WorkerProgressManager.updateProgress("Manual zip and upload requested while recording is stopped.")
+                ZipFileWorker.enqueueThenUpload(requireContext().applicationContext)
+                Toast.makeText(requireContext(), R.string.upload_stopped_queued, Toast.LENGTH_SHORT).show()
             }
+            uploadButton.isEnabled = false
         }
 
-        ScreenshotService.manualOcr.observe(viewLifecycleOwner) { manualOcr ->
-            uploadButton.isEnabled = !manualOcr
-
-            uploadButton.text = if (manualOcr) "Uploading..." else "Upload"
+        ScreenshotService.manualOcr.observe(viewLifecycleOwner) {
+            updateUploadButton()
             updateUploadProgressLinkVisibility()
         }
+
+        val workManager = WorkManager.getInstance(requireContext())
+        workManager.getWorkInfosForUniqueWorkLiveData(ZipFileWorker.ZIP_ON_DEMAND_WORK)
+            .observe(viewLifecycleOwner) { infos ->
+                zipActive = infos.any { !it.state.isFinished }
+                updateUploadButton()
+            }
+        workManager.getWorkInfosForUniqueWorkLiveData(UploadWorker.UPLOAD_ON_DEMAND_WORK)
+            .observe(viewLifecycleOwner) { infos ->
+                // A run waiting for a network does not hold the button.
+                uploadRunning = infos.any { it.state == WorkInfo.State.RUNNING }
+                updateUploadButton()
+            }
 
         // Background uploads add to the log too, so show the link as soon as it has entries.
         WorkerProgressManager.progressUpdates.observe(viewLifecycleOwner) {
@@ -230,6 +252,14 @@ class ScreenshotStatsFragment : Fragment() {
 
         // Return the desired string format
         return "Image count: $imageCount, Zip count: $zipCount"
+    }
+
+    private fun updateUploadButton() {
+        val busy = ScreenshotService.manualOcr.value == true || zipActive || uploadRunning
+        if (uploadButtonBusy && !busy) loadScreenshotStats()
+        uploadButtonBusy = busy
+        uploadButton.isEnabled = !busy
+        uploadButton.text = if (busy) "Uploading..." else "Upload"
     }
 
     private fun updateUploadProgressLinkVisibility() {

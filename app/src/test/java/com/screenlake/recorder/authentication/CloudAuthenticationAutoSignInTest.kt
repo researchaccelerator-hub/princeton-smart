@@ -15,7 +15,7 @@ class CloudAuthenticationAutoSignInTest {
 
     private val amplifyRepository = mockk<AmplifyRepository>()
     private val encryptedCredentialsStore = mockk<EncryptedCredentialsStore>()
-    private val cloudAuthentication = CloudAuthentication(amplifyRepository, encryptedCredentialsStore)
+    private val cloudAuthentication = CloudAuthentication(amplifyRepository, encryptedCredentialsStore, mockk(relaxed = true))
 
     @After
     fun tearDown() {

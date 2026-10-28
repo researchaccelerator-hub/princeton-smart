@@ -103,7 +103,7 @@ The app is designed to have minimal impact on battery life. The battery optimiza
 
 You can also uninstall the app at any time from your phone's app settings. Uninstalling stops all data collection immediately.
 
-**To sign out:** Go to **Settings > Logout** in the app. You can choose to keep your collected data on the phone, so it uploads when you sign in again with the same account, or to delete it.
+**To sign out:** Go to **Settings > Logout** in the app. You can choose to keep your collected data on the phone, so it uploads when you sign in again with the same account, or to delete it. Either way, your saved sign-in details are removed from the phone.
 
 ---
 

@@ -47,6 +47,10 @@ class EncryptedCredentialsStoreTest {
             fakeBackingMap[firstArg()] = secondArg()
             fakeEditor
         }
+        every { fakeEditor.remove(any()) } answers {
+            fakeBackingMap.remove(firstArg<String>())
+            fakeEditor
+        }
 
         fakePreferences = mockk()
         every { fakePreferences.getString(any(), any()) } answers {
@@ -83,6 +87,28 @@ class EncryptedCredentialsStoreTest {
 
         assertEquals("participant@example.com", creds.email)
         assertEquals("hunter2", creds.password)
+    }
+
+    @Test
+    fun `a later login replaces the credentials saved at registration`() {
+        val store = EncryptedCredentialsStore()
+
+        store.storeCredentials(fakeContext(), "participant@example.com", "registered-password")
+        store.storeCredentials(fakeContext(), "participant@example.com", "reset-password")
+
+        assertEquals("reset-password", store.getStoredCredentials(fakeContext()).password)
+    }
+
+    @Test
+    fun `cleared credentials read back as missing`() {
+        val store = EncryptedCredentialsStore()
+        store.storeCredentials(fakeContext(), "participant@example.com", "hunter2")
+
+        store.clearCredentials(fakeContext())
+        val creds = store.getStoredCredentials(fakeContext())
+
+        assertEquals("", creds.email)
+        assertEquals("", creds.password)
     }
 
     @Test

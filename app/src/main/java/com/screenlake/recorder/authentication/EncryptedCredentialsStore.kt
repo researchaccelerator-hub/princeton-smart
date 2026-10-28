@@ -16,8 +16,9 @@ import javax.inject.Singleton
  *
  * The sole owner of the "encrypted_prefs" file and its backing MasterKey/Tink keyset -- every
  * reader and writer of stored credentials must go through this class. [CloudAuthentication] and
- * [AuthRecoveryManager] both read via this singleton; registration writes via this singleton too
- * (see [storeCredentials]), so there is exactly one file name and one keyset in play.
+ * [AuthRecoveryManager] both read via this singleton; registration and manual login write via this
+ * singleton too (see [storeCredentials]), and sign-out clears via it (see [clearCredentials]), so
+ * there is exactly one file name and one keyset in play.
  *
  * The underlying [SharedPreferences] instance is created at most once and cached: the first
  * ever call to `EncryptedSharedPreferences.create()` on a device also creates the Keystore
@@ -77,6 +78,21 @@ class EncryptedCredentialsStore @Inject constructor() {
             } catch (retryError: Exception) {
                 Timber.tag(TAG).e(retryError, "Could not store credentials after recreating storage")
             }
+        }
+    }
+
+    /**
+     * Removes the stored credentials, so silent sign-in has nothing to use until the next
+     * successful login or registration stores new ones.
+     *
+     * @param context The context.
+     */
+    fun clearCredentials(context: WeakReference<Context>) = synchronized(lock) {
+        try {
+            getEncryptedSharedPreference(context)?.edit()?.remove("email")?.remove("password")?.apply()
+        } catch (error: Exception) {
+            Timber.tag(TAG).w(error, "Stored credentials could not be cleared; recreating storage")
+            resetPreferences(context)
         }
     }
 

@@ -149,6 +149,29 @@ object ResearchConfig {
     val LOG_PACKAGE_EVENTS_SESSION_ONLY: Boolean = false
 
     // -----------------------------------------------------------------------------------------
+    // PARTICIPANT SIGN-UP
+    // -----------------------------------------------------------------------------------------
+
+    /**
+     * Number of digits in the panel invite code participants enter at registration and in the
+     * "Missing ID" dialog. Codes are digits only and may start with 0. Princeton studies use 4;
+     * the University of Minnesota uses 5.
+     */
+    const val INVITE_CODE_LENGTH: Int = 4
+
+    /**
+     * Optional endpoint that tells the app, before the password step, whether an email is
+     * already registered with your study's own service. Empty (default): no check is made and
+     * nothing is sent. Cognito rejects a duplicate sign-up either way.
+     *
+     * When set, the app sends GET <USER_EXISTS_URL>?email=<email> and expects
+     * {"items":[{"message":true}]} when the email is taken. Any other answer, an error or no
+     * connection lets sign-up continue. Setting this sends participants' email addresses to that
+     * endpoint, so confirm it is covered by your study's consent language/IRB protocol.
+     */
+    const val USER_EXISTS_URL: String = ""
+
+    // -----------------------------------------------------------------------------------------
     // SEND LOGS (SETTINGS)
     // -----------------------------------------------------------------------------------------
 

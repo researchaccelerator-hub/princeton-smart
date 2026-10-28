@@ -343,6 +343,8 @@ The table below summarizes every configurable setting and its default:
 | `ALLOWED_APPS_OVERRIDE` | `emptyList()` | Package names to allow even if they appear on the built-in block list. Use with caution. |
 | `LOG_PACKAGE_EVENTS` | `false` | Master switch for app install/uninstall/replace tracking. Off by default; must be explicitly enabled. |
 | `LOG_PACKAGE_EVENTS_SESSION_ONLY` | `false` | When true (and `LOG_PACKAGE_EVENTS` is also true), restricts logging to active accessibility sessions only. See the privacy note below before enabling either setting. |
+| `INVITE_CODE_LENGTH` | `4` | Digits in the panel invite code participants enter at registration (leading zeros allowed). The University of Minnesota uses `5`. |
+| `USER_EXISTS_URL` | `""` | Optional endpoint asked, before the password step, whether an email is already registered with your study's service. Empty: no check, nothing sent. When set, the app sends `GET <url>?email=<email>` and treats `{"items":[{"message":true}]}` as taken; anything else, an error or no connection lets sign-up continue. Sends participants' emails to that endpoint, so check your consent language/IRB protocol. |
 | `SEND_LOGS_ENABLED` | `false` | Master switch for the "Send Logs" button in Settings. Off by default; must be explicitly enabled. |
 | `SEND_LOGS_MAX_LINES` | `1500` | How many recent log lines are kept in memory for export when SEND_LOGS_ENABLED is true. |
 | `SEND_LOGS_DESTINATION_EMAIL` | `""` | Optional email pre-filled when sending logs. Blank by default, so no destination is tied to a shared/monitored inbox out of the box. |
@@ -461,7 +463,7 @@ This app uses authenticated user pools within AWS to provision accounts for part
 
 The following fields are configurable.
 #### panelConfirmationCode
-This code identifies your participants. This is important because participants' emails will not be associated with participant data, only the code entered here. The code must be a 4 digit number.
+This code identifies your participants. This is important because participants' emails will not be associated with participant data, only the code entered here. The code is digits only, `INVITE_CODE_LENGTH` long (4 by default; see [Researcher Configuration File](#researcher-configuration-file)), and may start with 0.
 
 ### Privacy Policy and Terms of Service
 The field **agreement_text** in the string.xml contains two URLs pointing to your (the researcher's) app's Privacy Policy and Terms of Service. If you plan to distribute via the Google Play Store, see their Privacy Policy and Terms of Service requirements. Stay in line with laws and regulations as well.

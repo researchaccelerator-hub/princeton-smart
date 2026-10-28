@@ -13,6 +13,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.screenlake.R
 import com.screenlake.databinding.LoginOrRegisterBinding
+import com.screenlake.recorder.services.AuthRecoveryCoordinator
 import com.screenlake.recorder.viewmodels.UserViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -39,7 +40,10 @@ class RegisterOrLoginFragment : Fragment() {
         binding.loginLayout.visibility = View.INVISIBLE
 
         lifecycleScope.launch {
-            if (userModel.userExist()) {
+            if (AuthRecoveryCoordinator.isPending(requireContext())) {
+                // Signed out by upload recovery: the participant only needs to sign in again.
+                findNavController().navigate(R.id.loginFragment)
+            } else if (userModel.userExist()) {
                 findNavController().navigate(R.id.screenRecordFragment)
             } else {
                 binding.loginLayout.visibility = View.VISIBLE

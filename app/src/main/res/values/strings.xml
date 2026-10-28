@@ -291,6 +291,15 @@
     <string name="screenlake">SRK</string>
     <string name="agree">Agree</string>
     <string name="are_you_sure_you_want_to_log_out_of_screenlake_this_will_delete_all_user_data_from_the_phone">Are you sure you want to log out of SRK? This will delete all user data from the phone.</string>
+    <string name="logout_choice_message">Choose whether to keep your collected data on this phone. If you keep it, sign in later with the same account and it will upload.</string>
+    <string name="sign_out_keep_data">Sign out and keep data</string>
+    <string name="delete_data_and_sign_out">Delete data and sign out</string>
+    <string name="delete_data_logout_confirmation">This permanently deletes data that has not uploaded yet, and the saved invite code, from this phone. You will need to enter the invite code again after signing in.</string>
+    <string name="auth_recovery_title">Sign in to resume uploads</string>
+    <string name="auth_recovery_message">Uploads are paused because your sign-in expired. Your collected data is safe on this phone. Sign in again to resume uploading.</string>
+    <string name="different_account_title">Different account</string>
+    <string name="different_account_message">This phone has data from another account that has not uploaded yet. Signing in with %1$s will delete that data. To keep it, cancel and sign in with the original account.</string>
+    <string name="different_account_continue">Delete and sign in</string>
     <string name="email_cannot_be_empty">Email cannot be empty</string>
     <string name="password_cannot_be_empty">Password cannot be empty</string>
     <string name="login">Login</string>

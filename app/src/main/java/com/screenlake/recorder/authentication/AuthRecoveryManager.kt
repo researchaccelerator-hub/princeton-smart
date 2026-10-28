@@ -15,20 +15,24 @@ class AuthRecoveryManager @Inject constructor(
 ) {
     private val mutex = Mutex()
 
-    suspend fun attemptSilentReauth(context: Context): Boolean = mutex.withLock {
+    suspend fun attemptSilentReauth(context: Context): Boolean =
+        attemptSilentReauthWithOutcome(context) == SignInOutcome.SIGNED_IN
+
+    /** Like [attemptSilentReauth], but says whether a failure was a rejection or Cognito being unreachable. */
+    suspend fun attemptSilentReauthWithOutcome(context: Context): SignInOutcome = mutex.withLock {
         val creds = encryptedCredentialsStore.getStoredCredentials(WeakReference(context))
         if (creds.email.isBlank() || creds.password.isBlank()) {
             Timber.tag(TAG).w("No stored credentials available for silent reauth.")
-            return@withLock false
+            return@withLock SignInOutcome.REJECTED
         }
 
-        val mobileClientOk = cognitoSessionAuthenticator.signInAwsMobileClient(creds.email, creds.password)
-        val amplifyOk = cognitoSessionAuthenticator.signInAmplify(creds.email, creds.password)
+        val mobileClient = cognitoSessionAuthenticator.signInAwsMobileClient(creds.email, creds.password)
+        val amplify = cognitoSessionAuthenticator.signInAmplify(creds.email, creds.password)
 
-        if (!mobileClientOk) Timber.tag(TAG).w("AWSMobileClient re-auth failed.")
-        if (!amplifyOk) Timber.tag(TAG).w("Amplify re-auth failed.")
+        if (mobileClient != SignInOutcome.SIGNED_IN) Timber.tag(TAG).w("AWSMobileClient re-auth failed: $mobileClient.")
+        if (amplify != SignInOutcome.SIGNED_IN) Timber.tag(TAG).w("Amplify re-auth failed: $amplify.")
 
-        mobileClientOk && amplifyOk
+        SignInOutcome.combine(mobileClient, amplify)
     }
 
     companion object {

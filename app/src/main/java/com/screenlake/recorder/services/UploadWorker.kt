@@ -12,8 +12,6 @@ import com.screenlake.recorder.viewmodels.WorkerProgressManager
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -39,22 +37,36 @@ class UploadWorker @AssistedInject constructor(
 ) : CoroutineWorker(context, workerParams) {
 
     private var user: UserEntity? = null
-    private var zipsToUpload: List<ScreenshotZipEntity>? = mutableListOf()
+
+    private data class UploadSummary(
+        var succeeded: Int = 0,
+        var failed: Int = 0,
+        var skipped: Int = 0,
+        var transientFailure: Boolean = false,
+        var authenticationFailure: Boolean = false,
+        var remainingAfterRun: Int = 0
+    )
 
     companion object {
         private const val TAG = "UploadWorker"
+        /** Successful uploads per run; a larger backlog continues in a retried run. */
+        private const val MAX_UPLOADS_PER_RUN = 100
         val uploadFeedback = MutableLiveData<String>()
         val mutex = Mutex()
         var isRunning = false
     }
 
     /**
-     * Performs the upload work.
+     * Uploads pending zips and log files.
      *
-     * This method is called when the worker is executed. It logs the start of the upload service,
-     * attempts to upload zip files asynchronously, and logs the completion status.
-     *
-     * @return Result indicating the success or failure of the upload process.
+     * The outcome decides what WorkManager does next:
+     * - success, nothing left: [Result.success].
+     * - offline, a temporary AWS or network error, or more files than one run takes:
+     *   [Result.retry], files are kept.
+     * - credentials could not be renewed: counted by [AuthRecoveryCoordinator]; below the
+     *   threshold [Result.retry], at the threshold recovery begins and the run ends with
+     *   [Result.success] so it does not retry in a loop.
+     * - while recovery waits for the participant to sign in: nothing is uploaded.
      */
     override suspend fun doWork(): Result {
         Timber.tag(TAG).d("Upload Worker has started.")
@@ -68,31 +80,64 @@ class UploadWorker @AssistedInject constructor(
             if (isRunning) {
                 generalOperationsRepository.saveLog("uploadZipFilesAsync","uploadZipFilesAsync already running.")
                 Timber.tag(TAG).w("uploadZipFilesAsync already running.")
-                Result.failure()
-            } else {
-                isRunning = true
+                return Result.failure()
+            }
+            isRunning = true
 
-                if (!uploadHandler.isNetworkConnected()) {
-                    Timber.tag(TAG).d("No network connection. Upload Worker has finished.")
+            if (AuthRecoveryCoordinator.isPending(applicationContext)) {
+                WorkerProgressManager.updateProgress("Upload paused: sign in again to resume. Collected data is safe.")
+                return Result.success()
+            }
+
+            if (!generalOperationsRepository.userExists()) {
+                Timber.tag(TAG).d("No user registered yet. Skipping this upload run.")
+                return Result.success()
+            }
+
+            if (!uploadHandler.isNetworkConnected()) {
+                Timber.tag(TAG).d("No network connection. Upload Worker has finished.")
+                return Result.retry()
+            }
+
+            generalOperationsRepository.saveLog("UPLOAD_SERVICE_RUN", "")
+            user = generalOperationsRepository.getUser()
+            val recovery = AuthRecoveryCoordinator(applicationContext, generalOperationsRepository)
+
+            when (uploadHandler.prepareUploadSession()) {
+                UploadResult.SUCCESS -> Unit
+                UploadResult.AUTHENTICATION_FAILURE ->
+                    return authenticationFailed(recovery, "upload_session_credentials")
+                UploadResult.TRANSIENT_FAILURE -> {
+                    WorkerProgressManager.updateProgress("Upload delayed: credentials are temporarily unavailable.")
                     return Result.retry()
                 }
+                UploadResult.CONFIGURATION_FAILURE -> {
+                    WorkerProgressManager.updateProgress("Upload failed: the app's AWS setup could not be loaded.")
+                    return Result.failure()
+                }
+            }
 
-                generalOperationsRepository.saveLog("UPLOAD_SERVICE_RUN", "")
+            val summary = uploadZipFilesAsync()
+            if (summary.authenticationFailure) {
+                return authenticationFailed(recovery, "upload_rejected")
+            }
 
-                // OCR now enqueues one upload for its whole run, so keep going in batches of 10
-                // until the backlog is empty. Stop when a batch uploads nothing (offline, HTTP
-                // errors) so failures cannot loop; the next run retries them.
-                var pending = generalOperationsRepository.getZipsToUpload().size
-                do {
-                    uploadZipFilesAsync()
-                    val stillPending = generalOperationsRepository.getZipsToUpload().size
-                    val progressed = stillPending < pending
-                    pending = stillPending
-                } while (progressed && pending > 0)
-
-                Timber.tag(TAG).d("Upload Worker has finished.")
-                WorkerProgressManager.updateProgress("Upload has finished.")
-                Result.success()
+            Timber.tag(TAG).d("Upload Worker has finished.")
+            when {
+                summary.transientFailure -> {
+                    WorkerProgressManager.updateProgress("Upload paused after ${summary.succeeded} file(s); the rest will retry.")
+                    Result.retry()
+                }
+                summary.remainingAfterRun > 0 -> {
+                    WorkerProgressManager.updateProgress("Uploaded ${summary.succeeded} file(s); ${summary.remainingAfterRun} more will upload in the next run.")
+                    Result.retry()
+                }
+                else -> {
+                    WorkerProgressManager.updateProgress(
+                        "Upload has finished. Uploaded ${summary.succeeded}, failed ${summary.failed}, skipped ${summary.skipped}."
+                    )
+                    Result.success()
+                }
             }
         } catch (ex: Exception) {
             generalOperationsRepository.saveLog("UPLOAD_SERVICE_RUN_FAIL", ex.stackTraceToString())
@@ -104,53 +149,72 @@ class UploadWorker @AssistedInject constructor(
         }
     }
 
+    private suspend fun authenticationFailed(recovery: AuthRecoveryCoordinator, reason: String): Result {
+        return if (recovery.onAuthenticationFailure(user, reason)) {
+            WorkerProgressManager.updateProgress("Upload paused: sign in again to resume. Collected data is safe.")
+            Result.success()
+        } else {
+            WorkerProgressManager.updateProgress("Upload failed -> credentials expired. Will retry.")
+            Result.retry()
+        }
+    }
+
     /**
-     * Asynchronously uploads zip files to the server.
-     *
-     * This method fetches zip files from the database, checks network connectivity,
-     * and uploads each file. It handles upload progress updates and cleans up files
-     * after successful uploads.
+     * Uploads up to [MAX_UPLOADS_PER_RUN] pending files, oldest log files after the zips. Stops at
+     * the first temporary or authentication failure, since the files after it would fail too.
      */
-    private suspend fun uploadZipFilesAsync() = withContext(Dispatchers.IO) {
-        if (!generalOperationsRepository.userExists()) {
-            Timber.tag(TAG).d("No user registered yet. Skipping this upload run.")
-            return@withContext
-        }
+    private suspend fun uploadZipFilesAsync(): UploadSummary = withContext(Dispatchers.IO) {
+        val summary = UploadSummary()
+        val pending = (generalOperationsRepository.getZipsToUpload() + getLocalLogFiles()).distinctBy { it.file }
 
-        // Fetch the list of zips to upload and the user information
-        zipsToUpload = generalOperationsRepository.getZipsToUpload().take(10)?.toMutableList()
-        user = generalOperationsRepository.getUser()
+        Timber.tag(TAG).d("Found ${pending.size} files to upload.")
 
-        Timber.tag(TAG).d("Found ${zipsToUpload?.count()} zips to upload.")
-
-        // Add local log files to the list of zips to upload
-        addLocalLogFiles()
-
-        var count = 0.0
-        zipsToUpload?.let {
-            for (zip in it) {
-                WorkerProgressManager.updateProgress("Uploading $count of ${zipsToUpload?.count()}")
-                zip.file?.let { filePath ->
-                    val file = File(filePath)
-                    if (file.exists() && uploadHandler.isNetworkConnected()) {
-                        Timber.tag(TAG).d("Uploading file ${file.name}")
-
-                        // Upload the file
-                        async {
-                            uploadHandler.uploadFile(file, zip.id, user)
-                        }.await()
-
-                        ScreenshotService.manualUploadPercentComplete.postValue(count / it.count())
-                        count++
-                    } else {
-                        // Handle the case where the file does not exist
-                        handleFileNotFound(zip, file)
-                        count++
-                    }
-                } ?: count++
+        // The per-run limit counts successful uploads only, so files that keep failing (for
+        // example a missing invite code) never stop the files after them from being tried.
+        for ((index, zip) in pending.withIndex()) {
+            if (summary.succeeded >= MAX_UPLOADS_PER_RUN) {
+                summary.remainingAfterRun = pending.size - index
+                break
             }
-            System.gc() // Suggest garbage collection after uploads
+            WorkerProgressManager.updateProgress("Uploading ${index + 1} of ${pending.size}")
+            val filePath = zip.file
+            if (filePath == null) {
+                summary.skipped++
+                continue
+            }
+            val file = File(filePath)
+            if (!file.exists()) {
+                handleFileNotFound(zip, file)
+                summary.skipped++
+                continue
+            }
+            if (!uploadHandler.isNetworkConnected()) {
+                summary.transientFailure = true
+                break
+            }
+
+            Timber.tag(TAG).d("Uploading file ${file.name}")
+            when (uploadHandler.uploadFile(file, zip.id, user)) {
+                UploadResult.SUCCESS -> summary.succeeded++
+                UploadResult.CONFIGURATION_FAILURE -> summary.failed++
+                UploadResult.TRANSIENT_FAILURE -> {
+                    summary.failed++
+                    summary.transientFailure = true
+                }
+                UploadResult.AUTHENTICATION_FAILURE -> {
+                    summary.failed++
+                    summary.authenticationFailure = true
+                }
+            }
+            ScreenshotService.manualUploadPercentComplete.postValue((index + 1).toDouble() / pending.size)
+            if (summary.transientFailure || summary.authenticationFailure) break
         }
+
+        if (summary.transientFailure || summary.authenticationFailure) {
+            summary.remainingAfterRun = 0
+        }
+        System.gc() // Suggest garbage collection after uploads
+        summary
     }
 
     /**
@@ -169,19 +233,13 @@ class UploadWorker @AssistedInject constructor(
         }
     }
 
-    /**
-     * Adds local log files to the list of zips to upload.
-     *
-     * This method searches for log files in the app's file directory and adds them
-     * to the list of screenshot zips to be uploaded.
-     */
-    private fun addLocalLogFiles() {
+    /** Local event-log files waiting to upload, oldest first. */
+    private fun getLocalLogFiles(): List<ScreenshotZipEntity> {
         val dir = File(applicationContext.filesDir?.path)
-
-        // Filter and map log files to ScreenshotZip objects
-        val csvs = dir.listFiles()?.filter { it.path.contains("log_data") }?.map { ScreenshotZipEntity(file = it.path) }
-        csvs?.let {
-            (zipsToUpload as? MutableList<ScreenshotZipEntity>)?.addAll(it)
-        }
+        return dir.listFiles()
+            ?.filter { it.isFile && it.name.contains("log_data") }
+            ?.sortedBy { it.lastModified() }
+            ?.map { ScreenshotZipEntity(file = it.path) }
+            .orEmpty()
     }
 }

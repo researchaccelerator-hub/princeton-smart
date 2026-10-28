@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import android.webkit.MimeTypeMap
 import com.amazonaws.HttpMethod
+import com.amazonaws.auth.AWSCredentials
 import com.amazonaws.auth.AWSCredentialsProvider
 import com.amazonaws.mobile.client.AWSMobileClient
 import com.amazonaws.mobile.client.Callback
@@ -17,6 +18,8 @@ import com.amazonaws.services.s3.model.ResponseHeaderOverrides
 import com.screenlake.BuildConfig
 import com.screenlake.data.repository.NativeLib
 import com.screenlake.recorder.authentication.AuthRecoveryManager
+import com.screenlake.recorder.authentication.SignInOutcome
+import com.screenlake.recorder.utilities.HardwareChecks
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.runInterruptible
@@ -39,20 +42,8 @@ class Util @Inject constructor(private val authRecoveryManager: AuthRecoveryMana
     private var sMobileClient: AWSCredentialsProvider? = null
     private var amazonS3Client: AmazonS3Client? = null
 
-    /**
-     * Gets an instance of a S3 client which is constructed using the given
-     * Context.
-     *
-     * @param context An Context instance.
-     * @return A default S3 client.
-     */
-    private fun getS3Client(context: Context): AmazonS3Client? {
-        if (amazonS3Client == null) {
-            amazonS3Client = AmazonS3Client(getCredProvider(context),Region.getRegion(BuildConfig.AMAZON_REGION_NAME))
-            amazonS3Client!!.setRegion(Region.getRegion(BuildConfig.AMAZON_REGION_NAME))
-        }
-        return amazonS3Client
-    }
+    /** Network check; replaceable in tests. */
+    internal var isOnline: (Context) -> Boolean = { HardwareChecks.isConnected(it) }
 
     /**
      * Determines the MIME type of a file based on its URL.
@@ -72,44 +63,79 @@ class Util @Inject constructor(private val authRecoveryManager: AuthRecoveryMana
     }
 
     /**
-     * Generates a presigned URL for uploading a file to Amazon S3.
+     * Prepares one upload batch: loads AWS credentials once and builds an S3 client that signs
+     * every upload in the batch with them, so a batch makes one credential call instead of one
+     * per file.
      *
-     * This function creates a presigned URL that can be used to upload a file to a specified path in an Amazon S3 bucket.
-     * The URL is valid for 1 hour from the time of creation.
-     *
-     * If the Cognito credential refresh fails, this attempts a silent re-authentication via
-     * [AuthRecoveryManager] before giving up. If recovery also fails, this throws
-     * [CredentialExpiredException] instead of silently returning an empty URL.
+     * Failures are sorted so only a real credential problem can end in a sign-out:
+     * - offline, or a network or server error: [AwsTransientException], keep the files and retry.
+     * - the credential call fails or hangs (a session revoked server-side makes it block, so it
+     *   is bounded by a timeout): try a silent re-login with the stored credentials, then
+     *   [CredentialExpiredException] if that does not help.
+     * - AWS SDK not initialized: [AwsConfigurationException].
+     */
+    suspend fun prepareUploadSession(applicationContext: Context) {
+        getCredProvider(applicationContext)
+            ?: throw AwsConfigurationException("AWSMobileClient initialization did not complete")
+
+        val credentials = try {
+            acquireCredentials()
+        } catch (error: Exception) {
+            throwIfTransient(applicationContext, error)
+            Timber.tag(TAG).w("Credential refresh failed before upload: ${error.message}")
+            recoverWithSilentReauth(applicationContext, error)
+        }
+        amazonS3Client = buildS3Client(credentials)
+    }
+
+    /** After AWS rejects a signed upload (401/403): sign in again silently and reload credentials. */
+    suspend fun refreshUploadSession(applicationContext: Context) {
+        amazonS3Client = buildS3Client(recoverWithSilentReauth(applicationContext, null))
+    }
+
+    private suspend fun recoverWithSilentReauth(applicationContext: Context, cause: Throwable?): AWSCredentials {
+        if (!isOnline(applicationContext)) {
+            throw AwsTransientException("Offline; silent reauth skipped", cause)
+        }
+        when (authRecoveryManager.attemptSilentReauthWithOutcome(applicationContext)) {
+            SignInOutcome.SIGNED_IN -> Unit
+            SignInOutcome.UNAVAILABLE ->
+                throw AwsTransientException("Cognito unreachable or throttled during silent reauth", cause)
+            SignInOutcome.REJECTED -> throw CredentialExpiredException(
+                "Cognito credential refresh failed and silent reauth did not recover it.",
+                cause
+            )
+        }
+        return try {
+            acquireCredentials()
+        } catch (retryEx: Exception) {
+            throwIfTransient(applicationContext, retryEx)
+            throw CredentialExpiredException("Cognito credentials still invalid after silent reauth.", retryEx)
+        }
+    }
+
+    /** Offline, a network error or an AWS server or throttling error: retry later, not a credential problem. */
+    private fun throwIfTransient(applicationContext: Context, error: Exception) {
+        if (!isOnline(applicationContext) || UploadFailureClassifier.isNetworkFailure(error) ||
+            UploadFailureClassifier.isServerFailure(error)
+        ) {
+            throw AwsTransientException("Credentials unavailable: offline or a network/server error", error)
+        }
+    }
+
+    /**
+     * Generates a presigned S3 PUT URL for [uploadPath], signed with the current batch's
+     * credentials (prepared on first use if [prepareUploadSession] was not called).
      *
      * @param applicationContext The application context.
-     * @param path The local path of the file to be uploaded.
-     * @param uploadPath The path in the S3 bucket where the file should be uploaded.
-     * @return The presigned URL as a string.
+     * @param path The local file path, used for the content type.
+     * @param uploadPath The S3 key to upload to.
+     * @return The presigned URL.
      */
     suspend fun generates3ShareUrl(applicationContext: Context, path: String?, uploadPath: String): String {
-        val s3client: AmazonS3? = getS3Client(applicationContext)
-
-        try {
-            checkCredentials()
-        } catch (credEx: Exception) {
-            Timber.tag(TAG).w("Credential refresh failed before URL generation: ${credEx.message}")
-
-            val recovered = authRecoveryManager.attemptSilentReauth(applicationContext)
-            if (!recovered) {
-                throw CredentialExpiredException(
-                    "Cognito credential refresh failed and silent reauth did not recover it.",
-                    credEx
-                )
-            }
-
-            try {
-                checkCredentials()
-            } catch (retryEx: Exception) {
-                throw CredentialExpiredException(
-                    "Cognito credentials still invalid after silent reauth.",
-                    retryEx
-                )
-            }
+        val s3client = amazonS3Client ?: run {
+            prepareUploadSession(applicationContext)
+            amazonS3Client ?: throw AwsConfigurationException("Upload session was not prepared")
         }
 
         val expiration = Date()
@@ -124,43 +150,36 @@ class Util @Inject constructor(private val authRecoveryManager: AuthRecoveryMana
         generatePresignedUrlRequest.responseHeaders = overrideHeader
 
         return try {
-            // generatePresignedUrl() internally calls the credentials provider (AWSMobileClient)
-            // to sign the request, which can hit the same blocking SDK path as checkCredentials()
-            // above, so bound it with the same timeout/interrupt pattern rather than leaving it
-            // as the one remaining unprotected call into that code.
-            withTimeout(15_000) {
+            // Signing uses the batch's fixed credentials, so it does not call into the SDK's
+            // credential provider; the timeout only guards against an unexpected stall.
+            withTimeout(AWS_OPERATION_TIMEOUT_MS) {
                 val url = runInterruptible(Dispatchers.IO) {
-                    s3client?.generatePresignedUrl(generatePresignedUrlRequest).toString()
+                    s3client.generatePresignedUrl(generatePresignedUrlRequest).toString()
                 }
                 Timber.tag(TAG).d("Generated presigned URL for upload")
                 url
             }
         } catch (timeoutEx: TimeoutCancellationException) {
-            throw CredentialExpiredException(
-                "Presigned URL generation timed out waiting on Cognito credentials.",
-                timeoutEx
-            )
+            throw AwsTransientException("Presigned URL generation timed out", timeoutEx)
         } catch (e: Exception) {
-            Timber.d("Error generating presigned URL: $e")
-            ""
+            throw AwsTransientException("Presigned URL generation failed", e)
         }
     }
 
-    /**
-     * Forces a Cognito credential fetch/refresh with a bounded timeout.
-     *
-     * AWSMobileClient.getCredentials() can block indefinitely on an internal, un-timed-out
-     * latch when the session has been revoked server-side (confirmed by decompiling the SDK).
-     * runInterruptible translates coroutine cancellation into a real Thread.interrupt(), which
-     * that latch's CountDownLatch.await() does respect, so a stuck credential check surfaces as
-     * a timeout instead of hanging the caller (and, transitively, UploadWorker's shared mutex)
-     * forever.
-     */
-    private suspend fun checkCredentials() {
-        withTimeout(15_000) {
+    private suspend fun acquireCredentials(): AWSCredentials =
+        withTimeout(AWS_OPERATION_TIMEOUT_MS) {
             runInterruptible(Dispatchers.IO) {
                 AWSMobileClient.getInstance().credentials
             }
+        }
+
+    private fun buildS3Client(credentials: AWSCredentials): AmazonS3Client {
+        val provider = object : AWSCredentialsProvider {
+            override fun getCredentials(): AWSCredentials = credentials
+            override fun refresh() = Unit
+        }
+        return AmazonS3Client(provider, Region.getRegion(BuildConfig.AMAZON_REGION_NAME)).apply {
+            setRegion(Region.getRegion(BuildConfig.AMAZON_REGION_NAME))
         }
     }
 
@@ -171,6 +190,7 @@ class Util @Inject constructor(private val authRecoveryManager: AuthRecoveryMana
      * @param context Android context
      * @return AWSMobileClient which is a credentials provider
      */
+    @Synchronized
     private fun getCredProvider(context: Context): AWSCredentialsProvider? {
         if (sMobileClient == null) {
             val awsConfigFile: String = buildAWSConfiguration()
@@ -186,9 +206,11 @@ class Util @Inject constructor(private val authRecoveryManager: AuthRecoveryMana
 
 
             val latch = CountDownLatch(1)
+            var initialized = false
             // Initialize AWSMobileClient with the custom configuration
             AWSMobileClient.getInstance().initialize(context, awsConfig, object : Callback<UserStateDetails?> {
                 override fun onResult(result: UserStateDetails?) {
+                    initialized = true
                     latch.countDown()
                     Timber.d("AWSMobileClient initialized successfully.")
                 }
@@ -201,10 +223,11 @@ class Util @Inject constructor(private val authRecoveryManager: AuthRecoveryMana
 
             try {
                 val completed = latch.await(15, TimeUnit.SECONDS)
-                if (completed) {
+                if (completed && initialized) {
                     sMobileClient = AWSMobileClient.getInstance()
                 } else {
-                    Timber.e("Timed out waiting for AWSMobileClient to initialize.")
+                    // A failed initialization is not cached, so the next batch tries again.
+                    Timber.e("AWSMobileClient initialization failed or timed out.")
                 }
             } catch (e: InterruptedException) {
                 e.printStackTrace()
@@ -345,5 +368,6 @@ class Util @Inject constructor(private val authRecoveryManager: AuthRecoveryMana
         }
 
         private val TAG = Util::class.java.simpleName
+        private const val AWS_OPERATION_TIMEOUT_MS = 15_000L
     }
 }

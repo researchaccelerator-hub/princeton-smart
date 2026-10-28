@@ -6,7 +6,9 @@ import com.amazonaws.mobile.client.AWSMobileClient
 import com.amazonaws.mobile.client.Callback
 import com.amazonaws.mobile.client.UserStateDetails
 import com.screenlake.recorder.authentication.AuthRecoveryManager
+import com.screenlake.recorder.authentication.SignInOutcome
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
@@ -15,6 +17,7 @@ import io.mockk.unmockkStatic
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -24,8 +27,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Runs under Robolectric (not a bare JVM test) because generates3ShareUrl() always calls
- * getS3Client() -> getCredProvider(), which builds a real JSONObject via
+ * Runs under Robolectric (not a bare JVM test) because preparing an upload session calls
+ * getCredProvider(), which builds a real JSONObject via
  * Util.buildAWSConfiguration() and calls the real (mocked-instance) AWSMobileClient.initialize().
  * A bare JVM test hits Android's stub org.json.JSONObject ("Method put ... not mocked");
  * Robolectric provides a working shadow so that path can actually run.
@@ -62,9 +65,9 @@ class UtilCredentialRecoveryTest {
 
     @Test
     fun `throws CredentialExpiredException when silent reauth fails`() = runTest {
-        coEvery { authRecoveryManager.attemptSilentReauth(context) } returns false
+        coEvery { authRecoveryManager.attemptSilentReauthWithOutcome(context) } returns SignInOutcome.REJECTED
 
-        val util = Util(authRecoveryManager)
+        val util = Util(authRecoveryManager).apply { isOnline = { true } }
 
         assertThrows(CredentialExpiredException::class.java) {
             runBlocking {
@@ -88,9 +91,9 @@ class UtilCredentialRecoveryTest {
             neverCountsDown.await()
             error("unreachable — latch never counts down")
         }
-        coEvery { authRecoveryManager.attemptSilentReauth(context) } returns false
+        coEvery { authRecoveryManager.attemptSilentReauthWithOutcome(context) } returns SignInOutcome.REJECTED
 
-        val util = Util(authRecoveryManager)
+        val util = Util(authRecoveryManager).apply { isOnline = { true } }
 
         assertThrows(CredentialExpiredException::class.java) {
             runBlocking {
@@ -100,37 +103,60 @@ class UtilCredentialRecoveryTest {
     }
 
     /**
-     * Regression test for a second real hang site found in review: generatePresignedUrl()
-     * internally calls the credentials provider (the same mocked AWSMobileClient instance) to
-     * sign the request, which can hang identically to checkCredentials()'s own call. Succeeds
-     * the first credentials call (so checkCredentials() passes and execution reaches the presign
-     * step), then hangs on the second call to prove that specific call site's timeout works too.
+     * The second hang site found in review was presigning, which called back into the SDK's
+     * credential provider for every file. Presigning now uses the credentials loaded once for the
+     * batch, so the SDK is asked for credentials once however many files are signed.
      */
-    @Test(timeout = 30_000)
-    fun `presign generation times out instead of hanging when the signing credentials call blocks`() = runTest {
-        val neverCountsDown = java.util.concurrent.CountDownLatch(1)
-        var callCount = 0
+    @Test
+    fun `credentials are loaded once per batch, not once per file`() = runBlocking {
+        var calls = 0
         every { mobileClient.credentials } answers {
-            callCount++
-            if (callCount == 1) {
-                mockk<com.amazonaws.auth.AWSCredentials>(relaxed = true)
-            } else {
-                neverCountsDown.await()
-                error("unreachable — latch never counts down")
-            }
+            calls++
+            com.amazonaws.auth.BasicAWSCredentials("AKIDEXAMPLE", "secret")
         }
-
         val util = Util(authRecoveryManager)
 
-        val exception = assertThrows(CredentialExpiredException::class.java) {
-            runBlocking {
-                util.generates3ShareUrl(context, "/tmp/file.zip", "some/upload/path.zip")
-            }
-        }
+        util.prepareUploadSession(context)
+        repeat(3) { util.generates3ShareUrl(context, "/tmp/file$it.zip", "some/upload/path$it.zip") }
 
-        assertTrue(
-            "expected the presign timeout message, got: ${exception.message}",
-            exception.message?.contains("Presigned URL generation timed out") == true
-        )
+        assertEquals(1, calls)
+        Unit
+    }
+
+    @Test
+    fun `offline is a temporary failure and does not try a silent re-login`() = runTest {
+        val util = Util(authRecoveryManager).apply { isOnline = { false } }
+
+        assertThrows(AwsTransientException::class.java) {
+            runBlocking { util.prepareUploadSession(context) }
+        }
+        coVerify(exactly = 0) { authRecoveryManager.attemptSilentReauthWithOutcome(any()) }
+    }
+
+    @Test
+    fun `a successful silent re-login recovers the batch`() = runBlocking {
+        var calls = 0
+        every { mobileClient.credentials } answers {
+            calls++
+            if (calls == 1) throw RuntimeException("token cache expired")
+            com.amazonaws.auth.BasicAWSCredentials("AKIDEXAMPLE", "secret")
+        }
+        coEvery { authRecoveryManager.attemptSilentReauthWithOutcome(context) } returns SignInOutcome.SIGNED_IN
+        val util = Util(authRecoveryManager).apply { isOnline = { true } }
+
+        util.prepareUploadSession(context)
+
+        assertTrue(util.generates3ShareUrl(context, "/tmp/file.zip", "some/upload/path.zip").isNotEmpty())
+        Unit
+    }
+
+    @Test
+    fun `an unreachable Cognito during silent re-login is a temporary failure`() = runTest {
+        coEvery { authRecoveryManager.attemptSilentReauthWithOutcome(context) } returns SignInOutcome.UNAVAILABLE
+        val util = Util(authRecoveryManager).apply { isOnline = { true } }
+
+        assertThrows(AwsTransientException::class.java) {
+            runBlocking { util.prepareUploadSession(context) }
+        }
     }
 }

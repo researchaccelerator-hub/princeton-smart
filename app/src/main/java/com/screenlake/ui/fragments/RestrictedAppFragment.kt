@@ -15,6 +15,7 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.screenlake.BuildConfig
 import com.screenlake.data.database.dao.RestrictedAppDao
 import com.screenlake.databinding.FragmentRestrictedAppsBinding
 import com.screenlake.recorder.adapters.RestrictedAppAdapter
@@ -86,7 +87,7 @@ class RestrictedAppFragment : Fragment() {
 
                 restrictedApps = restrictedApps.distinctBy { it.iconDrawable }.toMutableList()
                 restrictedApps =
-                    restrictedApps.filter { it.packageName != "com.screenlake" }.toMutableList()
+                    restrictedApps.filter { it.packageName != BuildConfig.APPLICATION_ID }.toMutableList()
 
                 result = mutableListOf()
 

@@ -4,6 +4,8 @@
 
 New to the project? Start with [QUICKSTART.md](QUICKSTART.md) — a plain-language guide with a setup checklist, time estimates, and links to each step.
 
+Setting SMART up under your own institution's name and icon? See [docs/institution-branding.md](docs/institution-branding.md).
+
 ---
 
 ## Explanatory Research Guide for Faculty, PIs, ICs, and Researchers
@@ -105,10 +107,9 @@ You will need to create a Firebase project and download the `google-services.jso
 1. Create a Firebase project and then go to the [Firebase Console](https://console.firebase.google.com/) and select your project.
 2. Navigate to **Project Settings** by clicking the gear icon in the sidebar.
 3. In the **Your Apps** section, add one a new Android app.
-4. Name the package exactly 'com.screenlake', with whatever nickname you'd like, and register.
-   - Notes: 'Package name' is the literal file name of the app's undelying file (extension = .apk). A .apk file is to Android what  an executable (.exe) is on Windows. The naming convention for apk files is like a reverse-order website name, like "com.blah.blah".
-   - DANGER: If you want to name the package something unique besides com.screenlake, either for branding purposes or as a necessary step to enable a Google Play launch down the road, then you can name the package something else like com.yourproject.
-   - DANGER ctd.: If you choose to do that, then you will need to take care to replace every reference to 'com.screenlake' in the repo with your own unique package name. This includes references within file contents, within file names, and within the cache, and should be done carefully and exhaustively to avoid errors.
+4. Register the package name set as `applicationId` in `brand.properties` at the repo root (`com.screenlake` unless you changed it), with whatever nickname you'd like.
+   - Notes: The package name (applicationId) is the app's identity on the phone. A .apk file is to Android what an executable (.exe) is on Windows. The naming convention is a reverse-order website name, like "com.blah.blah".
+   - To use your own package name, for branding or a later Google Play launch, change `applicationId` in `brand.properties` before your first participants install the app; changing it later installs a separate app. Do not rename `com.screenlake` in the source code. See [docs/institution-branding.md](docs/institution-branding.md).
    - You do not need to have a custom package name to distribute your app via Firebase, which is sufficient for distributing the app to a panel of participants.
 
 4. Download the `google-services.json` file provided during the app registration process, and then click through the rest of the app creation workflow until the app is created. (Don’t worry about the Firebase SDK setup instructions you’ll see there).
@@ -466,7 +467,7 @@ The following fields are configurable.
 This code identifies your participants. This is important because participants' emails will not be associated with participant data, only the code entered here. The code is digits only, `INVITE_CODE_LENGTH` long (4 by default; see [Researcher Configuration File](#researcher-configuration-file)), and may start with 0.
 
 ### Privacy Policy and Terms of Service
-The field **agreement_text** in the string.xml contains two URLs pointing to your (the researcher's) app's Privacy Policy and Terms of Service. If you plan to distribute via the Google Play Store, see their Privacy Policy and Terms of Service requirements. Stay in line with laws and regulations as well.
+The field **agreement_text** in `brand.xml` contains two URLs pointing to your (the researcher's) app's Privacy Policy and Terms of Service, shown on the registration screen; **privacy_url** in the same file is the privacy page the app opens. If you plan to distribute via the Google Play Store, see their Privacy Policy and Terms of Service requirements. Stay in line with laws and regulations as well.
 
 ### Explainer / In-app explainer text
 The user interface below (really, the text within it) is configurable and lets participants know during onboarding what the app is used for.
@@ -474,45 +475,9 @@ The user interface below (really, the text within it) is configurable and lets p
 ![alt text](<images/onboarding_explainer.png>)
 
 
-### How to Change the App Logo in an Android App
+### How to Change the App Name, Logo and Institution Texts
 
-#### Step 1: Prepare Your Logo
-1. **Design Your Logo**: Create or choose a logo image that represents your app. Ensure it is in PNG format with a transparent background for best results.
-2. **Resize the Logo**: Prepare different sizes of your logo to accommodate various screen resolutions. Common sizes include:
-   - **48x48 px** for low-density screens (ldpi)
-   - **72x72 px** for medium-density screens (mdpi)
-   - **96x96 px** for high-density screens (hdpi)
-   - **144x144 px** for extra-high-density screens (xhdpi)
-   - **192x192 px** for xx-high-density screens (xxhdpi)
-   - **512x512 px** for the Google Play Store icon
-
-#### Step 2: Locate the Drawable Folder
-1. **Open Android Studio**: Launch the app in Android Studio.
-2. **Navigate to `res/drawable`**: In the project explorer, go to `app > src > main > res > drawable`. This is where you’ll store your logo files.
-
-#### Step 3: Replace the Existing Logo
-1. **Copy Your Logo Files**: Copy your resized logo files into the respective drawable folders (`drawable-ldpi`, `drawable-mdpi`, `drawable-hdpi`, etc.). If these folders don't exist, you can create them under the `res` directory.
-2. **Rename the Files**: Ensure your logo files are named consistently across all drawable folders. The common name used is `ic_launcher.png`.
-   - Example: `ic_launcher.png` for all resolutions.
-
-#### Step 4: Update the AndroidManifest.xml
-1. **Open `AndroidManifest.xml`**: In the project explorer, navigate to `app > src > main > AndroidManifest.xml`.
-2. **Locate the `<application>` Tag**: Inside the `<application>` tag, find the `android:icon` attribute.
-3. **Set the New Icon**: Change the value of `android:icon` to the name of your new logo (without the file extension).
-   - Example: `android:icon="@drawable/ic_launcher"`
-
-#### Step 5: Update the Adaptive Icons (Optional)
-1. **Adaptive Icons**: For Android 8.0 (API level 26) and above, you should also update the adaptive icons. These consist of a foreground and background layer.
-2. **Navigate to `res/mipmap-anydpi-v26`**: This folder contains the adaptive icon XML files.
-3. **Edit the XML Files**: Modify `ic_launcher.xml` and `ic_launcher_round.xml` to point to your new foreground and background images.
-
-#### Step 6: Rebuild the Project
-1. **Rebuild the Project**: Go to `Build > Rebuild Project` to apply the changes.
-2. **Run Your App**: Deploy the app to an emulator or a device to see the new logo in action.
-
-#### Step 7: Test Your Logo
-1. **Check Across Devices**: Test the logo on different devices and screen resolutions to ensure it looks good everywhere.
-
+Replace `app/src/main/res/drawable/logo_just_square_small.png` (a square PNG, 512 x 512 works well) with your logo, keeping the file name: it is the launcher icon, the logo inside the app and the notification icon. Participant-visible texts that name the app or the institution, including consent texts and policy links, are all in `app/src/main/res/values/brand.xml`. If you are setting SMART up for your own institution, follow [docs/institution-branding.md](docs/institution-branding.md).
 
 ### Changing In-App Text in the `res/strings` Resource Folder
 

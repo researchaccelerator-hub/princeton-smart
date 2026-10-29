@@ -25,7 +25,7 @@
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/inter_black"
                 android:gravity="center"
-                android:text="What is SRK"
+                android:text="@string/what_is_app"
                 android:textColor="?attr/colorOnSurface"
                 android:textSize="24sp"
                 app:layout_constraintBottom_toBottomOf="parent"
@@ -65,7 +65,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="10dp"
                     android:layout_marginEnd="20dp"
-                    android:text="How does SRK Work?"
+                    android:text="@string/how_does_app_work"
                     android:textSize="18sp"
                     android:textColor="?attr/colorOnSurface"
                     android:fontFamily="@font/inter_semibold"/>

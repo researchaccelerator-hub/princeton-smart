@@ -229,7 +229,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
                 if (ResearchConfig.SEND_LOGS_DESTINATION_EMAIL.isNotBlank()) {
                     putExtra(Intent.EXTRA_EMAIL, arrayOf(ResearchConfig.SEND_LOGS_DESTINATION_EMAIL))
                 }
-                putExtra(Intent.EXTRA_SUBJECT, "Princeton SMART logs")
+                putExtra(Intent.EXTRA_SUBJECT, "${getString(R.string.log_export_label)} logs")
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
             startActivity(Intent.createChooser(intent, "Send Logs"))

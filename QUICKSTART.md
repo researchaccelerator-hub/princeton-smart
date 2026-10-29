@@ -50,7 +50,7 @@ Neither of these can be disabled from within the app. They are Android privacy p
 | Basic comfort with web consoles | You'll navigate AWS and Firebase web UIs — no coding required |
 
 **Optional but useful:**
-- University branding assets (logos, colors) for customizing the app's appearance
+- University branding assets (logos, colors) for customizing the app's appearance (see [docs/institution-branding.md](docs/institution-branding.md))
 - A sentiment dictionary for text analysis (see README for recommendation)
 - Familiarity with Google Play if you want broader public distribution beyond Firebase
 

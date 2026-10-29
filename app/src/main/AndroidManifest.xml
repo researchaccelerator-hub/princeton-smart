@@ -61,7 +61,7 @@
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="mediaProjection"
-            android:label="SRK Service" >
+            android:label="@string/screenshot_service_label" >
 
         </service>
 
@@ -85,7 +85,7 @@
         <service
             android:name="com.screenlake.recorder.services.TouchAccessibilityService"
             android:exported="false"
-            android:label="SRK Accessibility Reader"
+            android:label="@string/accessibility_service_label"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <meta-data
                 android:name="android.accessibilityservice"

@@ -1,5 +1,7 @@
 package com.screenlake.recorder.constants
 
+import com.screenlake.BuildConfig
+
 object ConstantSettings {
     const val IS_PRODUCTION = true
     // Increment this whenever any CSV column is added, renamed, or removed in any exported file.
@@ -101,7 +103,8 @@ object ConstantSettings {
     val RESTRICTED_APPS = mutableListOf(
         "com.sec.android.app.launcher",
         "com.android.settings",
-        "com.screenlake",
+        // This app itself, under the institution's applicationId (brand.properties).
+        BuildConfig.APPLICATION_ID,
         "com.google.android.apps.nexuslauncher",
         "com.lab465.SmoreApp",
         "ae.primehealth",

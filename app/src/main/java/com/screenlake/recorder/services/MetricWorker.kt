@@ -3,6 +3,7 @@ package com.screenlake.recorder.services
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.screenlake.R
 import com.screenlake.recorder.services.ScreenshotService.Companion.lastReEnableNotificationSent
 
 class MetricWorker(
@@ -20,7 +21,7 @@ class MetricWorker(
 
             lastReEnableNotificationSent = System.currentTimeMillis()
 
-            NotificationHelper(context).showNotification("Screenlake", "Please re-enable screen recording.", notificationID)
+            NotificationHelper(context).showNotification(context.getString(R.string.app_name), "Please re-enable screen recording.", notificationID)
         }
 
         return Result.success()

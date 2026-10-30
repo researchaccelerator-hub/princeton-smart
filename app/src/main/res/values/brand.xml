@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    BRAND FILE. Everything participants see that names the app, the institution or the
+    study team is here, so an institution's fork changes this file (plus the icon and
+    brand.properties) and nothing else. See docs/institution-branding.md.
+
+    Keep every string name. Change only the text. Consent and intro texts must match your
+    IRB-approved wording.
+-->
+<resources>
+
+    <!-- App name and labels -->
+    <string name="app_name">SRK</string>
+    <string name="app_full_name">Screenlake Research Kit (SRK)</string>
+    <string name="screenlake">SRK</string>
+    <!-- Shown under Settings > Accessibility and in the running-services list. -->
+    <string name="screenshot_service_label">SRK Service</string>
+    <string name="accessibility_service_label">SRK Accessibility Reader</string>
+    <!-- Subject and header of the Send Logs export (when SEND_LOGS_ENABLED). -->
+    <string name="log_export_label">Princeton SMART</string>
+
+    <!-- Institution, consent and study texts -->
+    <string name="welcome_intro">This app is a research tool for individuals participating in a research study affiliated with Princeton University. It captures and transmits data about your smartphone activity.</string>
+    <string name="disclaimer">"This app requests that you grant \"Accessibility API permission\". This permission generally enables apps to capture information about the content you see on-screen. This app in particular uses it to capture three specific pieces of information, improving its functionality as a research tool and thus your experience as a research participant. (1) URLs you visit, (2) buttons you tap on, and (3) text you've seen on-screen. In line with the research participation plan you've made with Princeton University, and the research consent form they provide you with, your data is used strictly for scientific analysis. The data is not shared with anyone outside of the designated research team."</string>
+    <string name="participant_info_what_body">This app runs quietly in the background and collects data about how you use your smartphone. It was developed at Princeton University and is used for academic research.</string>
+    <string name="privacy">You can pause, restrict, stop, and delete data you upload to us. We stay straightforward. Block SRK from recording apps that you don\'t want recorded. Contact us anytime.</string>
+    <!-- Registration screen: links to your Terms of Service and Privacy Policy. -->
+    <string name="agreement_text" translatable="true">
+
+    <![CDATA[
+    By using this app, you agree to our
+    <a href="https://example.com/terms" style="color:#005cff;">Terms of Service</a>
+    and <a href="https://example.com/privacy" style="color:#005cff;">Privacy Policy</a>.
+    ]]>
+
+    </string>
+    <string name="privacy_url">https://screenlake.com/privacy-policy</string>
+
+    <!-- Texts that name the app -->
+    <string name="what_is_app">What is SRK</string>
+    <string name="how_does_app_work">How does SRK Work?</string>
+    <string name="screenlake_work">SRK runs in the background, capturing and analyzing your screen behavior. Once it\'s running, you don\'t even have to keep the app open.</string>
+    <string name="restricted_apps_explainer">Switched-on apps (green) are being screen-recorded by SRK.</string>
+    <string name="logout_of_app">Logout of SRK</string>
+    <string name="are_you_sure_you_want_to_log_out_of_screenlake_this_will_delete_all_user_data_from_the_phone">Are you sure you want to log out of SRK? This will delete all user data from the phone.</string>
+    <string name="for_screenlake_to_work_properly_we_need_you_to_accept_accessibility_settings">For SRK to work properly, we need you to grant Accessibility Settings.</string>
+    <string name="for_screenlake_to_work_properly_you_must_manually_permit_usage_access_this_is_so_we_can_stop_recording_data_sensitive_apps_for_privacy_reasons">For SRK to work properly, you must manually permit Usage Access. \n This is so we can stop recording data sensitive apps for privacy reasons.</string>
+    <string name="screenlake_is_using_the_accessibility_service_to_record_your_screen_in_the_background">SRK is using the accessibility service to record your screen in the background</string>
+
+</resources>

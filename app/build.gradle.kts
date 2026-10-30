@@ -36,6 +36,14 @@ val googleServicesPackageNames: Set<String> = if (googleServicesJsonExists) {
     emptySet()
 }
 
+// The institution's app identity (brand.properties at the repo root; see
+// docs/institution-branding.md). The source package and namespace stay com.screenlake.
+val brandProperties = Properties().apply {
+    rootProject.file("brand.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+}
+val brandApplicationId: String = brandProperties.getProperty("applicationId")?.trim()
+    ?.takeIf { it.isNotEmpty() } ?: "com.screenlake"
+
 android {
 
     namespace = "com.screenlake"
@@ -43,7 +51,7 @@ android {
     ndkVersion = "27.0.12077973"
 
     defaultConfig {
-        applicationId = "com.screenlake"
+        applicationId = brandApplicationId
         minSdk = 28
         targetSdk = 35
         versionCode = 53

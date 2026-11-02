@@ -43,6 +43,7 @@ import com.screenlake.recorder.screenshot.DataTransformation
 import com.screenlake.recorder.services.ScreenshotService
 import com.screenlake.recorder.utilities.TimeUtility
 import com.screenlake.recorder.utilities.silence
+import com.screenlake.recorder.services.RecordingState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -247,6 +248,18 @@ class GeneralOperationsRepository @Inject constructor(
         )
     }
 
+    /**
+     * Like [saveLog], for background events (boot, shutdown) that can run in a fresh process
+     * before any screen has set [AmplifyRepository.email]. Falls back to the stored user, and
+     * still logs the event when no user is stored.
+     */
+    suspend fun saveLogForStoredUser(event: String, msg: String = "") = silence {
+        val email = amplifyRepository.email.ifBlank {
+            runCatching { userDao.getUser().email }.getOrNull().orEmpty()
+        }
+        logEventDao.saveException(LogEventEntity(event, msg, email))
+    }
+
     fun save(accessibilityEvent: AccessibilityEventEntity) {
         CoroutineScope(Dispatchers.IO).launch {
             accessibilityEventDao.save(
@@ -381,7 +394,25 @@ class GeneralOperationsRepository @Inject constructor(
     suspend fun forceSignOutForCredentialExpiry(currentUser: UserEntity?) {
         recordPendingReauthUser(currentUser)
         cloudAuthentication.signOut(MainActivity.isLoggedOut)
+        // isLoggedOut must be set before isLoggedIn turns false: ScreenRecordFragment only
+        // routes to the login screen when it sees both, and signOut() sets isLoggedOut later,
+        // in Amplify's callback.
+        MainActivity.isLoggedOut.postValue(true)
         MainActivity.isLoggedIn.postValue(false)
+        stopActiveRecording()
+        deleteUser()
+        resetCredentialFailureCount()
+    }
+
+    /**
+     * Manual sign-out that keeps the participant's collected data on the phone (Settings >
+     * Logout > keep data). Records the same reconnect marker as a forced sign-out, so signing in
+     * again with the same account restores the invite code and panel and resumes uploads, and a
+     * different account wipes this participant's pending data first
+     * (see [reconcilePendingReauthUser]).
+     */
+    suspend fun signOutKeepingData(currentUser: UserEntity?) {
+        recordPendingReauthUser(currentUser)
         stopActiveRecording()
         deleteUser()
         resetCredentialFailureCount()
@@ -394,6 +425,7 @@ class GeneralOperationsRepository @Inject constructor(
         // WorkManager context throws ForegroundServiceStartNotAllowedException on Android 12+,
         // uncaught by the worker's own try/catch, crashing the exact retry path this fix exists
         // to protect.
+        RecordingState.clearForSignOut(context)
         if (ScreenshotService.isRunning.value != true) return
 
         Intent(context, ScreenshotService::class.java).apply {
@@ -440,6 +472,16 @@ class GeneralOperationsRepository @Inject constructor(
         }
 
         clearPendingReauthMarkers(prefs)
+    }
+
+    /**
+     * True when signing in with [email] would wipe another participant's data that has not
+     * uploaded yet (see [reconcilePendingReauthUser]), so the login screen can ask first.
+     */
+    fun pendingReauthUserDiffersFrom(email: String): Boolean {
+        val prefs = context.getSharedPreferences(CREDENTIAL_RECOVERY_PREFS, Context.MODE_PRIVATE)
+        val pendingUser = prefs.getString(PENDING_REAUTH_USER_KEY, null) ?: return false
+        return email.isNotBlank() && pendingUser != normalizeEmail(email)
     }
 
     private fun recordPendingReauthUser(user: UserEntity?) {
@@ -605,12 +647,16 @@ class GeneralOperationsRepository @Inject constructor(
         return screenshotDao.getOcrCompleteOrRestrictedCount()
     }
 
-    suspend fun getScreenshotsToOcr(limit: Int): List<ScreenshotEntity> {
+    /** Screenshots waiting for OCR, oldest first, up to the row with id [maxId]. */
+    suspend fun getScreenshotsToOcr(limit: Int, maxId: Int = Int.MAX_VALUE): List<ScreenshotEntity> {
         return screenshotDao.getAllScreenshotsSortedByDateWhereOcrIsNotComplete(
             limit = limit,
-            offset = 0
+            offset = 0,
+            maxId = maxId
         )
     }
+
+    suspend fun getMaxScreenshotId(): Int = screenshotDao.getMaxId() ?: 0
 
     suspend fun getAllScreenshotsSortedByDateWhereOcrIsComplete(limit: Int, offset: Int): List<ScreenshotEntity> {
         return screenshotDao.getAllScreenshotsSortedByDateWhereOcrIsComplete(

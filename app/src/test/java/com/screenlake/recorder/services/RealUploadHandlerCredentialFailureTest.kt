@@ -6,21 +6,30 @@ import com.screenlake.data.database.entity.UserEntity
 import com.screenlake.data.repository.AwsService
 import com.screenlake.data.repository.GeneralOperationsRepository
 import com.screenlake.recorder.constants.ConstantSettings
+import com.screenlake.recorder.upload.AwsTransientException
 import com.screenlake.recorder.upload.CredentialExpiredException
 import com.screenlake.recorder.upload.Util
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert.assertThrows
+import okhttp3.ResponseBody.Companion.toResponseBody
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import retrofit2.Call
+import retrofit2.Response
 import java.io.File
 
+/**
+ * Upload results tell the worker what to do next. Only a credential problem that a silent
+ * re-login could not fix may lead to a sign-out; offline and server errors keep the file.
+ */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
 class RealUploadHandlerCredentialFailureTest {
@@ -28,7 +37,7 @@ class RealUploadHandlerCredentialFailureTest {
     private val context: Context = ApplicationProvider.getApplicationContext()
     private val awsService = mockk<AwsService>()
     private val generalOperationsRepository = mockk<GeneralOperationsRepository>(relaxed = true)
-    private val util = mockk<Util>()
+    private val util = mockk<Util>(relaxed = true)
 
     private fun buildHandler() = RealUploadHandler(context, awsService, generalOperationsRepository, util)
 
@@ -49,52 +58,78 @@ class RealUploadHandlerCredentialFailureTest {
         panelName = "Acme Panel",
     )
 
-    @Test
-    fun `credential failure increments counter, logs, and rethrows`() = runTest {
-        val file = tempFile()
-        coEvery { util.generates3ShareUrl(any(), any(), any()) } throws CredentialExpiredException("expired")
-        every { generalOperationsRepository.incrementCredentialFailureCount() } returns 1
-
-        val handler = buildHandler()
-
-        assertThrows(CredentialExpiredException::class.java) {
-            kotlinx.coroutines.runBlocking { handler.uploadFile(file, entryId = 1, user = completeUser()) }
+    private fun respond(vararg codes: Int) {
+        val calls = codes.map { code ->
+            mockk<Call<okhttp3.ResponseBody>> {
+                every { execute() } returns if (code in 200..299) {
+                    Response.success("".toResponseBody())
+                } else {
+                    Response.error(code, "".toResponseBody())
+                }
+            }
         }
+        every { awsService.uploadAsset(any(), any()) } returnsMany calls
+    }
 
-        io.mockk.verify { generalOperationsRepository.incrementCredentialFailureCount() }
-        io.mockk.coVerify { generalOperationsRepository.saveLog(ConstantSettings.UPLOAD_CREDENTIAL_FAILURE, any()) }
+    @Test
+    fun `credentials that cannot be recovered are an authentication failure and keep the file`() = runTest {
+        val file = tempFile()
+        coEvery { util.generates3ShareUrl(any(), any(), any()) } throws CredentialExpiredException("expired")
+
+        val result = buildHandler().uploadFile(file, entryId = 1, user = completeUser())
+
+        assertEquals(UploadResult.AUTHENTICATION_FAILURE, result)
+        assertTrue(file.exists())
+        coVerify { generalOperationsRepository.saveLog(ConstantSettings.UPLOAD_CREDENTIAL_FAILURE, any()) }
+        // Counting and the sign-out decision belong to AuthRecoveryCoordinator, once per run.
+        verify(exactly = 0) { generalOperationsRepository.incrementCredentialFailureCount() }
         file.delete()
     }
 
     @Test
-    fun `notification is not shown before the failure threshold`() = runTest {
+    fun `offline is a temporary failure, not a credential failure`() = runTest {
         val file = tempFile()
-        coEvery { util.generates3ShareUrl(any(), any(), any()) } throws CredentialExpiredException("expired")
-        every { generalOperationsRepository.incrementCredentialFailureCount() } returns 5
+        coEvery { util.generates3ShareUrl(any(), any(), any()) } throws AwsTransientException("offline")
 
-        val handler = buildHandler()
-        try {
-            kotlinx.coroutines.runBlocking { handler.uploadFile(file, entryId = 1, user = completeUser()) }
-        } catch (_: CredentialExpiredException) {}
+        val result = buildHandler().uploadFile(file, entryId = 1, user = completeUser())
 
-        val notificationManager = shadowOf(context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager)
-        assertTrue(notificationManager.getNotification(ConstantSettings.CREDENTIAL_EXPIRED_NOTIFICATION_ID) == null)
+        assertEquals(UploadResult.TRANSIENT_FAILURE, result)
+        assertTrue(file.exists())
         file.delete()
     }
 
     @Test
-    fun `notification is shown once the failure threshold is reached`() = runTest {
+    fun `server errors are temporary failures`() = runTest {
         val file = tempFile()
-        coEvery { util.generates3ShareUrl(any(), any(), any()) } throws CredentialExpiredException("expired")
-        every { generalOperationsRepository.incrementCredentialFailureCount() } returns ConstantSettings.CREDENTIAL_FAILURE_NOTIFICATION_THRESHOLD
+        coEvery { util.generates3ShareUrl(any(), any(), any()) } returns "https://s3/upload"
+        respond(503)
 
-        val handler = buildHandler()
-        try {
-            kotlinx.coroutines.runBlocking { handler.uploadFile(file, entryId = 1, user = completeUser()) }
-        } catch (_: CredentialExpiredException) {}
+        assertEquals(UploadResult.TRANSIENT_FAILURE, buildHandler().uploadFile(file, entryId = 1, user = completeUser()))
+        assertTrue(file.exists())
+        file.delete()
+    }
 
-        val notificationManager = shadowOf(context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager)
-        assertTrue(notificationManager.getNotification(ConstantSettings.CREDENTIAL_EXPIRED_NOTIFICATION_ID) != null)
+    @Test
+    fun `a rejected upload refreshes credentials and retries once`() = runTest {
+        val file = tempFile()
+        coEvery { util.generates3ShareUrl(any(), any(), any()) } returns "https://s3/upload"
+        respond(403, 200)
+
+        val result = buildHandler().uploadFile(file, entryId = 1, user = completeUser())
+
+        assertEquals(UploadResult.SUCCESS, result)
+        coVerify(exactly = 1) { util.refreshUploadSession(any()) }
+        assertTrue(!file.exists())
+    }
+
+    @Test
+    fun `a rejected upload that is rejected again after refreshing is an authentication failure`() = runTest {
+        val file = tempFile()
+        coEvery { util.generates3ShareUrl(any(), any(), any()) } returns "https://s3/upload"
+        respond(403, 403)
+
+        assertEquals(UploadResult.AUTHENTICATION_FAILURE, buildHandler().uploadFile(file, entryId = 1, user = completeUser()))
+        assertTrue(file.exists())
         file.delete()
     }
 }

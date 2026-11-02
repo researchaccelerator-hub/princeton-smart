@@ -41,6 +41,8 @@ import androidx.work.WorkManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.screenlake.MainActivity
 import com.screenlake.R
+import com.screenlake.recorder.constants.ResearchConfig
+import com.screenlake.recorder.utilities.InviteCode
 import com.screenlake.data.database.dao.LogEventDao
 import com.screenlake.data.database.dao.UserDao
 import com.screenlake.databinding.FragmentScreenRecordBinding
@@ -120,10 +122,18 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
     private val startMediaProjection = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
+        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+            // The service clears the in-flight flag once capture starts.
+            ScreenshotService.suppressMediaProjectionPromptUntilUnlock.set(false)
             startScreenshotService(result.resultCode, result.data)
         } else {
+            ScreenshotService.isMediaProjectionPromptInFlight.set(false)
+            // MainActivity.onResume runs next; don't let it reopen the dialog just denied.
+            ScreenshotService.suppressMediaProjectionPromptUntilUnlock.set(true)
             Toast.makeText(requireContext(), "Screen capture permission denied", Toast.LENGTH_SHORT).show()
+            lifecycleScope.launch {
+                saveLog("SCREEN_CAPTURE_DENIED", "User cancelled or denied the media projection prompt")
+            }
         }
     }
 
@@ -249,8 +259,18 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
 
     private fun requestScreenCapture() {
         val mediaProjectionManager = requireContext().getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        // Shares MainActivity's gate so only one consent dialog can be open.
+        if (!ScreenshotService.isMediaProjectionPromptInFlight.compareAndSet(false, true)) {
+            Timber.d("Screen capture consent dialog already open")
+            return
+        }
         mediaProjectionCallback?.onMediaProjectionRequested()
-        startMediaProjection.launch(mediaProjectionManager.createScreenCaptureIntent())
+        try {
+            startMediaProjection.launch(mediaProjectionManager.createScreenCaptureIntent())
+        } catch (e: Exception) {
+            ScreenshotService.isMediaProjectionPromptInFlight.set(false)
+            throw e
+        }
     }
 
     private fun startScreenshotService(resultCode: Int, data: Intent?) {
@@ -422,7 +442,6 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
     }
 
     private fun pauseRecording() {
-        ScreenshotService.isPaused.postValue(true)
         sendCommandToRecordService(ACTION_PAUSE_SERVICE)
     }
 
@@ -582,7 +601,7 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
                 } else {
                     changeCancelToPause()
                     triggerVibrateRecordOptions()
-                    ScreenshotService.isPaused.postValue(false)
+                    sendCommandToRecordService(ScreenshotService.ACTION_RESUME_SERVICE)
                 }
             },
             textUpdateAction = {
@@ -655,9 +674,16 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
 
         lifecycleScope.launch {
             val user = userDao.getUser()
-            if(user.emailHash.isNullOrEmpty()) {
+            if (user.emailHash.isNullOrEmpty()) {
                 showMissingIdDialog()
-            }else{
+                return@launch
+            }
+
+            // The button tag can lag behind the service; never start a second capture
+            // while one is already running.
+            if (ScreenshotService.isRunning.value == true) {
+                stopRecording()
+            } else {
                 requestPermissions()
                 requestPackageUsageStatsPermissions()
                 startRecording()
@@ -762,7 +788,9 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
     }
 
     private fun stopRecording() {
-        ScreenshotService.isRunning.postValue(false)
+        // The service clears isRunning and isPaused itself once capture stops, so the UI only
+        // shows "not recording" after recording has really stopped, and a paused session never
+        // captures while it is being saved.
         stopForegroundService()
         Toast.makeText(activity, getString(R.string.recording_stopped), Toast.LENGTH_LONG).show()
         lifecycleScope.launch { saveLog(RECORD_TRIGGERED, "false") }
@@ -780,11 +808,11 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
     }
 
     override fun onPermissionsGranted(p0: Int, p1: MutableList<String>) {
-        TODO("Not yet implemented")
+        // Nothing to do; startRecording() checks the permissions it needs.
     }
 
     override fun onPermissionsDenied(p0: Int, p1: MutableList<String>) {
-        TODO("Not yet implemented")
+        showPermissionDeniedMessage()
     }
 
     private fun showPermissionDeniedMessage() {
@@ -800,17 +828,18 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
 
         // Get the EditText from the inflated view
         val codeEditText = dialogView.findViewById<EditText>(R.id.codeEditText)
+        codeEditText.filters = arrayOf(InviteCode.lengthFilter())
 
         // Build the dialog
         val builder = AlertDialog.Builder(context)
             .setTitle("Missing ID")
-            .setMessage("Please enter your 4 digit panel invite code before continuing.")
+            .setMessage(getString(R.string.missing_invite_code_message, ResearchConfig.INVITE_CODE_LENGTH))
             .setPositiveButton("Continue") { dialog, _ ->
                 val inviteCode = codeEditText.text.toString()
                 if (inviteCode.isNotEmpty()) {
 
-                    if (!validateCode(inviteCode)) {
-                        Toast.makeText(context, "Error -> Please enter a valid 4 digit invite code", Toast.LENGTH_SHORT).show()
+                    if (!InviteCode.isValid(inviteCode)) {
+                        Toast.makeText(context, getString(R.string.invalid_invite_code_toast, ResearchConfig.INVITE_CODE_LENGTH), Toast.LENGTH_SHORT).show()
                     } else {
                         // Process the invite code
                         lifecycleScope.launch {
@@ -837,17 +866,6 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
 
         // Show the dialog
         builder.create().show()
-    }
-
-    fun validateCode(code: String): Boolean {
-        if (code.length != 4) {
-            return false
-        }
-        if (!code.all { it.isDigit() }) {
-            return false
-        }
-        val numericCode = code.toInt()
-        return numericCode in 0..9999
     }
 
     companion object {

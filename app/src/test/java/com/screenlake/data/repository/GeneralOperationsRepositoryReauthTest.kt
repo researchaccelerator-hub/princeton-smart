@@ -255,4 +255,28 @@ class GeneralOperationsRepositoryReauthTest {
 
         assertEquals(0, repo.getCredentialFailureCount())
     }
+
+    @Test
+    fun `signing out and keeping data deletes the user but not the data, and the same user gets their invite code back`() = runTest {
+        val repo = buildRepository()
+        repo.signOutKeepingData(outgoingUser("participant@example.com", emailHash = "4321"))
+
+        coVerify { userDao.deleteUser() }
+        coVerify(exactly = 0) { screenshotDao.nukeTable() }
+
+        val returning = bareLoggedInUser("participant@example.com")
+        repo.reconcilePendingReauthUser(returning)
+        assertEquals("4321", returning.emailHash)
+    }
+
+    @Test
+    fun `the login screen is warned only when a different account would wipe pending data`() = runTest {
+        val repo = buildRepository()
+        assertEquals(false, repo.pendingReauthUserDiffersFrom("someone@example.com"))
+
+        repo.signOutKeepingData(outgoingUser("participant@example.com"))
+
+        assertEquals(false, repo.pendingReauthUserDiffersFrom(" Participant@Example.com "))
+        assertEquals(true, repo.pendingReauthUserDiffersFrom("someone@example.com"))
+    }
 }

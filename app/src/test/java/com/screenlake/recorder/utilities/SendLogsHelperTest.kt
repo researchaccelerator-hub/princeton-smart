@@ -2,6 +2,7 @@ package com.screenlake.recorder.utilities
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.screenlake.R
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -37,12 +38,14 @@ class SendLogsHelperTest {
         val file = SendLogsHelper.buildLogFile(context)
         val contents = file.readText()
 
-        assertTrue(contents.contains("Princeton SMART log export"))
+        assertTrue(contents.contains("${context.getString(R.string.log_export_label)} log export"))
         assertTrue(contents.contains("App version:"))
         assertTrue(contents.contains("OS version: Android"))
         assertTrue(contents.contains("Device:"))
         assertTrue(contents.contains("I/TagA: hello from the buffer"))
-        assertTrue(file.name.matches(Regex("""SRK_\d{8}_\d{6}_logs\.txt""")))
+        // The prefix is the app_name brand string reduced to letters and digits, so a fork's name works too.
+        val prefix = Regex.escape(context.getString(R.string.app_name).filter { it.isLetterOrDigit() }.ifEmpty { "app" })
+        assertTrue(file.name.matches(Regex("""${prefix}_\d{8}_\d{6}_logs\.txt""")))
     }
 
     @Test

@@ -71,7 +71,7 @@
             app:isPreferenceVisible="true" />
 
         <Preference
-            android:title="Logout of SRK"
+            android:title="@string/logout_of_app"
             android:key="@string/logout"
             />
 
@@ -80,4 +80,11 @@
             android:key="send_logs"
             android:summary="Send recent app logs to help diagnose an issue."
             app:isPreferenceVisible="false" />
+
+        <!-- Required in every build; see powered_by in strings.xml. -->
+        <Preference
+            android:key="powered_by"
+            android:title="@string/powered_by"
+            android:selectable="false"
+            app:isPreferenceVisible="true" />
 </PreferenceScreen>

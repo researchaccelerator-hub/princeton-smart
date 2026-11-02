@@ -4,6 +4,7 @@ import android.content.Context
 import com.screenlake.data.database.entity.UserEntity
 import com.screenlake.data.repository.GeneralOperationsRepository
 import com.screenlake.recorder.services.UploadHandler
+import com.screenlake.recorder.services.UploadResult
 import com.screenlake.recorder.services.UploadWorker
 import kotlinx.coroutines.delay
 import timber.log.Timber
@@ -25,7 +26,7 @@ class TestUploadHandler(
         user: UserEntity?,
         test: Boolean,
         testContext: Context?
-    ) {
+    ): UploadResult {
         if (isNetworkConnected) {
             // Simulate a successful upload
             Timber.tag(TAG).d("Simulating upload of file ${file.name}")
@@ -37,9 +38,9 @@ class TestUploadHandler(
             entryId?.let { generalOperationsRepository.deleteZip(it) }
             UploadWorker.uploadFeedback.postValue("Upload succeeded -> Simulated path")
             Timber.tag(TAG).d("Upload simulated as successful")
-        }else{
-
+            return UploadResult.SUCCESS
         }
+        return UploadResult.TRANSIENT_FAILURE
     }
 
     override suspend fun isNetworkConnected(): Boolean {

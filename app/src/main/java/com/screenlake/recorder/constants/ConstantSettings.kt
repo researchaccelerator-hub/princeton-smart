@@ -1,9 +1,11 @@
 package com.screenlake.recorder.constants
 
+import com.screenlake.BuildConfig
+
 object ConstantSettings {
     const val IS_PRODUCTION = true
     // Increment this whenever any CSV column is added, renamed, or removed in any exported file.
-    const val DATA_SCHEMA_VERSION = 3
+    const val DATA_SCHEMA_VERSION = 4
     const val PERMISSIONS_REQUEST_CODE = 0
     const val ACTION_START_OR_RESUME_SERVICE = "ACTION_START_OR_RESUME_SERVICE"
     const val ACTION_PAUSE_SERVICE = "ACTION_PAUSE_SERVICE"
@@ -16,6 +18,8 @@ object ConstantSettings {
     const val UPLOAD_FAILED = "UPLOAD_FAILED"
     const val UPLOAD_CREDENTIAL_FAILURE = "UPLOAD_CREDENTIAL_FAILURE"
     const val CREDENTIAL_EXPIRED_NOTIFICATION_ID = 3
+    /** Shown while an upload runs as a foreground job; separate from the sign-in notice above. */
+    const val UPLOAD_NOTIFICATION_ID = 1340
     const val CREDENTIAL_FAILURE_NOTIFICATION_THRESHOLD = 6
     const val COROUTINE_EXCEPTION_HANDLER = "COROUTINE_EXCEPTION_HANDLER"
     const val IS_CONNECTED = "IS_CONNECTED"
@@ -99,7 +103,8 @@ object ConstantSettings {
     val RESTRICTED_APPS = mutableListOf(
         "com.sec.android.app.launcher",
         "com.android.settings",
-        "com.screenlake",
+        // This app itself, under the institution's applicationId (brand.properties).
+        BuildConfig.APPLICATION_ID,
         "com.google.android.apps.nexuslauncher",
         "com.lab465.SmoreApp",
         "ae.primehealth",

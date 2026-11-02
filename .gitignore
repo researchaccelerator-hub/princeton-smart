@@ -68,6 +68,13 @@ gradle-app.setting
 .vscode/settings.json
 
 # =============================================================================
+# Research Data
+# scripts/consolidatecsvs.py writes downloaded participant data to query_<id>/
+# wherever it is run. Never commit it.
+# =============================================================================
+**/query_*/
+
+# =============================================================================
 # Claude Code Artifacts
 # =============================================================================
 /claude-docs/
@@ -75,3 +82,6 @@ gradle-app.setting
 /.claude
 /docs/superpowers/
 /.superpowers/
+
+# Python
+__pycache__/

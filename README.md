@@ -4,6 +4,8 @@
 
 New to the project? Start with [QUICKSTART.md](QUICKSTART.md) — a plain-language guide with a setup checklist, time estimates, and links to each step.
 
+Setting SMART up under your own institution's name and icon? See [docs/institution-branding.md](docs/institution-branding.md).
+
 ---
 
 ## Explanatory Research Guide for Faculty, PIs, ICs, and Researchers
@@ -47,9 +49,9 @@ This step-by-step guide is made to match the following tools, including click-by
 - Familiarity with [**Google Play**](https://play.google.com/console/about/topics/get-started/) in case you'd like to make your app publically accessible to potential research participants. The tutorial will only show you how to use Firebase for targetted distribution of the app, i.e., direct-send of an app to someone's email address. Either method of distribution has its advantages, but getting an app onto the Google Play store is a bit more involved.
 
 ### Overview of App Technical Capacities
-The contents of this repository enable you (a researcher) to create an Android application. The Android application is designed to efficiently, continuously, & passively take screenshots of the smartphone device it is installed on, every 5 seconds until manually interrupted, and also perform Optical Character Recognition (OCR) to extract text from the captured images. Additionally, the app collects a variety of data related to the smartphone device and the apps running on it (listed below):
+The contents of this repository enable you (a researcher) to create an Android application. The Android application is designed to efficiently, continuously, & passively take screenshots of the smartphone device it is installed on, at the interval set by the capture preset (every 5 seconds by default) until manually interrupted, and also perform Optical Character Recognition (OCR) to extract text from the captured images. Additionally, the app collects a variety of data related to the smartphone device and the apps running on it (listed below):
 
-- **Screenshots & OCR Processing:** Captures a full-screen screenshot every 5 seconds, and uses OCR to extract text from the screenshots.
+- **Screenshots & OCR Processing:** Captures a full-screen screenshot at the interval set by the capture preset (every 5 seconds by default; see [Screenshot Capture Presets](#screenshot-capture-presets)), and uses OCR to extract text from the screenshots. OCR runs on the phone while it is locked (or when the participant taps Upload), oldest screenshots first, on the screenshots that exist when it starts, and data is zipped and uploaded after it. Upload also works while recording is stopped: it then uploads screenshots that already have their text, and the rest after recording restarts. Uploads show a quiet "Uploading study data" notification while they run; see [docs/upload-auth-recovery.md](docs/upload-auth-recovery.md#when-uploads-run). A screenshot whose image is missing or takes longer than 30 seconds to read is uploaded with an empty `text`.
 - **App Log Data:** Records metadata such as app names and timestamps at the time of each screenshot.
 - **App Usage Data:** Collects detailed usage data from the device, including which apps are running and how long they’ve been used.
 - **App Segment Data:** Tracks and logs data showing the last five apps that were on the screen before the current one.
@@ -105,10 +107,9 @@ You will need to create a Firebase project and download the `google-services.jso
 1. Create a Firebase project and then go to the [Firebase Console](https://console.firebase.google.com/) and select your project.
 2. Navigate to **Project Settings** by clicking the gear icon in the sidebar.
 3. In the **Your Apps** section, add one a new Android app.
-4. Name the package exactly 'com.screenlake', with whatever nickname you'd like, and register.
-   - Notes: 'Package name' is the literal file name of the app's undelying file (extension = .apk). A .apk file is to Android what  an executable (.exe) is on Windows. The naming convention for apk files is like a reverse-order website name, like "com.blah.blah".
-   - DANGER: If you want to name the package something unique besides com.screenlake, either for branding purposes or as a necessary step to enable a Google Play launch down the road, then you can name the package something else like com.yourproject.
-   - DANGER ctd.: If you choose to do that, then you will need to take care to replace every reference to 'com.screenlake' in the repo with your own unique package name. This includes references within file contents, within file names, and within the cache, and should be done carefully and exhaustively to avoid errors.
+4. Register the package name set as `applicationId` in `brand.properties` at the repo root (`com.screenlake` unless you changed it), with whatever nickname you'd like.
+   - Notes: The package name (applicationId) is the app's identity on the phone. A .apk file is to Android what an executable (.exe) is on Windows. The naming convention is a reverse-order website name, like "com.blah.blah".
+   - To use your own package name, for branding or a later Google Play launch, change `applicationId` in `brand.properties` before your first participants install the app; changing it later installs a separate app. Do not rename `com.screenlake` in the source code. See [docs/institution-branding.md](docs/institution-branding.md).
    - You do not need to have a custom package name to distribute your app via Firebase, which is sufficient for distributing the app to a panel of participants.
 
 4. Download the `google-services.json` file provided during the app registration process, and then click through the rest of the app creation workflow until the app is created. (Don’t worry about the Firebase SDK setup instructions you’ll see there).
@@ -257,10 +258,58 @@ NOTES:
    - Running processing in date-bounded batches (super easy thanks to the script)
    - Making sure that there are no internet disruptions during the script's run
    - Choosing to use an ec2 versus a local laptop, as the laptop is more prone to interruptions
-- The script is idempotent, meaning that even it gets stuck or hung up, you can just cancel the run midway and re-run it with no harm done and no duplicated data in your output.
+- The script can be resumed. If it gets stuck or hung up, cancel it and re-run it with the same `--query-id` (the output folder name printed at the start). Files already downloaded are skipped and there is no duplicated data in your output.
 
-Check out the readme file inside of the **scripts** folder as well.
-[Watch a visual valkthrough here.](https://youtu.be/oFH0MieGgUY).
+### Running the script
+
+Install the dependencies once (Python 3, OpenCV must be 4.x for face redaction):
+
+```bash
+pip install -r scripts/requirements.txt
+```
+
+Run it and answer the prompts (bucket, study folder, dates, which ZIPs to download, whether to remove OCR text):
+
+```bash
+python scripts/consolidatecsvs.py
+```
+
+Or pass everything on the command line, for example to process one week of CSV data on an EC2 instance with no prompts:
+
+```bash
+python scripts/consolidatecsvs.py --aws-default-credentials --bucket my-study-bucket \
+    --prefix academia/tenant/<tenant>/panel/<panel>/<version>/panelist/ \
+    --start 2026-10-01 --end 2026-10-07 --zip-types csv --remove-ocr --query-id query_oct_week1
+```
+
+Things to know:
+- **Dates** are whole days in your computer's local time; both the start and end day are included.
+- **CSV only** (`--zip-types csv`) skips the screenshots, which are most of the data and of the download cost. Use `both` when you need images. For data from app versions before 1.50, choose `both`: those uploads put CSVs and images in one ZIP.
+- **Faces are always redacted** in downloaded screenshots; only the redacted copies are kept.
+- **`--remove-ocr`** drops the OCR and on-screen text columns (`text`) from the consolidated CSVs, if your study does not need screen text.
+- **Output** goes to `<query_id>/combined/`: one consolidated CSV per data type per participant under `panelists/<id>/metadata/`, redacted images under `panelists/<id>/images/`, and daily screenshot counts under `summary/`.
+
+Full options and output details are in [scripts/README.md](scripts/README.md).
+[Watch a visual walkthrough here.](https://youtu.be/oFH0MieGgUY).
+
+### Estimating S3 costs
+
+`scripts/cost_estimation.py` estimates a study's monthly S3 bill (storage, upload and download requests, and data transfer out of AWS) and compares downloading everything daily with downloading only the CSV ZIPs. Run it while planning a study budget:
+
+```bash
+python scripts/cost_estimation.py --participants 150 --images-per-day 4000 --image-mb 0.5
+```
+
+With those inputs (150 participants, 4,000 screenshots each per day, 0.5 MB per screenshot, 30-day retention), it reports:
+
+| | Download images and CSVs daily | Download CSVs only |
+|---|---|---|
+| Requests | $1.94 | $3.74 |
+| Storage | $106.48 | $106.48 |
+| Data transfer out | $797.47 (about 9 TB) | $6.45 (172 GB) |
+| **Total per month** | **$905.89** | **$116.68** |
+
+Most of the cost of a large study is downloading screenshots, so download images only when you need them. Prices are S3 Standard list prices for us-east-1 and the 100 GB free transfer allowance is per AWS account; check current AWS pricing before relying on the numbers. Run `python scripts/cost_estimation.py --help` for all inputs.
 
 
 To understand the final output data, read through the explainer doc.
@@ -295,6 +344,8 @@ The table below summarizes every configurable setting and its default:
 | `ALLOWED_APPS_OVERRIDE` | `emptyList()` | Package names to allow even if they appear on the built-in block list. Use with caution. |
 | `LOG_PACKAGE_EVENTS` | `false` | Master switch for app install/uninstall/replace tracking. Off by default; must be explicitly enabled. |
 | `LOG_PACKAGE_EVENTS_SESSION_ONLY` | `false` | When true (and `LOG_PACKAGE_EVENTS` is also true), restricts logging to active accessibility sessions only. See the privacy note below before enabling either setting. |
+| `INVITE_CODE_LENGTH` | `4` | Digits in the panel invite code participants enter at registration (leading zeros allowed). The University of Minnesota uses `5`. |
+| `USER_EXISTS_URL` | `""` | Optional endpoint asked, before the password step, whether an email is already registered with your study's service. Empty: no check, nothing sent. When set, the app sends `GET <url>?email=<email>` and treats `{"items":[{"message":true}]}` as taken; anything else, an error or no connection lets sign-up continue. Sends participants' emails to that endpoint, so check your consent language/IRB protocol. |
 | `SEND_LOGS_ENABLED` | `false` | Master switch for the "Send Logs" button in Settings. Off by default; must be explicitly enabled. |
 | `SEND_LOGS_MAX_LINES` | `1500` | How many recent log lines are kept in memory for export when SEND_LOGS_ENABLED is true. |
 | `SEND_LOGS_DESTINATION_EMAIL` | `""` | Optional email pre-filled when sending logs. Blank by default, so no destination is tied to a shared/monitored inbox out of the box. |
@@ -303,13 +354,17 @@ The table below summarizes every configurable setting and its default:
 
 Set `ACTIVE_PRESET` to one of the three options:
 
-| Preset | Interval | fps (in data) | When to use |
+| Preset | Interval | `interval` value in session CSV (fps) | When to use |
 |--------|----------|---------------|-------------|
 | `LOW` | 1 screenshot every 10 s | 0.1 | Long-duration studies where high temporal resolution is not required. Lowest storage and battery impact. |
 | `MEDIUM` | 1 screenshot every 5 s | 0.2 | Balanced fidelity and storage. Suitable for most research use cases. **(default)** |
 | `HIGH` | 1 screenshot every 1 s | 1.0 | Short-duration sessions requiring fine-grained activity capture. Storage and upload costs increase significantly. |
 
-The active preset's interval is recorded in the `fps` column of the session CSV output, allowing you to confirm the deployed configuration from collected data.
+The active preset is recorded in the `interval` column of the session CSV output, as frames per second (for example `0.2` for one screenshot every 5 s), allowing you to confirm the deployed configuration from collected data. The recording notification also shows the interval ("Taking a screenshot every 5 seconds").
+
+> **Data from app versions before 1.53.0:** earlier versions always captured one screenshot every 5 seconds, whatever `ACTIVE_PRESET` was set to, while the session CSV `interval` column still reported the preset's rate. If a study was built with `LOW` or `HIGH` on an earlier version, its screenshots were really taken every 5 s and its `interval` value is wrong. Studies on the default `MEDIUM` preset are not affected.
+>
+> `app_version` in the manifest CSV is not enough to find affected data: it records the version that built the ZIP, so screenshots captured before a participant upgraded but uploaded afterwards carry the new version. To check the real rate, look at the gaps between consecutive `t_epoch_ts_ms` values in the screenshot CSV within a session, and compare capture times with when each participant received the 1.53.0 build.
 
 #### App Recording Controls
 
@@ -343,10 +398,27 @@ Every zip bundle produced by the app includes a `manifest.csv` file with one row
 |---------|-------------|
 | 1 | Original schema. No `manifest.csv` present, no `stop_reason` column in session data. |
 | 2 | Added `stop_reason` column to session CSV. Added `manifest.csv` to all zip bundles. |
+| 3 | Version 1.51.0. Added `package_event_data_csv_*.csv` (only when `LOG_PACKAGE_EVENTS` is on). |
+| 4 | Version 1.53.0. Added a `state` column as the last column of `screenshot_data_csv_*.csv`, and state marker rows (see [Screenshot state](#screenshot-state)). |
 
-When processing data collected across multiple app versions, check `schema_version` in `manifest.csv` first. Data from schema version `1` (pre-upgrade) will not have a manifest file and will not have a `stop_reason` column in session CSVs; treat missing `stop_reason` values as `UNKNOWN`.
+When processing data collected across multiple app versions, check `schema_version` in `manifest.csv` first. Data from schema version `1` (pre-upgrade) will not have a manifest file and will not have a `stop_reason` column in session CSVs; treat missing `stop_reason` values as `UNKNOWN`. Screenshot files before schema version `4` have no `state` column, and rows captured before a phone updated to 1.53.0 but uploaded after it have an empty `state`.
 
-**For developers:** `DATA_SCHEMA_VERSION` in [app/src/main/java/com/screenlake/recorder/constants/ConstantSettings.kt](app/src/main/java/com/screenlake/recorder/constants/ConstantSettings.kt) is the single source of truth for both the exported CSV schema version and the Room database version — [ScreenshotDatabase.kt](app/src/main/java/com/screenlake/data/database/ScreenshotDatabase.kt) references it directly. Increment it any time a CSV column is added, renamed, or removed. Because the app uses destructive migration, incrementing this value will wipe and recreate the local database on the next app launch.
+#### Screenshot state
+
+From schema version `4`, every row of `screenshot_data_csv_*.csv` has a `state`:
+
+| `state` | Row means | Image |
+|---|---|---|
+| `Normal` | A screenshot was captured. | Yes (unless image uploads are off) |
+| `Restricted` | The foreground app is restricted, so nothing was captured. | No |
+| `ScreenLocked` | The phone locked. | No |
+| `ScreenUnlocked` | The phone unlocked. | No |
+| `pause start` / `pause end` | The participant paused recording / recording resumed. | No |
+| `NoScreenSharing` | Screen sharing stopped and is waiting for the participant's consent. | No |
+
+Marker rows (every state except `Normal` and `Restricted`) are written once, when the state changes, with the app in the foreground at that moment. Count only `Normal` rows when you count screenshots. The names match the University of Minnesota builds, so the two studies' data can be combined.
+
+**For developers:** `DATA_SCHEMA_VERSION` in [app/src/main/java/com/screenlake/recorder/constants/ConstantSettings.kt](app/src/main/java/com/screenlake/recorder/constants/ConstantSettings.kt) is the single source of truth for both the exported CSV schema version and the Room database version; [ScreenshotDatabase.kt](app/src/main/java/com/screenlake/data/database/ScreenshotDatabase.kt) references it directly. Increment it any time a CSV column is added, renamed, or removed, and add a Room migration in [Migrations.kt](app/src/main/java/com/screenlake/data/database/Migrations.kt) so that an update keeps data that has not been uploaded yet. Updates migrate from schema 2 (1.50.x) and later. Schema 1 has no migration path and falls back to destructive migration, which wipes and recreates the local database on the next app launch. Commit the schema JSON that the build writes to `app/schemas/`.
 
 ---
 
@@ -358,13 +430,30 @@ The session CSV (`session_data_csv_*.csv`) includes a `stop_reason` column (adde
 |-------|---------|
 | `USER_STOP` | Participant explicitly stopped recording via the app (tap or long press on the stop button) |
 | `SCREEN_OFF` | Device screen turned off (locked or display timeout) |
-| `MEDIA_PROJECTION_REVOKED` | System revoked screen capture permission (Android 14+) |
+| `MEDIA_PROJECTION_REVOKED` | Screen sharing ended while the screen was on: the participant stopped it from the status bar, or the system revoked it |
+| `SCREEN_OFF_MEDIA_PROJECTION_REVOKED` | Screen sharing ended while the phone was locked, before the screen-off was recorded (some Android 15+ devices end screen sharing on lock). From version 1.53.0 |
 | `SERVICE_DESTROYED` | OS terminated the recording service (force-stop, reboot, or memory pressure) |
 | `UNKNOWN` | Stop reason could not be determined (hard crash, or data predates schema version 2) |
 
 Note that a single uninterrupted recording will produce multiple session rows, one per screen-on/screen-off cycle. Each row will have `SCREEN_OFF` as the `stop_reason` except the final one when the participant explicitly stops.
 
-**Pause and resume:** The app does not have a true pause state. When a participant stops recording and restarts, each restart creates a new, independent session row with a new `id_session`. There is no identifier linking a stop to its subsequent resume — they appear in the data as two separate sessions from the same participant. When analysing gaps between sessions for the same user, a gap followed by a new session indicates the participant voluntarily stopped and restarted, but this cannot be confirmed from the data alone.
+**Phone power off and on:** From version 1.53.0, the app also writes a `PHONE_POWER_STATE` row to its event log (uploaded to `academia/log_events_v2/<email hash>/<version>/` in your bucket, or `log_events_v2/<email hash>/<version>/` if image uploads are turned off for the participant; columns `event`, `msg`, `user` (the participant's email address), `timestamp`) when the phone shuts down (`msg` = `POWER_OFF`) and when it finishes starting up (`POWER_ON`). `POWER_OFF` is only recorded while recording is on, because Android delivers the shutdown signal only to a running app. Use these rows to tell a phone that was switched off apart from a session ended by the participant or the system (`SERVICE_DESTROYED`).
+
+**Screen sharing and capture events:** From version 1.53.0, the same event log records what happened to screen sharing, so you can explain gaps in the screenshots:
+
+| `event` | `msg` |
+|---|---|
+| `SCREEN_SHARING_STATE` | Each change of capture state, as `OLD->NEW;reason=...` followed by the lock, pause and consent flags at that moment. States: `IDLE`, `STARTING`, `CAPTURING`, `USER_PAUSED`, `SCREEN_LOCKED_CAPTURE_SUSPENDED`, `SCREEN_LOCKED_CONSENT_REQUIRED`, `CONSENT_REQUIRED`, `STOPPED`, `ERROR`. |
+| `SCREEN_SHARING_PROMPT` | The screen sharing consent dialog and its reminder notification: shown, granted, denied. |
+| `SCREEN_CAPTURE_DENIED` | The participant declined the consent dialog after pressing record. |
+| `RECORDING_INTERRUPTED` | The app found that Android had closed it while recording and showed the participant a "Study Recording Stopped" notification. |
+| `PROCESS_EXIT` | Android 11+: the reason Android gave for each earlier app exit (for example `LOW_MEMORY`, `CRASH`, `USER_REQUESTED`). |
+
+When screen sharing ends, the app does not reopen the consent dialog on its own. It shows a "Study Recording Paused" notification (or "Study Recording Stopped" if Android closed the app), and asks for consent again when the participant taps it or opens the app. No screenshots are taken until they do, so a `CONSENT_REQUIRED` state followed by a long gap means the participant had not yet responded. If the participant force-stops the app, Android cancels the app's notifications and scheduled checks, so nothing is recorded until they open it again.
+
+**Uploads and sign-in recovery:** Offline and server errors keep the data and retry. If a participant's sign-in can no longer be renewed, after 6 failed upload runs the app signs them out without deleting data and asks them to sign in again; the same account resumes uploading. Settings > Logout lets a participant sign out and keep their data, or delete it. The event log records each step (`UPLOAD_CREDENTIAL_FAILURE`, `AUTH_RECOVERY_STARTED` and others). See [docs/upload-auth-recovery.md](docs/upload-auth-recovery.md).
+
+**Pause and resume:** The pause button stops screenshots for the chosen time and writes `pause start` and `pause end` marker rows (see [Screenshot state](#screenshot-state)) and the `USER_PAUSED` state; the session continues. When a participant stops recording and restarts, each restart creates a new, independent session row with a new `id_session`. There is no identifier linking a stop to its subsequent restart; they appear in the data as two separate sessions from the same participant. When analysing gaps between sessions for the same user, a gap followed by a new session indicates the participant voluntarily stopped and restarted, but this cannot be confirmed from the data alone.
 
 ---
 
@@ -375,10 +464,10 @@ This app uses authenticated user pools within AWS to provision accounts for part
 
 The following fields are configurable.
 #### panelConfirmationCode
-This code identifies your participants. This is important because participants' emails will not be associated with participant data, only the code entered here. The code must be a 4 digit number.
+This code identifies your participants. This is important because participants' emails will not be associated with participant data, only the code entered here. The code is digits only, `INVITE_CODE_LENGTH` long (4 by default; see [Researcher Configuration File](#researcher-configuration-file)), and may start with 0.
 
 ### Privacy Policy and Terms of Service
-The field **agreement_text** in the string.xml contains two URLs pointing to your (the researcher's) app's Privacy Policy and Terms of Service. If you plan to distribute via the Google Play Store, see their Privacy Policy and Terms of Service requirements. Stay in line with laws and regulations as well.
+The field **agreement_text** in `brand.xml` contains two URLs pointing to your (the researcher's) app's Privacy Policy and Terms of Service, shown on the registration screen; **privacy_url** in the same file is the privacy page the app opens. If you plan to distribute via the Google Play Store, see their Privacy Policy and Terms of Service requirements. Stay in line with laws and regulations as well.
 
 ### Explainer / In-app explainer text
 The user interface below (really, the text within it) is configurable and lets participants know during onboarding what the app is used for.
@@ -386,45 +475,9 @@ The user interface below (really, the text within it) is configurable and lets p
 ![alt text](<images/onboarding_explainer.png>)
 
 
-### How to Change the App Logo in an Android App
+### How to Change the App Name, Logo and Institution Texts
 
-#### Step 1: Prepare Your Logo
-1. **Design Your Logo**: Create or choose a logo image that represents your app. Ensure it is in PNG format with a transparent background for best results.
-2. **Resize the Logo**: Prepare different sizes of your logo to accommodate various screen resolutions. Common sizes include:
-   - **48x48 px** for low-density screens (ldpi)
-   - **72x72 px** for medium-density screens (mdpi)
-   - **96x96 px** for high-density screens (hdpi)
-   - **144x144 px** for extra-high-density screens (xhdpi)
-   - **192x192 px** for xx-high-density screens (xxhdpi)
-   - **512x512 px** for the Google Play Store icon
-
-#### Step 2: Locate the Drawable Folder
-1. **Open Android Studio**: Launch the app in Android Studio.
-2. **Navigate to `res/drawable`**: In the project explorer, go to `app > src > main > res > drawable`. This is where you’ll store your logo files.
-
-#### Step 3: Replace the Existing Logo
-1. **Copy Your Logo Files**: Copy your resized logo files into the respective drawable folders (`drawable-ldpi`, `drawable-mdpi`, `drawable-hdpi`, etc.). If these folders don't exist, you can create them under the `res` directory.
-2. **Rename the Files**: Ensure your logo files are named consistently across all drawable folders. The common name used is `ic_launcher.png`.
-   - Example: `ic_launcher.png` for all resolutions.
-
-#### Step 4: Update the AndroidManifest.xml
-1. **Open `AndroidManifest.xml`**: In the project explorer, navigate to `app > src > main > AndroidManifest.xml`.
-2. **Locate the `<application>` Tag**: Inside the `<application>` tag, find the `android:icon` attribute.
-3. **Set the New Icon**: Change the value of `android:icon` to the name of your new logo (without the file extension).
-   - Example: `android:icon="@drawable/ic_launcher"`
-
-#### Step 5: Update the Adaptive Icons (Optional)
-1. **Adaptive Icons**: For Android 8.0 (API level 26) and above, you should also update the adaptive icons. These consist of a foreground and background layer.
-2. **Navigate to `res/mipmap-anydpi-v26`**: This folder contains the adaptive icon XML files.
-3. **Edit the XML Files**: Modify `ic_launcher.xml` and `ic_launcher_round.xml` to point to your new foreground and background images.
-
-#### Step 6: Rebuild the Project
-1. **Rebuild the Project**: Go to `Build > Rebuild Project` to apply the changes.
-2. **Run Your App**: Deploy the app to an emulator or a device to see the new logo in action.
-
-#### Step 7: Test Your Logo
-1. **Check Across Devices**: Test the logo on different devices and screen resolutions to ensure it looks good everywhere.
-
+Replace `app/src/main/res/drawable/logo_just_square_small.png` (a square PNG, 512 x 512 works well) with your logo, keeping the file name: it is the launcher icon, the logo inside the app and the notification icon. Participant-visible texts that name the app or the institution, including consent texts and policy links, are all in `app/src/main/res/values/brand.xml`. If you are setting SMART up for your own institution, follow [docs/institution-branding.md](docs/institution-branding.md).
 
 ### Changing In-App Text in the `res/strings` Resource Folder
 

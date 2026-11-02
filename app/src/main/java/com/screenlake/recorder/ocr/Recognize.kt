@@ -10,6 +10,7 @@ import com.screenlake.data.repository.GeneralOperationsRepository
 import com.screenlake.recorder.constants.ConstantSettings
 import com.screenlake.recorder.services.util.ScreenshotData
 import com.screenlake.recorder.utilities.record
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -120,6 +121,10 @@ class Recognize @Inject constructor(
                         }
 
                         true // OCR succeeded
+                    } catch (e: CancellationException) {
+                        // The 30 s timeout (or the OCR job being cancelled) is not a Tesseract failure;
+                        // never delete the row for it.
+                        throw e
                     } catch (e: Exception) {
                         // Handle exceptions that occur inside Tesseract operations
                         Timber.tag(TAG).e(e, "Tesseract operation failed")
@@ -161,6 +166,10 @@ class Recognize @Inject constructor(
 
                     false // OCR timed out
                 }
+            } catch (e: CancellationException) {
+                // The 30 s timeout (or the OCR job being cancelled) is not a Tesseract failure;
+                // never delete the row for it.
+                throw e
             } catch (e: Exception) {
                 // Catch any exceptions that might have escaped
                 Timber.tag(TAG).e(e, "Unexpected error in processImage")

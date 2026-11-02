@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
     android:description="@string/accessibility_service_description"
-    android:accessibilityEventTypes="typeViewClicked|typeNotificationStateChanged|typeViewAccessibilityFocused|typeViewSelected|typeViewFocused|typeViewScrolled"
+    android:accessibilityEventTypes="typeViewClicked|typeNotificationStateChanged|typeViewAccessibilityFocused|typeViewSelected|typeViewFocused|typeViewScrolled|typeWindowStateChanged"
     android:accessibilityFlags="flagDefault"
     android:accessibilityFeedbackType="feedbackGeneric"
     android:notificationTimeout="100"

@@ -16,7 +16,7 @@ You have been invited to participate in a study led by [researcher name / study 
 
 While the app is running, it collects:
 
-- **Screenshots** — a full-screen image taken approximately every 5 seconds
+- **Screenshots** — a full-screen image taken at a regular interval set by the study team (every 5 seconds unless your study team tells you otherwise)
 - **Text from screenshots** — text extracted automatically from those images (called OCR)
 - **App usage logs** — which apps are open and when
 - **App history** — a record of recent app switching (the last few apps you had open)
@@ -76,9 +76,16 @@ Once all three permissions are granted, the app is ready. Tap **Start** to begin
 
 ## Day-to-day experience
 
-After setup, the app runs silently in the background. You do not need to open or interact with it. A small notification will appear in your status bar to indicate the app is active. You can continue using your phone normally.
+After setup, the app runs silently in the background. You do not need to open or interact with it. A small notification will appear in your status bar to indicate the app is active. While your data uploads, a second, quiet **"Uploading study data"** notification may appear; it goes away when the upload finishes. You can continue using your phone normally.
 
 Occasionally you may be asked to confirm a permission again, such as screen recording, even though you already granted it before. This is normal behavior built into Android to protect your privacy, not a sign that anything is wrong. Just tap to confirm again and the app will keep running.
+
+If screen recording stops, you will see one of these notifications:
+
+- **Study Recording Paused:** screen sharing was turned off, for example from the status bar or by your phone when it locked.
+- **Study Recording Stopped:** your phone closed the app in the background.
+
+Tap the notification, or open the app, and confirm screen recording to start again. The app will not open the screen recording prompt by itself, so recording stays off until you do.
 
 ---
 
@@ -95,3 +102,11 @@ The app is designed to have minimal impact on battery life. The battery optimiza
 **To stop participating:** You can stop the app at any time by opening it and pressing the stop button, or by going to **Settings > Accessibility** on your phone, finding the app in the list, and disabling it.
 
 You can also uninstall the app at any time from your phone's app settings. Uninstalling stops all data collection immediately.
+
+**To sign out:** Go to **Settings > Logout** in the app. You can choose to keep your collected data on the phone, so it uploads when you sign in again with the same account, or to delete it. Either way, your saved sign-in details are removed from the phone.
+
+---
+
+## If you are asked to sign in again
+
+If the app can no longer upload because your sign-in has expired, you will see a **"Sign in to resume uploads"** notification. Your collected data is safe on the phone. Tap the notification, or open the app, and sign in with the same email address as before; uploading then continues. Signing in with a different account deletes the data that has not uploaded yet, and the app asks you to confirm first.

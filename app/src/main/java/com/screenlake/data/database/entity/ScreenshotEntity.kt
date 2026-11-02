@@ -24,6 +24,8 @@ import androidx.room.PrimaryKey
  * @property fileName The file name of the screenshot.
  * @property zipFileId The zip file ID associated with the screenshot.
  * @property sessionDepth The session depth of the screenshot.
+ * @property state What the row records: a capture, a restricted app or a state change marker
+ *   (see [com.screenlake.data.database.ScreenshotState]). Null for rows from before schema 4.
  * @property id The primary key ID (auto-generated).
  */
 @Keep
@@ -45,7 +47,8 @@ data class ScreenshotEntity(
     var filePath: String? = null,
     var fileName: String? = null,
     var zipFileId: String? = null,
-    var sessionDepth: Long? = null
+    var sessionDepth: Long? = null,
+    var state: String? = null
 ) {
     @PrimaryKey(autoGenerate = true)
     var id: Int? = null

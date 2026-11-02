@@ -32,6 +32,9 @@ import com.screenlake.recorder.authentication.CloudAuthentication
 import com.screenlake.data.database.entity.LogEventEntity
 import com.screenlake.data.database.entity.UserEntity
 import com.screenlake.data.repository.AmplifyRepository
+import com.screenlake.data.repository.GeneralOperationsRepository
+import com.screenlake.recorder.services.AuthRecoveryCoordinator
+import com.screenlake.recorder.services.UploadWorker
 import com.screenlake.recorder.services.util.ScreenshotData
 import com.screenlake.recorder.utilities.HardwareChecks
 import androidx.core.view.ViewCompat
@@ -58,6 +61,9 @@ class LoginFragment : Fragment() {
 
     @Inject
     lateinit var cloudAuthentication: CloudAuthentication
+
+    @Inject
+    lateinit var generalOperationsRepository: GeneralOperationsRepository
 
     private val mainViewModel: MainViewModel by activityViewModels()
     private val userModel: UserViewModel by viewModels()
@@ -96,9 +102,12 @@ class LoginFragment : Fragment() {
         setupListeners()
         observeLoginState()
 
-        onSelectRegister()
+        // Upload recovery could not show its notification, so say it here instead.
+        if (AuthRecoveryCoordinator.consumeInAppMessage(requireContext())) {
+            alertView(getString(R.string.auth_recovery_message))
+        }
 
-        observerLoginState()
+        onSelectRegister()
     }
 
 
@@ -192,17 +201,6 @@ class LoginFragment : Fragment() {
         }
     }
 
-    private fun observerLoginState() {
-        MainActivity.isLoggedIn.observe(viewLifecycleOwner, Observer {
-            if (it) {
-                setUserLoggedOut()
-                saveUserSendToHome(amplifyRepository.email)
-            } else {
-                // Toast.makeText(activity, getString(R.string.login_failed), Toast.LENGTH_LONG).show()
-            }
-        })
-    }
-
     private suspend fun loginUser() {
         val email = binding.loginEmail.editText?.text.toString()
         val password = binding.loginPassword.editText?.text.toString()
@@ -273,14 +271,34 @@ class LoginFragment : Fragment() {
     private fun saveUserSendToHome(email: String) = lifecycleScope.launch {
         val userExist = userModel.userExist()
 
-        if (!userExist) {
+        if (userExist && AuthRecoveryCoordinator.isPending(requireContext())) {
+            // Recovery was interrupted before the sign-out deleted the user (process killed).
+            // Finish it now: the stored user is the same participant only if the email matches.
+            val stored = runCatching { userModel.getUser() }.getOrNull()
+            if (stored?.email.equals(email, ignoreCase = true)) {
+                AuthRecoveryCoordinator.onLoginSucceeded(requireContext().applicationContext)
+                cloudAuthentication.rememberCredentials(email, amplifyRepository.password)
+                saveLog("AUTH_RECOVERY_LOGIN_SUCCEEDED", "resumed")
+                UploadWorker.enqueue(requireContext())
+                MainActivity.isLoggedOut.postValue(false)
+                findNavController().navigate(R.id.screenRecordFragment)
+                return@launch
+            }
+            // A different account: record whose data it is and remove that user without signing
+            // out the account that just signed in; the different-account warning follows.
+            generalOperationsRepository.signOutKeepingData(stored)
+        }
+
+        if (!userModel.userExist()) {
             val user = getUserFromDatastore(email)
 
             val userEmail = user?.email
             if (!userEmail.isNullOrBlank()) {
-                userModel.insertUser(user)
-                MainActivity.isLoggedOut.postValue(false)
-                findNavController().navigate(R.id.screenRecordFragment)
+                if (generalOperationsRepository.pendingReauthUserDiffersFrom(userEmail)) {
+                    confirmDifferentAccount(user)
+                } else {
+                    completeLogin(user)
+                }
             } else {
                 saveLog("Exception", "User null -> ${user?.username}")
                 isSubmitted = false
@@ -289,6 +307,48 @@ class LoginFragment : Fragment() {
                 binding.loginUser.text = getString(R.string.login)
             }
         }
+    }
+
+    /**
+     * Saves the signed-in participant and their credentials, and resumes uploads. The same
+     * participant signing in after a sign-out that kept data gets their invite code and panel
+     * back (GeneralOperationsRepository.reconcilePendingReauthUser).
+     */
+    private suspend fun completeLogin(user: UserEntity) {
+        userModel.insertUser(user)
+        // Only now is this account the app's participant (a cancelled different-account login
+        // never gets here), so its credentials replace any saved at registration.
+        cloudAuthentication.rememberCredentials(amplifyRepository.email, amplifyRepository.password)
+        val context = requireContext().applicationContext
+        if (AuthRecoveryCoordinator.onLoginSucceeded(context)) {
+            saveLog("AUTH_RECOVERY_LOGIN_SUCCEEDED", "")
+        }
+        UploadWorker.enqueue(context)
+        MainActivity.isLoggedOut.postValue(false)
+        findNavController().navigate(R.id.screenRecordFragment)
+    }
+
+    /** Another participant's data is waiting to upload; signing in with this account deletes it. */
+    private fun confirmDifferentAccount(user: UserEntity) {
+        AlertDialog.Builder(context)
+            .setIcon(R.drawable.ic_baseline_error_outline_24)
+            .setTitle(R.string.different_account_title)
+            .setMessage(getString(R.string.different_account_message, user.email))
+            .setCancelable(false)
+            .setPositiveButton(R.string.different_account_continue) { _, _ ->
+                lifecycleScope.launch {
+                    saveLog("REAUTH_DIFFERENT_ACCOUNT_CONFIRMED", "")
+                    completeLogin(user)
+                }
+            }
+            .setNegativeButton(R.string.cancel) { _, _ ->
+                lifecycleScope.launch { saveLog("REAUTH_DIFFERENT_ACCOUNT_CANCELLED", "") }
+                isSubmitted = false
+                MainActivity.isLoggedIn.postValue(false)
+                cloudAuthentication.signOut(MainActivity.isLoggedOut)
+                binding.loginUser.text = getString(R.string.login)
+            }
+            .show()
     }
 
     private suspend fun getUserFromDatastore(email: String): UserEntity? {

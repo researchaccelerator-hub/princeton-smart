@@ -1,0 +1,24 @@
+name: Request Copilot Review
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+jobs:
+  request-review:
+    # Only PRs opened by our team from a branch in this repo. PRs from forks and from
+    # outside contributors are skipped. Using pull_request (not pull_request_target) keeps
+    # fork PRs from ever running with write access.
+    if: >-
+      !github.event.pull_request.draft &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Request review from Copilot
+        run: gh pr edit "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --add-reviewer @copilot
+        env:
+          # COPILOT_REVIEW_TOKEN is optional: set it to a token from a user with a Copilot
+          # seat if the default workflow token is not allowed to request Copilot.
+          GH_TOKEN: ${{ secrets.COPILOT_REVIEW_TOKEN || github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}

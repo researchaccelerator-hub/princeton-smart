@@ -1,6 +1,8 @@
 package com.screenlake.recorder.authentication
 
 import com.amazonaws.mobile.client.AWSMobileClient
+import com.amplifyframework.auth.AuthException
+import com.screenlake.recorder.upload.UploadFailureClassifier
 import com.amazonaws.mobile.client.Callback
 import com.amazonaws.mobile.client.results.SignInResult
 import com.amazonaws.mobile.client.results.SignInState
@@ -21,19 +23,20 @@ import javax.inject.Singleton
 @Singleton
 class RealCognitoSessionAuthenticator @Inject constructor() : CognitoSessionAuthenticator {
 
-    override suspend fun signInAwsMobileClient(email: String, password: String): Boolean =
+    override suspend fun signInAwsMobileClient(email: String, password: String): SignInOutcome =
         withContext(Dispatchers.IO) {
             val latch = CountDownLatch(1)
-            var success = false
+            var outcome = SignInOutcome.UNAVAILABLE
             try {
                 AWSMobileClient.getInstance().signIn(email, password, null, object : Callback<SignInResult> {
                     override fun onResult(result: SignInResult?) {
-                        success = result?.signInState == SignInState.DONE
+                        outcome = if (result?.signInState == SignInState.DONE) SignInOutcome.SIGNED_IN else SignInOutcome.REJECTED
                         latch.countDown()
                     }
 
                     override fun onError(e: Exception) {
                         Timber.tag(TAG).w("AWSMobileClient re-auth sign-in failed: ${e.message}")
+                        outcome = if (UploadFailureClassifier.isAuthenticationFailure(e)) SignInOutcome.REJECTED else SignInOutcome.UNAVAILABLE
                         latch.countDown()
                     }
                 })
@@ -41,21 +44,22 @@ class RealCognitoSessionAuthenticator @Inject constructor() : CognitoSessionAuth
             } catch (e: Exception) {
                 Timber.tag(TAG).w("AWSMobileClient re-auth sign-in threw: ${e.message}")
             }
-            success
+            outcome
         }
 
-    override suspend fun signInAmplify(email: String, password: String): Boolean =
+    override suspend fun signInAmplify(email: String, password: String): SignInOutcome =
         withContext(Dispatchers.IO) {
             val latch = CountDownLatch(1)
-            var success = false
+            var outcome = SignInOutcome.UNAVAILABLE
             try {
                 Amplify.Auth.signIn(email, password,
                     { result ->
-                        success = result.isSignInComplete
+                        outcome = if (result.isSignInComplete) SignInOutcome.SIGNED_IN else SignInOutcome.REJECTED
                         latch.countDown()
                     },
                     { error ->
                         Timber.tag(TAG).w("Amplify re-auth sign-in failed: ${error.message}")
+                        outcome = if (isRejection(error)) SignInOutcome.REJECTED else SignInOutcome.UNAVAILABLE
                         latch.countDown()
                     }
                 )
@@ -63,8 +67,16 @@ class RealCognitoSessionAuthenticator @Inject constructor() : CognitoSessionAuth
             } catch (e: Exception) {
                 Timber.tag(TAG).w("Amplify re-auth sign-in threw: ${e.message}")
             }
-            success
+            outcome
         }
+
+    /** Errors that mean the stored credentials no longer work, as opposed to Cognito being unreachable. */
+    private fun isRejection(error: AuthException): Boolean =
+        error is AuthException.NotAuthorizedException ||
+            error is AuthException.UserNotFoundException ||
+            error is AuthException.UserNotConfirmedException ||
+            error is AuthException.PasswordResetRequiredException ||
+            error is AuthException.InvalidPasswordException
 
     companion object {
         private val TAG = RealCognitoSessionAuthenticator::class.java.simpleName

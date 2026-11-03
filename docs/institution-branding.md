@@ -55,9 +55,9 @@ These are the only files your fork should change for branding:
 
 Brand colors are optional: they are in `app/src/main/res/values/colors.xml`. Changing them is fine, but expect to resolve a conflict there now and then when you merge a SMART release.
 
-## Step 3. Keep the Princeton Research Accelerator credit
+## Step 3. Keep the Accelerator credit
 
-Every build of SMART shows "Powered by the Princeton Research Accelerator" at the bottom of the welcome screen and as the last line in Settings. Keep it as it is: it is a condition of using SMART. It is the `powered_by` string in `app/src/main/res/values/strings.xml`, outside the brand file on purpose. Do not change or remove it; the unit tests check that it is present.
+Every build of SMART shows "Powered by the Accelerator" at the bottom of the welcome screen and as the last line in Settings. Keep it as it is: it is a condition of using SMART. It is the `powered_by` string in `app/src/main/res/values/strings.xml`, outside the brand file on purpose. Do not change or remove it; the unit tests check that it is present.
 
 Also keep `LICENSE.md` unchanged, as the license requires.
 

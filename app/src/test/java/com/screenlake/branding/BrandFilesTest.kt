@@ -50,9 +50,9 @@ class BrandFilesTest {
     }
 
     @Test
-    fun `every build keeps the Princeton Research Accelerator credit`() {
+    fun `every build keeps the Accelerator credit`() {
         val strings = File(main, "res/values/strings.xml").readText()
-        assertTrue(strings.contains("""<string name="powered_by">Powered by the Princeton Research Accelerator</string>"""))
+        assertTrue(strings.contains("""<string name="powered_by">Powered by the Accelerator</string>"""))
         assertTrue(File(main, "res/layout/login_or_register.xml").readText().contains("@string/powered_by"))
         assertTrue(File(main, "res/xml/preference.xml").readText().contains("@string/powered_by"))
     }

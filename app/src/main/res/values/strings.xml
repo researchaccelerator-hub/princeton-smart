@@ -308,6 +308,9 @@
     <string name="invalid_invite_code_toast">Please enter a valid %1$d-digit invite code.</string>
     <string name="confirmation_code_cannot_be_empty">Confirmation code cannot be empty.</string>
     <string name="code_invalid">Code invalid.</string>
+    <string name="confirmation_code_display">Panel confirmation code: %1$s</string>
+    <string name="confirmation_code_not_set">Panel confirmation code: not set</string>
+    <string name="confirmation_code_check_hint">Check that this matches the code from your research team.</string>
     <string name="accept_terms_above">Accept terms above.</string>
     <string name="email_taken">Email Taken.</string>
     <string name="confirm_failed_badly_formatted_code">Confirm failed, badly formatted code.</string>

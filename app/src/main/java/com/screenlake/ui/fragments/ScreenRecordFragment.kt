@@ -396,8 +396,30 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
     override fun onResume() {
         super.onResume()
         cloudAuthentication.fetchCurrentAuthSession()
+        showConfirmationCode()
         lifecycleScope.launch {
             HardwareChecks.isConnectedAsync(WeakReference(requireContext()))
+        }
+    }
+
+    /**
+     * Shows the participant's saved panel confirmation code (stored as emailHash) so they can
+     * check it against the code the research team gave them. Display only: the code is set at
+     * sign-up, or in the Missing ID dialog when none is saved, and changes only when the
+     * participant signs in again and enters a different one.
+     */
+    private fun showConfirmationCode() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val code = withContext(Dispatchers.IO) {
+                runCatching {
+                    if (userDao.userExists()) userDao.getUser().emailHash else null
+                }.getOrNull()
+            }
+            binding.confirmationCodeText.text = if (code.isNullOrBlank()) {
+                getString(R.string.confirmation_code_not_set)
+            } else {
+                getString(R.string.confirmation_code_display, code)
+            }
         }
     }
 
@@ -848,6 +870,7 @@ class ScreenRecordFragment : Fragment(R.layout.fragment_screen_record), EasyPerm
 
                             userDao.insertUserObj(user)
                             ScreenshotService.user = user
+                            if (view != null) showConfirmationCode()
                         }
 
                         Toast.makeText(context, "Invite code: $inviteCode", Toast.LENGTH_SHORT).show()

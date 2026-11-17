@@ -43,6 +43,40 @@
                     android:text="offline"/>
             </LinearLayout>
 
+            <!-- Read-only: the code is set at sign-up and only changes when the participant
+                 signs in again and enters a new one. -->
+            <LinearLayout
+                android:id="@+id/confirmationCodeGroup"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp">
+
+                <TextView
+                    android:id="@+id/confirmationCodeText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/inter_semibold"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    tools:text="Panel confirmation code: 12345" />
+
+                <TextView
+                    android:id="@+id/confirmationCodeHint"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/inter_light"
+                    android:gravity="center"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:text="@string/confirmation_code_check_hint"
+                    android:textColor="@color/screenlake_light_gray"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
             <LinearLayout
                 android:id="@+id/upload_group"
                 android:visibility="gone"

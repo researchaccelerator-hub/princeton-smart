@@ -52,6 +52,8 @@ Once installed, open the app and register with:
 - Your email address
 - The panel code provided by the research team: **[panel code]**
 
+After you sign in, the app's Home screen shows the **Panel confirmation code** you entered. Check that it matches the code above, and contact the research team if it does not.
+
 ---
 
 ## One-time setup: granting permissions
